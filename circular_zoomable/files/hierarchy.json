@@ -1,0 +1,46 @@
+{
+  "name": "Network Inference Tools",
+  "children": [
+    {
+      "name": "Matrix Factorization",
+      "children": [
+        { "name": "Principal Component Analysis", "value": 185.75 },
+        { "name": "Singular Value Decomposition", "value": 185.75 }
+      ]
+    },
+    {
+      "name": "Network Propagation",
+      "children": [
+        { "name": "Random Walk", "value": 185.75 },
+        { "name": "Diffusion", "value": 185.75 }
+      ]
+    },
+    {
+      "name": "Knowledge Graph", "value": 375 
+    },
+    {
+      "name": "Meta-Path-Based Algorithms", "value": 375 
+    },
+    {
+      "name": "Bayesian / Causal Networks", "value": 375 
+    },
+    {
+      "name": "Graph Neural Networks",
+      "children": [
+        { "name": "Graph Convolutional Networks", "value": 185.75 },
+        { "name": "Graph Attention Networks", "value": 185.75 },
+        { "name": "Graph Transformer Networks", "value": 185.75 },
+        { "name": "DeepMAPS", "value": 185.75 }
+      ]
+    },
+    {
+      "name": "Graph Kernels", "value": 375 
+    },
+    {
+      "name": "Direct Methods", "value": 375 
+    },
+    {
+      "name": "Network Embedding", "value": 375 }
+  ]
+}
+

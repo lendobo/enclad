@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Circle Packing</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+<body>
+<script>
+var data = {
+    "name": "root",
+    "children": [
+        {
+            "name": "child1",
+            "children": [
+                { "name": "grandchild1" },
+                { "name": "grandchild2" },
+            ]
+        },
+        { "name": "child2" }
+    ]
+};
+
+var svg = d3.select("body").append("svg")
+    .attr("width", 960)
+    .attr("height", 960);
+
+var g = svg.append("g")
+    .attr("transform", "translate(480,480)");
+
+var color = d3.scaleSequential(d3.interpolateMagma)
+    .domain([-4, 4]);
+
+var pack = d3.pack()
+    .size([960, 960])
+    .padding(10);
+
+var root = d3.hierarchy(data)
+    .sum(function(d) { return 1; });
+
+var node = g.selectAll(".node")
+    .data(pack(root).leaves())
+    .enter().append("g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+node.append("circle")
+    .attr("id", function(d) { return d.data.name; })
+    .attr("r", function(d) { return d.r; })
+    .style("fill", function(d) { return color(d.depth); });
+
+node.append("clipPath")
+    .attr("id", function(d) { return "clip-" + d.data.name; })
+    .append("use")
+    .attr("xlink:href", function(d) { return "#" + d.data.name; });
+
+node.append("text")
+    .attr("clip-path", function(d) { return "url(#clip-" + d.data.name + ")"; })
+    .selectAll("tspan")
+    .data(function(d) { return d.data.name.split(/(?=[A-Z][^A-Z])/g); })
+    .enter().append("tspan")
+    .attr("x", 0)
+    .attr("y", function(d, i, nodes) { return 13 + (i - nodes.length / 2 - 0.5) * 10; })
+    .text(function(d) { return d; });
+
+node.append("title")
+    .text(function(d) { return d.data.name + "\n" + format(d.value); });
+
+</script>
+</body>
+</html>
