@@ -7,21 +7,18 @@ library(RColorBrewer)
 # create a data frame giving the hierarchical structure of your individuals
 set.seed(1234)
 d1 <- data.frame(from = "origin", to = paste("group", seq(1, 5), sep = ""))
-d2 <- data.frame(from = rep(d1$to, each = 5), to = paste("subgroup", seq(1, 25), sep = "_"))
+# create an empty dataframe
+d2 <- data.frame(from = character(), to = character(), stringsAsFactors=FALSE)
 
-# # Custom group sizes
-# d2 <- data.frame(from = character(), to = character(), stringsAsFactors=FALSE)
+# specify the number of subgroups for each group
+num_subgroups <- c(3, 5, 7, 2, 4)  # adjust this to your needs
 
-# # specify the number of subgroups for each group
-# num_subgroups <- c(3, 5, 7, 2, 4)  # adjust this to your needs
-
-# # populate the dataframe
-# group_names <- paste("group", seq(1, length(num_subgroups)), sep="")
-# for (i in seq_along(num_subgroups)) {
-#   group_subgroups <- paste("subgroup", seq(1, num_subgroups[i]), sep="_")
-#   d2 <- rbind(d2, data.frame(from = group_names[i], to = group_subgroups, stringsAsFactors=FALSE))
-# }
-
+# populate the dataframe
+group_names <- paste("group", seq(1, length(num_subgroups)), sep="")
+for (i in seq_along(num_subgroups)) {
+  group_subgroups <- paste("subgroup", seq(1, num_subgroups[i]), sep="_")
+  d2 <- rbind(d2, data.frame(from = group_names[i], to = group_subgroups, stringsAsFactors=FALSE))
+}
 
 edges <- rbind(d1, d2)
 

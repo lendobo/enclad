@@ -6,19 +6,26 @@ library(RColorBrewer)
 
 # create a data frame giving the hierarchical structure of your individuals
 set.seed(1234)
-d1 <- data.frame(from = "origin", to = paste("group", seq(1, 5), sep = ""))
+d1 <- data.frame(from = "origin", to = paste("group", seq(1, 6), sep = ""))
+
+# specify the subgroups for each group
+subgroups <- list(
+  c("Mutual Information", "Correlation-based"),
+  c("SVD", "Spectral", "Other"),
+  c("Random Walk", "Heat Diffusion", "Graph Kernels"),
+  c("RecGNN", "GCN", "GAE", "STGNN"),
+  c("Metapath1", "Metapath2"),
+  c("BNfinder", "BANJO", "Nemhauser")
+)
 
 # create an empty dataframe
-d2 <- data.frame(from = character(), to = character(), stringsAsFactors=FALSE)
-
-# specify the number of subgroups for each group
-num_subgroups <- c(3, 5, 7, 2, 4)  # adjust this to your needs
+d2 <- data.frame(from = character(), to = character(), stringsAsFactors = FALSE)
 
 # populate the dataframe
-group_names <- paste("group", seq(1, length(num_subgroups)), sep="")
-for (i in seq_along(num_subgroups)) {
-  group_subgroups <- paste("subgroup", seq(1, num_subgroups[i]), sep="_")
-  d2 <- rbind(d2, data.frame(from = group_names[i], to = group_subgroups, stringsAsFactors=FALSE))
+group_names <- paste("group", seq(1, length(subgroups)), sep = "")
+for (i in seq_along(subgroups)) {
+  group_subgroups <- subgroups[[i]]
+  d2 <- rbind(d2, data.frame(from = group_names[i], to = group_subgroups, stringsAsFactors = FALSE))
 }
 
 edges <- rbind(d1, d2)
@@ -33,6 +40,7 @@ connect <- rbind(
 )
 connect$value <- runif(nrow(connect))
 
+
 # create a vertices data.frame. One line per object of our hierarchy
 vertices <- data.frame(
   name = unique(c(as.character(edges$from), as.character(edges$to))),
@@ -42,7 +50,9 @@ vertices <- data.frame(
 # Let's add a column with the group of each name. It will be useful later to color points
 vertices$group <- edges$from[match(vertices$name, edges$to)]
 
-# LABEL PARAMETERS 1
+################### LABEL PARAMETERS 1 ##############################################################
+# Let's add information concerning the label we are going to add: angle, horizontal adjustement and potential flip
+# calculate the ANGLE of the labels
 vertices$id <- NA
 myleaves <- which(is.na(match(vertices$name, edges$from)))
 nleaves <- length(myleaves)
@@ -50,12 +60,14 @@ nleaves <- length(myleaves)
 # Assign id based on the order of appearance in the layout
 layout <- as_data_frame(layout_as_tree(graph_from_data_frame(edges, vertices = vertices)))
 vertices <- vertices %>% arrange(match(name, layout$name))
-vertices$id[myleaves] <- seq(1:nleaves)
 
+vertices$id[myleaves] <- seq(1:nleaves)
 vertices$angle <- 90 - 360 * vertices$id / nleaves
 vertices$hjust <- ifelse(vertices$angle < -90, 1, 0)
 vertices$angle <- ifelse(vertices$angle < -90, vertices$angle + 180, vertices$angle)
 
+
+#################### PLOT ########################################################
 # Create a graph object
 mygraph <- igraph::graph_from_data_frame(edges, vertices = vertices)
 
@@ -68,7 +80,7 @@ ggraph(mygraph, layout = "dendrogram", circular = TRUE) +
   scale_edge_colour_distiller(palette = "RdPu") +
   geom_node_text(aes(x = x * 1.15, y = y * 1.15, filter = leaf, label = name, angle = angle, hjust = hjust, colour = group), size = 2, alpha = 1) +
   geom_node_point(aes(filter = leaf, x = x * 1.07, y = y * 1.07, colour = group, size = value, alpha = 0.2)) +
-  scale_colour_manual(values = rep(brewer.pal(9, "Paired"), 30)) +
+  scale_colour_manual(values = rep(brewer.pal(9, "Dark2"), 30)) +
   scale_size_continuous(range = c(0.1, 10)) +
   theme_void() +
   theme(
