@@ -5,10 +5,10 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 # Use dark plots
-plt.style.use("dark_background")
+plt.style.use("Solarize_Light2")
 
 
-reactome_file_path = "/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Codebase2/data/KnowledgeGraphDBs/Giant_component_FIVIZ.csv"
+reactome_file_path = "/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/ENCLAD/Cytoscape_FIViz/Giant_Component_PPI_edges.csv"
 
 # # Attempt to read the Reactome network data
 # # read xlsx file
@@ -66,17 +66,26 @@ for node, degree in degree_dict.items():
         nodes_by_degree[degree] = []
     nodes_by_degree[degree].append(node)
 
-# print(nodes_by_degree)
-# print(degree_prob)
+# # print 20 nodes of highest degree
+# sorted_degree = sorted(degree_dict.items(), key=lambda x: x[1], reverse=True)
+# print("Top 20 nodes by degree:")
+# for d in sorted_degree[:20]:
+#     print(f"{d[0]}: {d[1]}")
+
+# # print 20 nodes of lowest degree
+# print("Bottom 20 nodes by degree:")
+# for d in sorted_degree[-20:]:
+#     print(f"{d[0]}: {d[1]}")
+
+    
 
 # Subsample nodes based on their degree to preserve the degree distribution
 selected_nodes = []
 for degree, prob in enumerate(degree_prob):
     if prob > 0 and degree in nodes_by_degree:
-        num_to_select = int(np.ceil(len(nodes_by_degree[degree]) * prob))
+        num_to_select = int(np.ceil(len(nodes_by_degree[degree]) * 2 * prob))
         selected_nodes.extend(
-            np.random.choice(nodes_by_degree[degree], num_to_select, replace=False)
-        )
+            np.random.choice(nodes_by_degree[degree], num_to_select, replace=False))
 
 # Create a subgraph with the selected nodes
 G_subsampl = G.subgraph(selected_nodes)
@@ -114,15 +123,21 @@ plt.show()
 subsampled_node_names = list(G_subsampl.nodes())
 subsampled_node_names_df = pd.DataFrame(subsampled_node_names)
 subsampled_node_names_df.to_csv(
-    "/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Codebase2/data/KnowledgeGraphDBs/PPI_subsampled_node_names.csv",
+    "/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/ENCLAD/Cytoscape_FIViz/PPI_subsampled_node_names.csv",
     index=False,
 )
 
 
 # %%
-# Visualize original graph
+# # Visualize original graph
+# plt.figure(figsize=(16, 12))
+# nx.draw_networkx(G, with_labels=False, node_size=10, width=0.1)
+# plt.show()
+
+# Visualize subsampled graph
 plt.figure(figsize=(16, 12))
-nx.draw_networkx(G, with_labels=False, node_size=10, width=0.1)
+nx.draw_networkx(G_subsampl, with_labels=False, node_size=10, width=0.1)
 plt.show()
+
 
 # %%
