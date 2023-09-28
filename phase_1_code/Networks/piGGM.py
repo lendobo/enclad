@@ -1,13 +1,18 @@
 import numpy as np
 import math
+from scipy.special import comb
 from scipy.optimize import minimize
 import scipy.stats as stats
 from itertools import combinations
+from itertools import product
 from sklearn.covariance import empirical_covariance
+from concurrent.futures import ProcessPoolExecutor
+
 
 ####### TODO #######
 # Vectorize the for loops (advanced)
-# implement parallelization for Q * J optimization runs
+# implement parallelization for Q * J optimization runs (advanced)
+# Once it runs, implement alternative and check if results are still the same
 # check if the denominator of eq (12) is implemented correctly
 # The function theta_k = post_distro.cdf(zk_vec[:,e_k] + epsilon) - post_distro.cdf(zk_vec[:,e_k] - epsilon), could have the wrong shape
 
@@ -15,6 +20,65 @@ from sklearn.covariance import empirical_covariance
 # Currently, we assume an edge is present if the optimized precision matrix has an absolute value > 1e-5.
 # If the resulting network is too dense, we might have to change this threshold. However, the LASSO pushes many values to exactly 0, 
 # so this might not be a problem.
+
+
+def optimize_for_q_and_j(params):
+    q, lambdax = params
+    all_subs, data, p, prior_matrix = global_params
+
+    sub_sample = data[np.array(all_subs[q]), :]
+    S = empirical_covariance(sub_sample)
+    initial_precision_vector = np.eye(p).flatten()
+    result = minimize(
+        objective,  # Replace with your actual objective function
+        initial_precision_vector,
+        args=(S, lambdax, lambdax, prior_matrix),  # And the actual arguments for your objective function
+        method='L-BFGS-B',
+    )
+    if result.success:
+        opt_precision_mat = result.x.reshape((p, p))
+        edge_counts = (np.abs(opt_precision_mat) > 1e-5).astype(int)  # Assume edge exists if absolute value > 1e-5
+        return q, lambdax, edge_counts
+    else:
+        return q, lambdax, np.zeros((p, p))
+
+def subsample_optimiser(data, b, Q, lambda_range, prior_matrix):
+    n, p = data.shape
+    
+    # Error Handling: Check if b is less than n
+    if b >= n:
+        raise ValueError("b should be less than the number of samples n.")
+    
+    # Error Handling: Check if Q is smaller or equal to the number of possible sub-samples
+    if Q > math.comb(n, b):
+        raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
+
+    # Generate all possible sub-samples without replacement
+    all_subs = list(combinations(range(n), b))
+    np.random.seed(42)
+    selected_subs = np.random.choice(len(all_subs), min(Q, len(all_subs)), replace=False)
+    
+    edge_counts_all = np.zeros((p, p, len(lambda_range)))  # Initialize edge count matrix across lambdas and sub-samples
+
+    params_list = list(product(
+        selected_subs,
+        lambda_range,
+        all_subs * len(selected_subs) * len(lambda_range),
+        data * len(selected_subs) * len(lambda_range),
+        p * len(selected_subs) * len(lambda_range),
+        prior_matrix * len(selected_subs) * len(lambda_range)))
+
+    # Use a process pool executor to parallelize the optimization and counting task
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(optimize_for_q_and_j, params_list))
+
+    # Update edge_counts_all with the results
+    for q, lambdax, edge_counts in results:
+        l = np.where(lambda_range == lambdax)[0][0]  # Find the index of lambdax in lambda_range
+        edge_counts_all[:,:,l] += edge_counts
+
+    return edge_counts_all
+
 
 def objective(precision_vector, S, lambda_np, lambda_wp, prior_matrix):
     """
@@ -41,8 +105,7 @@ def objective(precision_vector, S, lambda_np, lambda_wp, prior_matrix):
     p = int(np.sqrt(len(precision_vector)))
     precision_matrix = precision_vector.reshape((p, p))
 
-    # Error Handling: Check if the matrix is invertible
-    if np.linalg.det(precision_matrix) == 0:
+    if np.isclose(np.linalg.det(precision_matrix), 0):
         raise ValueError("Precision matrix is not invertible.")
 
     ###### Compute the base objective function ######
@@ -62,87 +125,72 @@ def objective(precision_vector, S, lambda_np, lambda_wp, prior_matrix):
     
     return objective_value
 
-def subsample_optimiser(data, b, Q, lambda_range, prior_matrix):
-    n, p = data.shape
+# def subsample_optimiser(data, b, Q, lambda_range, prior_matrix):
+#     n, p = data.shape
 
-    # Error Handling: Check if b is less than n
-    if b >= n:
-        raise ValueError("b should be less than the number of samples n.")
+#     # Error Handling: Check if b is less than n
+#     if b >= n:
+#         raise ValueError("b should be less than the number of samples n.")
     
-    # Error Handling: Check if Q is smaller or equal to the number of possible sub-samples
-    if Q > math.comb(n, b):
-        raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
+#     # Error Handling: Check if Q is smaller or equal to the number of possible sub-samples
+#     if Q > math.comb(n, b):
+#         raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
 
-    # Generate all possible sub-samples without replacement
-    all_subs = list(combinations(range(n), b))
-    np.random.seed(42)
-    selected_subs = np.random.choice(len(all_subs), min(Q, len(all_subs)), replace=False)
+#     # Generate all possible sub-samples without replacement
+#     all_subs = list(combinations(range(n), b))
+#     np.random.seed(42)
+#     selected_subs = np.random.choice(len(all_subs), min(Q, len(all_subs)), replace=False)
     
-    edge_counts_all = np.zeros((p, p, len(lambda_range)))  # Initialize edge count matrix across lambdas and sub-samples
-    # Loop for calculating graph structures across lambdas and sub-samples
-    for l, lambdax in enumerate(lambda_range):
-        edge_counts = np.zeros((p, p))  # Initialize edge count matrix for a given lambda
+#     edge_counts_all = np.zeros((p, p, len(lambda_range)))  # Initialize edge count matrix across lambdas and sub-samples
+#     # Loop for calculating graph structures across lambdas and sub-samples
+#     for l, lambdax in enumerate(lambda_range):
+#         edge_counts = np.zeros((p, p))  # Initialize edge count matrix for a given lambda
         
-        for q in selected_subs:
-            sub_sample = data[np.array(all_subs[q]), :]
-            S = empirical_covariance(sub_sample)
-            # Optimize the objective function with fixed lambda_wp (e.g., 0.1)
-            initial_precision_vector = np.eye(p).flatten()
-            result = minimize(
-                subsample_optimiser,
-                initial_precision_vector,
-                args=(S, lambdax, lambdax, prior_matrix),
-                method='L-BFGS-B',
-            )
-            if result.success:
-                opt_precision_mat = result.x.reshape((p, p))
-                # Update edge count matrix
-                edge_counts += (np.abs(opt_precision_mat) > 1e-5).astype(int)  # Assume edge exists if absolute value > 1e-5
+#         for q in selected_subs:
+#             sub_sample = data[np.array(all_subs[q]), :]
+#             S = empirical_covariance(sub_sample)
+#             # Optimize the objective function with fixed lambda_wp (e.g., 0.1)
+#             initial_precision_vector = np.eye(p).flatten()
+#             result = minimize(
+#                 subsample_optimiser,
+#                 initial_precision_vector,
+#                 args=(S, lambdax, lambdax, prior_matrix),
+#                 method='L-BFGS-B',
+#             )
+#             if result.success:
+#                 opt_precision_mat = result.x.reshape((p, p))
+#                 # Update edge count matrix
+#                 edge_counts += (np.abs(opt_precision_mat) > 1e-5).astype(int)  # Assume edge exists if absolute value > 1e-5
             
-        edge_counts_all[:,:,l] += edge_counts
+#         edge_counts_all[:,:,l] += edge_counts
     
-    return edge_counts_all
+#     return edge_counts_all
 
-def estimate_lambda_np(data, b, Q, lambda_range, edge_counts_all):
-    n, p = data.shape
-    results = []
-    
-    p_k_matrix = np.zeros((p, p))
-    theta_matrix = np.zeros((p, p, len(lambda_range)))   # matrix of binomial probabilities
-    g_matrix = np.zeros((p, p, len(lambda_range)))       # Initialize instability matrix across lambdas
-    zks = np.zeros((p, p, len(lambda_range)))            # Initialize edge count matrix across lambdas
+def estimate_lambda_np(edge_counts_all, Q, lambda_range):
+    # Get the dimensions from edge_counts_all
+    p, _, _ = edge_counts_all.shape
+    J = len(lambda_range)
 
-    # Loop for calculating probabilities, instability, etc. across lambdas
-    for l, lambda_np in enumerate(lambda_range):
-        # Compute theta_k_lj for each edge
-        theta_lj_matrix = np.zeros((p, p))               # matrix of probabilities
-        g_l_matrix = np.zeros((p, p))                    # instability matrix for a given lambda
-        for i in range(p):
-            for j in range(p):
-                z_k_lj = edge_counts_all[i, j, l]
-                zks[i, j, l] = z_k_lj                    # store z_k_lj for later use
-                N_k = np.sum(edge_counts_all[i, j, :])
-                if l == 0:
-                    p_k = N_k / (Q * len(lambda_range))  # Probability of edge presence
-                    p_k_matrix[i, j] = p_k
-                theta_lj_matrix[i, j] = math.comb(Q, z_k_lj) * (p_k ** z_k_lj) * ((1 - p_k) ** (Q - z_k_lj)) # Binomial probability
-                f_k_lj = z_k_lj / Q
-                g_l_matrix[i, j] = 4 * f_k_lj * (1 - f_k_lj)
-        
-        theta_matrix[:,:,l] += theta_lj_matrix
-        g_matrix[:,:,l] += g_l_matrix                    # Update instability matrix across lambdas
-    
+    # Precompute the N_k_matrix and p_k_matrix, as they do not depend on lambda
+    N_k_matrix = np.sum(edge_counts_all, axis=2)
+    p_k_matrix = N_k_matrix / (Q * J)
+
+    # Compute theta_lj_matrix, f_k_lj_matrix, and g_l_matrix for all lambdas simultaneously
+    theta_matrix = comb(Q, edge_counts_all) * (p_k_matrix[:, :, None] ** edge_counts_all) * ((1 - p_k_matrix[:, :, None]) ** (Q - edge_counts_all))
+    f_k_lj_matrix = edge_counts_all / Q
+    g_matrix = 4 * f_k_lj_matrix * (1 - f_k_lj_matrix)
+
     # Reshape the matrices for vectorized operations
-    theta_matrix_reshaped = theta_matrix.reshape(len(lambda_range), -1)
-    g_matrix_reshaped = g_matrix.reshape(len(lambda_range), -1)
+    theta_matrix_reshaped = theta_matrix.reshape(J, -1)
+    g_matrix_reshaped = g_matrix.reshape(J, -1)
 
-    # Compute the score for each lambda_j using vectorized operations
+    # Compute the score for each lambda using vectorized operations
     scores = np.sum(theta_matrix_reshaped * (1 - g_matrix_reshaped), axis=1)
 
-    # Find the lambda_j that maximizes the score
+    # Find the lambda that maximizes the score
     lambda_np = lambda_range[np.argmax(scores)]
     
-    return lambda_np, p_k_matrix, zks
+    return lambda_np, p_k_matrix, theta_matrix
 
 
 
@@ -156,49 +204,42 @@ def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
     psis = wp_tr_weights * Q # expansion: add a third dimension of length r, corresponding to the number of prior sources
 
     p_k_vec = [p_k_matrix[comb[0], comb[1]] for comb in wp_tr]    
-    z_mat = np.zeros((len(lambda_range), len(wp_tr))) # Stores zks for each edge across lambdas (shape: lambdas x edges)
+    count_mat = np.zeros((len(lambda_range), len(wp_tr))) # Stores zks for each edge across lambdas (shape: lambdas x edges)
     for l in range(len(lambda_range)):
-        z_mat[l,:] =  [zks[comb[0], comb[1], l] for comb in wp_tr]
+        count_mat[l,:] =  [zks[comb[0], comb[1], l] for comb in wp_tr]
 
     # Alternative code
     # wp_tr_rows, wp_tr_cols = zip(*wp_tr)  # Unzip the wp_tr tuples into two separate lists
     # z_mat = zks[wp_tr_rows, wp_tr_cols, np.arange(len(lambda_range))[:, None]]
 
 
-    # calculate mus, vars
+    # calculate mus, vars and tau_tr (=SD of the prior distribution)
     mus = [p_k * Q for p_k in p_k_vec]
     vars = [p_k * (1 - p_k) * Q for p_k in p_k_vec]
-
     tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr) # NOTE: alternatively, divide by np.sum(np.abs(wp_tr))
 
+    ######## POSTERIOR DISTRIBUTION ######################################################################
+    mus = np.array(mus)
+    vars = np.array(vars)
+    psis = np.array(psis)
 
-    ######## POSTERIOR DISTRIBUTION ########
-    post_mus = np.zeros((len(wp_tr)))
-    post_vars = np.zeros((len(wp_tr)))
+    # Vectorized computation of post_mu and post_var
+    post_mu = (mus * tau_tr**2 + psis * vars) / (vars + tau_tr**2)
+    post_var = (vars * tau_tr**2) / (vars + tau_tr**2)
 
-    thetas = np.zeros((len(lambda_range), len(wp_tr))) # Initialize theta matrix across lambdas
-
-    # Calculate a gaussian distribution with mean mu and variance var
-    for e_k in range(len(wp_tr)):
-        mu = mus[e_k]
-        var = vars[e_k]
-        # gaussian_d = norm(mu, var)
-
-        psi = psis[e_k]
-        # gaussian_p = norm(psi, tau_tr**2)
-
-        post_mu = (mu * tau_tr**2 + psi * var) / (var + tau_tr**2)
-        post_var = (var * tau_tr**2) / (var + tau_tr**2)
+    # Since the normal distribution parameters are arrays...
+    # Compute the CDF values directly using the formula for the normal distribution CDF
+    epsilon = 1e-5
+    z_scores_plus = (count_mat + epsilon - post_mu[None, :]) / np.sqrt(post_var)[None, :]
+    z_scores_minus = (count_mat - epsilon - post_mu[None, :]) / np.sqrt(post_var)[None, :]
     
-        # Create the normal distribution object
-        post_distro = stats.norm(loc=post_mu, scale=np.sqrt(post_var))
+    # Compute CDF values using the error function
+    # By subtracting 2 values of the CDF, the 1s cancel 
+    thetas = 0.5 * (scipy.special.erf(z_scores_plus / np.sqrt(2)) - scipy.special.erf(z_scores_minus / np.sqrt(2)))
 
-        # Compute the CDF values at zk + epsilon and zk - epsilon
-        epsilon = 1e-5
-        thetas[:, e_k] = post_distro.cdf(z_mat[:,e_k] + epsilon) - post_distro.cdf(z_mat[:,e_k] - epsilon) # NOTE: WE MIGHT HAVE TO SEPARATELY CALCULATE FOR EACH LAMBDA
-
+    ######### SCORING #####################################################################
     # Frequency, instability, and score
-    freq_mat = z_mat / Q                         # shape: lambdas x edges
+    freq_mat = count_mat / Q                                       # shape: lambdas x edges
     g_mat = 4 * freq_mat * (1 - freq_mat)
 
     # Scoring function
@@ -239,7 +280,7 @@ def tau_permutations(data, tau_tr, prior_matrix, wp_tr, Q, mus, N_permutations=1
 def test():
     data = np.random.rand(50, 10)
     b = 20
-    Q = 1
+    Q = 3
     lambda_range = np.linspace(0.01, 1, 2)
     prior_matrix = np.random.rand(10, 10)
     
