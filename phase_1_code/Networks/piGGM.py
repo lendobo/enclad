@@ -6,37 +6,79 @@ from itertools import combinations
 from sklearn.covariance import empirical_covariance
 
 ####### TODO #######
-# Vectorize for loops
-# Add unit tests
-# Add Error Handling
-# make separate l1_norms for edges with and without priors (They are different Thetas)
-# implement "empirical null distribution similar to GSEA"
+# Vectorize the for loops (advanced)
+# implement parallelization for Q * J optimization runs
 # check if the denominator of eq (12) is implemented correctly
-# The function theta_k = post_distro.cdf(zk_vec[:,e_k] + epsilon) - post_distro.cdf(zk_vec[:,e_k] - epsilon), could index zk_vec incorrectly
+# The function theta_k = post_distro.cdf(zk_vec[:,e_k] + epsilon) - post_distro.cdf(zk_vec[:,e_k] - epsilon), could have the wrong shape
 
-def objective(theta, S, lambda_np, lambda_wp):
-    # Reshape theta into a matrix
-    p = int(np.sqrt(len(theta)))
-    Theta = theta.reshape((p, p))
-    Theta_np = Theta.copy()
-    Theta_wp = Theta.copy()
-    # Compute the objective function value
-    log_det = np.log(np.linalg.det(Theta))
-    trace_term = np.trace(np.dot(S, Theta))
-    l1_norm_wp = np.sum(np.abs(Theta_wp))
-    l1_norm_np = np.sum(np.abs(Theta_np))
-    objective_value = -log_det + trace_term + lambda_np * l1_norm_np + lambda_wp * l1_norm_wp
+###### Possible issues #######
+# Currently, we assume an edge is present if the optimized precision matrix has an absolute value > 1e-5.
+# If the resulting network is too dense, we might have to change this threshold. However, the LASSO pushes many values to exactly 0, 
+# so this might not be a problem.
+
+def objective(precision_vector, S, lambda_np, lambda_wp, prior_matrix):
+    """
+    Objective function for the piGGM optimization problem.
+    Parameters
+    ----------
+    precision_vector : array-like, shape (p, p)
+        The precision vector to be optimised (parameter vector).
+    S : array-like, shape (p, p)
+        The empirical covariance matrix.
+    lambda_np : float
+        The regularization parameter for the non-prior edges.
+    lambda_wp : float
+        The regularization parameter for the prior edges.
+    prior_matrix : array-like, shape (p, p)
+        The prior matrix. Used to identify which edges are penalized by lambda_wp.
+
+    Returns
+    -------
+    objective_value : float
+        The objective function value.
+    """
+    # Reshape precision_vector into a matrix
+    p = int(np.sqrt(len(precision_vector)))
+    precision_matrix = precision_vector.reshape((p, p))
+
+    # Error Handling: Check if the matrix is invertible
+    if np.linalg.det(precision_matrix) == 0:
+        raise ValueError("Precision matrix is not invertible.")
+
+    ###### Compute the base objective function ######
+    log_det = np.log(np.linalg.det(precision_matrix))
+    trace_term = np.trace(np.dot(S, precision_matrix))
+    base_objective = -log_det + trace_term
+    
+    # Identify the entries corresponding to non-zero and zero entries in the prior matrix (Boolean Mask)
+    prior_entries = prior_matrix != 0
+    non_prior_entries = prior_matrix == 0
+
+    # Compute the separate penalties
+    penalty_wp = lambda_wp * np.sum(np.abs(precision_matrix[prior_entries]))
+    penalty_np = lambda_np * np.sum(np.abs(precision_matrix[non_prior_entries]))
+    
+    objective_value = base_objective + penalty_wp + penalty_np
+    
     return objective_value
 
-def subsampler(data, b, Q, lambda_range):
+def subsample_optimiser(data, b, Q, lambda_range, prior_matrix):
     n, p = data.shape
+
+    # Error Handling: Check if b is less than n
+    if b >= n:
+        raise ValueError("b should be less than the number of samples n.")
+    
+    # Error Handling: Check if Q is smaller or equal to the number of possible sub-samples
+    if Q > math.comb(n, b):
+        raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
+
     # Generate all possible sub-samples without replacement
     all_subs = list(combinations(range(n), b))
     np.random.seed(42)
     selected_subs = np.random.choice(len(all_subs), min(Q, len(all_subs)), replace=False)
     
     edge_counts_all = np.zeros((p, p, len(lambda_range)))  # Initialize edge count matrix across lambdas and sub-samples
-
     # Loop for calculating graph structures across lambdas and sub-samples
     for l, lambdax in enumerate(lambda_range):
         edge_counts = np.zeros((p, p))  # Initialize edge count matrix for a given lambda
@@ -44,19 +86,18 @@ def subsampler(data, b, Q, lambda_range):
         for q in selected_subs:
             sub_sample = data[np.array(all_subs[q]), :]
             S = empirical_covariance(sub_sample)
-            
             # Optimize the objective function with fixed lambda_wp (e.g., 0.1)
-            initial_theta = np.eye(p).flatten()
+            initial_precision_vector = np.eye(p).flatten()
             result = minimize(
-                objective,
-                initial_theta,
-                args=(S, lambdax, lambdax),
+                subsample_optimiser,
+                initial_precision_vector,
+                args=(S, lambdax, lambdax, prior_matrix),
                 method='L-BFGS-B',
             )
             if result.success:
-                Theta_opt = result.x.reshape((p, p))
+                opt_precision_mat = result.x.reshape((p, p))
                 # Update edge count matrix
-                edge_counts += (np.abs(Theta_opt) > 1e-5).astype(int)  # Assume edge exists if absolute value > 1e-5
+                edge_counts += (np.abs(opt_precision_mat) > 1e-5).astype(int)  # Assume edge exists if absolute value > 1e-5
             
         edge_counts_all[:,:,l] += edge_counts
     
@@ -67,9 +108,9 @@ def estimate_lambda_np(data, b, Q, lambda_range, edge_counts_all):
     results = []
     
     p_k_matrix = np.zeros((p, p))
-    theta_matrix = np.zeros((p, p, len(lambda_range)))   # matrix of probabilities
+    theta_matrix = np.zeros((p, p, len(lambda_range)))   # matrix of binomial probabilities
     g_matrix = np.zeros((p, p, len(lambda_range)))       # Initialize instability matrix across lambdas
-    zks = np.zeros((p, p, len(lambda_range)))           # Initialize edge count matrix across lambdas
+    zks = np.zeros((p, p, len(lambda_range)))            # Initialize edge count matrix across lambdas
 
     # Loop for calculating probabilities, instability, etc. across lambdas
     for l, lambda_np in enumerate(lambda_range):
@@ -79,12 +120,12 @@ def estimate_lambda_np(data, b, Q, lambda_range, edge_counts_all):
         for i in range(p):
             for j in range(p):
                 z_k_lj = edge_counts_all[i, j, l]
-                zks[i, j, l] = z_k_lj                   # store z_k_lj for later use
+                zks[i, j, l] = z_k_lj                    # store z_k_lj for later use
                 N_k = np.sum(edge_counts_all[i, j, :])
                 if l == 0:
                     p_k = N_k / (Q * len(lambda_range))  # Probability of edge presence
                     p_k_matrix[i, j] = p_k
-                theta_lj_matrix[i, j] = math.comb(Q, z_k_lj) * (p_k ** z_k_lj) * ((1 - p_k) ** (Q - z_k_lj))
+                theta_lj_matrix[i, j] = math.comb(Q, z_k_lj) * (p_k ** z_k_lj) * ((1 - p_k) ** (Q - z_k_lj)) # Binomial probability
                 f_k_lj = z_k_lj / Q
                 g_l_matrix[i, j] = 4 * f_k_lj * (1 - f_k_lj)
         
@@ -169,10 +210,9 @@ def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
     return lambda_wp, tau_tr, mus
 
 
-def tau_permutations(data, tau_tr, prior_matrix, wp_tr, Q, mus):
+def tau_permutations(data, tau_tr, prior_matrix, wp_tr, Q, mus, N_permutations=10000):
     n, p = data.shape
     # Generate empirical null distribution of tau, similar to GSEA
-    N_permutations = 10000
     tau_perm = np.zeros((N_permutations))
 
     num_edges = len(wp_tr)
@@ -193,4 +233,36 @@ def tau_permutations(data, tau_tr, prior_matrix, wp_tr, Q, mus):
     p_value = 1 - (np.sum(tau_perm_normalized >= tau_normalized) / N_permutations)
 
     return p_value
+
+
+# Unit Test
+def test():
+    data = np.random.rand(50, 10)
+    b = 20
+    Q = 1
+    lambda_range = np.linspace(0.01, 1, 2)
+    prior_matrix = np.random.rand(10, 10)
+    
+    # Test subsampler function
+    edge_counts_all = subsample_optimiser(data, b, Q, lambda_range, prior_matrix)
+    assert edge_counts_all.shape == (10, 10, 10), f"Expected (10, 10, 10), but got {edge_counts_all.shape}"
+    
+    # Test estimate_lambda_np function
+    lambda_np, p_k_matrix, zks = estimate_lambda_np(data, b, Q, lambda_range, edge_counts_all)
+    assert lambda_np in lambda_range, f"lambda_np not in lambda_range"
+    assert p_k_matrix.shape == (10, 10), f"Expected (10, 10), but got {p_k_matrix.shape}"
+    assert zks.shape == (10, 10, 10), f"Expected (10, 10, 10), but got {zks.shape}"
+    
+    # Test estimate_lambda_wp function
+    lambda_wp, tau_tr, mus = estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix)
+    assert lambda_wp in lambda_range, f"lambda_wp not in lambda_range"
+    
+    # Test tau_permutations function
+    p_value = tau_permutations(data, tau_tr, prior_matrix, [(i, j) for i, j in combinations(range(10), 2)], Q, mus, N_permutations=100)
+    assert 0 <= p_value <= 1, f"p_value out of range: {p_value}"
+    
+    print("All tests passed.")
+
+if __name__ == "__main__":
+    test()
 

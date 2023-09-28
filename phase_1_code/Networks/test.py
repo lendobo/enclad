@@ -20,3 +20,8 @@ for e_k in edges:
 
 
 print(thetas)
+
+test_matrix = np.array([[1,2,3],
+                        [0,0,0],])
+indices_nonzero = test_matrix != 0
+print(indices_nonzero)
