@@ -1,2 +1,2 @@
-# ENCLAD
-## Evolving Networks in Cancer: Learning and Dynamics
+# ENCCLAD
+## Evolving Networks in Colorectal Cancer: Learning and Dynamics
