@@ -10,21 +10,30 @@ from itertools import product
 from sklearn.covariance import empirical_covariance
 from concurrent.futures import ProcessPoolExecutor
 
-
-####### TODO #######
-# SWITCH TO PSEUDO LOG-LIKELIHOOD
-# (mostly DONE) Vectorize the for loops 
-# (DONE) implement parallelization for Q * J optimization runs 
-# Once it runs, implement alternative and check if results are still the same
-# check if the denominator of eq (12) is implemented correctly (Run both versions and compare)
-
-###### Possible adjustments to experiment with #######
-# Currently, we assume an edge is present if the optimized precision matrix has an absolute value > 1e-5.
-# If the resulting network is too dense, we might have to change this threshold. However, the LASSO pushes many values to exactly 0, 
-# so this might not be a problem.
-
-
 class SubsampleOptimizer:
+    """
+    Class for parallel optimisation of the piGGM objective function, across Q sub-samples and J lambdas.
+
+    Attributes
+    ----------
+    data : array-like, shape (n, p)
+        The data matrix.
+    prior_matrix : array-like, shape (p, p)
+        The prior matrix. Used to identify which edges are penalized by lambda_wp.
+    p : int
+        The number of variables.
+
+    Methods
+    -------
+    objective(precision_vector, S, lambda_np, lambda_wp, prior_matrix)
+        The objective function for the piGGM optimization problem.
+
+    optimize_for_q_and_j(params)
+        Optimizes the objective function for a given sub-sample (q) and lambda (j).
+        
+    subsample_optimiser(b, Q, lambda_range)
+        Optimizes the objective function for all sub-samples and lambda values, using optimize_for_q_and_j.
+    """
     def __init__(self, data, prior_matrix):
         self.data = data
         self.prior_matrix = prior_matrix
@@ -433,4 +442,18 @@ lambda_range = np.linspace(0.4, 0.6, 1)
 
 optimizer = SubsampleOptimizer(data, prior_matrix)
 edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
+
+
+
+####### TODO #######
+# SWITCH TO PSEUDO LOG-LIKELIHOOD
+# (mostly DONE) Vectorize the for loops 
+# (DONE) implement parallelization for Q * J optimization runs 
+# Once it runs, implement alternative and check if results are still the same
+# check if the denominator of eq (12) is implemented correctly (Run both versions and compare)
+
+###### Possible adjustments to experiment with #######
+# Currently, we assume an edge is present if the optimized precision matrix has an absolute value > 1e-5.
+# If the resulting network is too dense, we might have to change this threshold. However, the LASSO pushes many values to exactly 0, 
+# so this might not be a problem.
 
