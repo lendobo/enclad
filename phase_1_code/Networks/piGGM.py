@@ -41,13 +41,13 @@ class SubsampleOptimizer:
         self.selected_sub_idx = None
     
 
-    def objective(self, precision_vector, S, lambda_np, lambda_wp, prior_matrix):
+    def objective(self, L_vector, S, lambda_np, lambda_wp, prior_matrix):
         """
         Objective function for the piGGM optimization problem.
         Parameters
         ----------
-        precision_vector : array-like, shape (p, p)
-            The precision vector to be optimised (parameter vector).
+        L_vector : array-like, shape (p, p)
+            The vector of lower diagonal precision matrix to be optimised (parameter vector).
         S : array-like, shape (p, p)
             The empirical covariance matrix.
         lambda_np : float
@@ -63,8 +63,13 @@ class SubsampleOptimizer:
             The objective function value.
         """
         p = self.p
-        precision_matrix = precision_vector.reshape((p, p))
-        
+
+        # Cholesky: Reconstruct the lower triangular matrix L from the vector L_vector
+        L = np.zeros((p, p))
+        L[np.tril_indices(p)] = L_vector
+        # Reconstruct the precision matrix P = LL^T
+        precision_matrix = np.dot(L, L.T)
+
         det_value = np.linalg.det(precision_matrix)
 
         if det_value <= 0 or np.isclose(det_value, 0):
@@ -119,15 +124,25 @@ class SubsampleOptimizer:
             return selected_sub_idx, lambdax, np.zeros((p, p))
 
         det_value = np.linalg.det(S_inv)
-        initial_precision_vector = S_inv.flatten() # np.eye(p).flatten()
+
+        # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
+        L_init = np.linalg.cholesky(np.linalg.inv(S))
+        # Convert L_init to a vector representing its unique elements
+        initial_L_vector = L_init[np.tril_indices(p)]
+
         result = minimize(
             self.objective,  
-            initial_precision_vector,
+            initial_L_vector,
             args=(S, lambdax, lambdax, prior_matrix),
             method='L-BFGS-B',
         )
         if result.success:
-            opt_precision_mat = result.x.reshape((p, p))
+            # print(result)
+            # Convert result.x back to a lower triangular matrix
+            L_opt = np.zeros((p, p))
+            L_opt[np.tril_indices(p)] = result.x
+            # Compute the optimized precision matrix
+            opt_precision_mat = np.dot(L_opt, L_opt.T)
             edge_counts = (np.abs(opt_precision_mat) > 1e-5).astype(int)
             return selected_sub_idx, lambdax, edge_counts
         else:
@@ -400,45 +415,70 @@ def test():
 
 
 ######## Computations ####################################################################################################################
-# DATA MATRIX
-# Set random seed for reproducibility
-np.random.seed(42)
+# # DATA MATRIX
+# # Set random seed for reproducibility
+# np.random.seed(42)
 
-# Dimensions
-n, p = 50, 10  # 50 samples, 10 variables
+# # Dimensions
+# n, p = 50, 10  # 50 samples, 10 variables
 
-# Create block diagonal covariance matrix
-block_size = p // 2  # assuming two blocks for simplicity
-block1 = np.random.rand(block_size, block_size)
-block2 = np.random.rand(block_size, block_size)
-cov_block1 = np.dot(block1, block1.transpose())
-cov_block2 = np.dot(block2, block2.transpose())
-cov_matrix = block_diag(cov_block1, cov_block2)  # This will create a block diagonal covariance matrix
+# # Create block diagonal covariance matrix
+# block_size = p // 2  # assuming two blocks for simplicity
+# block1 = np.random.rand(block_size, block_size)
+# block2 = np.random.rand(block_size, block_size)
+# cov_block1 = np.dot(block1, block1.transpose())
+# cov_block2 = np.dot(block2, block2.transpose())
+# cov_matrix = block_diag(cov_block1, cov_block2)  # This will create a block diagonal covariance matrix
 
-# Generate synthetic data (log-normal distribution)
-mean = np.zeros(p)  # Assuming a mean of 0 for simplicity
-log_data = np.random.multivariate_normal(mean, cov_matrix, size=n)
+# # Generate synthetic data (log-normal distribution)
+# mean = np.zeros(p)  # Assuming a mean of 0 for simplicity
+# log_data = np.random.multivariate_normal(mean, cov_matrix, size=n)
 
-# Exponentiate to emulate log-normal distribution
-data = np.exp(log_data)
+# # Exponentiate to emulate log-normal distribution
+# data = np.exp(log_data)
 
-# Display the first 5 rows of the generated data
-data[:5]
+# # Display the first 5 rows of the generated data
+# data[:5]
 
 
-# PRIOR MATRIX
-# Confidence of prior edges is between 0.7 and 0.9
-prior_matrix = np.random.uniform(0.7, 0.9, size=(p, p))
+# # PRIOR MATRIX
+# # Confidence of prior edges is between 0.7 and 0.9
+# prior_matrix = np.random.uniform(0.7, 0.9, size=(p, p))
 
-# Setting edges with no prior to 0
-sparsity_pattern = np.random.choice([0, 1], size=(p, p), p=[0.8, 0.2])
-prior_matrix *= sparsity_pattern
+# # Setting edges with no prior to 0
+# sparsity_pattern = np.random.choice([0, 1], size=(p, p), p=[0.8, 0.2])
+# prior_matrix *= sparsity_pattern
 
 
 # MODEL PARAMETERS
+n = 50
 b = 25
 Q = 3
-lambda_range = np.linspace(0.4, 0.6, 1)
+lambda_range = np.linspace(0.01, 0.02, 1)
+
+
+##### imported from minimizer_test.py ##############################
+# P = number of nodes
+p = 10
+
+# Empricial covariance matrix
+np.random.seed(42)
+random_matrix = np.random.rand(p, p)
+S = np.dot(random_matrix, random_matrix.transpose()) # Ensure positive definite
+
+# generate n x p data matrix from S
+data = np.random.multivariate_normal(np.zeros(p), S, size=n)
+
+prior_matrix = np.zeros((p, p))
+# select random combinations of indeces symetrically from the prior matrix
+for i in range(p):
+    for j in range(i, p):
+        # randomly select 0 or 1
+        prior_matrix[i, j] = np.random.randint(2)
+        # set the corresponding entry in the lower triangle
+        prior_matrix[j, i] = prior_matrix[i, j]
+# set diagonal to 0
+np.fill_diagonal(prior_matrix, 0)
 
 optimizer = SubsampleOptimizer(data, prior_matrix)
 edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
