@@ -21,7 +21,7 @@ m = int(round(m))
 print(f'density parameter for scale-free network: {m}')
 
 # Generate the BA graph
-G = nx.barabasi_albert_graph(N_guess, m)
+G = nx.barabasi_albert_graph(25, 3)
 
 # Check the actual number of nodes and edges in the generated graph
 actual_N = G.number_of_nodes()
@@ -37,4 +37,4 @@ print(actual_density)
 # transalte it to an adjacency metraix
 adj_matrix = nx.to_numpy_array(G)
 
-print(adj_matrix)
+# print(adj_matrix)

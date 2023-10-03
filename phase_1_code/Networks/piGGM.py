@@ -418,57 +418,135 @@ def test():
     print("All tests passed.")
 
 
-######## Computations ####################################################################################################################
-# Set random seed for reproducibility
-np.random.seed(42)
+def synthetic_run(p = 10, n = 50, b = 25, Q = 10, lambda_range = np.linspace(0.01, 0.2, 10)):
+    # Set random seed for reproducibility
+    np.random.seed(42)
 
-p = 10 # number of nodes
-n = 50 # sample number
-b = 25 # sub-sample size
-Q = 10  # number of sub-samples
-lambda_range = np.linspace(0.01, 0.2, 10) # range of lambda values
+    # TRUE NETWORK
+    G = nx.barabasi_albert_graph(p, 5)
+    adj_matrix = nx.to_numpy_array(G)
+    min_eig = np.min(np.real(eigh(adj_matrix)[0]))
+    if min_eig < 0:
+        adj_matrix -= 10 * min_eig * np.eye(adj_matrix.shape[0])
+    eigenvalues, _ = eigh(adj_matrix)
+    print(f'matrix is positive definite: {np.all(eigenvalues > 0)}')
+    covariance_matrix = inv(adj_matrix)
 
-########### TRUE NETWORK ##############################################################
-# Generate the BA graph, with a desired density of ~0.04
-G = nx.barabasi_albert_graph(p, 5)
-# obtain the adjacency matrix
-adj_matrix = nx.to_numpy_array(G)
-# Ensuring positive-definiteness of the matrix
-min_eig = np.min(np.real(eigh(adj_matrix)[0]))
-if min_eig < 0:
-    adj_matrix -= 10*min_eig * np.eye(adj_matrix.shape[0])
-# Check if the regularized matrix is now positive definite
-eigenvalues, _ = eigh(adj_matrix)
-print(f'matrix is positive definite: {np.all(eigenvalues > 0)}')
+    # PRIOR MATRIX
+    prior_matrix = np.zeros((p, p))
+    for i in range(p):
+        for j in range(i, p):
+            if adj_matrix[i, j] == 1:
+                prior_matrix[i, j] = 1.0
+                prior_matrix[j, i] = 1.0
+    np.fill_diagonal(prior_matrix, 0)
 
-covariance_matrix = inv(adj_matrix)
+    # DATA MATRIX
+    data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_matrix, size=n)
 
-############## PRIOR MATRIX ###########################################################
-# set the values of the prior matrix to 0.8 for indices where the adjacency matrix is 1
-prior_matrix = np.zeros((p, p))
-for i in range(p):
-    for j in range(i, p):
-        if adj_matrix[i, j] == 1:
-            prior_matrix[i, j] = 1.0
-            prior_matrix[j, i] = 1.0
-# set diagonal to 0
-np.fill_diagonal(prior_matrix, 0)
+    # MODEL RUN
+    optimizer = SubsampleOptimizer(data, prior_matrix)
+    edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
 
-############### DATA MATRIX ###########################################################
-data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_matrix, size=n)
-# # add some noise
-# data += np.random.normal(0, 0.1, size=(n, p))
+    lambda_np, p_k_matrix, theta_matrix = estimate_lambda_np(edge_counts_all, Q, lambda_range)
+    print(lambda_np)
 
-############## MODEL RUN ##############################################################
-optimizer = SubsampleOptimizer(data, prior_matrix)
+    lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
+    print(lambda_wp)
+    
+    return lambda_np, lambda_wp
+
+# # Example usage
+# num_runs = 10
+# lambda_np_values = []
+# lambda_wp_values = []
+
+# for _ in range(num_runs):
+#     lambda_np, lambda_wp = synthetic_run()
+#     lambda_np_values.append(lambda_np)
+#     lambda_wp_values.append(lambda_wp)
+
+# mean_lambda_np = np.mean(lambda_np_values)
+# mean_lambda_wp = np.mean(lambda_wp_values)
+
+# print("Mean lambda_np:", mean_lambda_np)
+# print("Mean lambda_wp:", mean_lambda_wp)
+
+
+# Demonstrating the prior penalty estimation
+def generate_data_from_network(p=25):
+    """
+    Generate a data matrix from a synthetic network.
+    Returns the adjacency matrix (representing the true network) and the data matrix.
+    """
+    # Generate a Barabasi-Albert graph
+    G = nx.barabasi_albert_graph(p, 3)
+    adj_matrix = nx.to_numpy_array(G)
+
+    # Ensure the matrix is positive definite
+    min_eig = np.min(np.real(eigh(adj_matrix)[0]))
+    if min_eig < 0:
+        adj_matrix -= 10 * min_eig * np.eye(adj_matrix.shape[0])
+
+    # Derive the covariance matrix from the adjacency matrix and generate data
+    covariance_matrix = inv(adj_matrix)
+    data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_matrix, size=50)
+
+    return adj_matrix, data
+
+def modify_prior_matrix(true_prior, random_prior, num_replacements):
+    """
+    Modify the true prior matrix by replacing specified number of fields with the random prior matrix.
+    """
+    p = true_prior.shape[0]
+    modified_prior = true_prior.copy()
+
+    # Get the indices of the fields to be replaced
+    indices = np.array([(i, j) for i in range(p) for j in range(p)])
+    selected_indices = indices[np.random.choice(indices.shape[0], num_replacements, replace=False)]
+
+    # Replace the fields in the true prior matrix with the fields from the random prior matrix
+    for idx in selected_indices:
+        modified_prior[idx[0], idx[1]] = random_prior[idx[0], idx[1]]
+        modified_prior[idx[1], idx[0]] = random_prior[idx[1], idx[0]]  # Keep the matrix symmetric
+
+    return modified_prior
+
+
+# PARAMS
+p = 25
+n = 50
+b = 25
+Q = 10
+lambda_range = np.linspace(0.01, 0.2, 5)
+
+# Generate a single data matrix from a synthetic network
+adj_matrix, data = generate_data_from_network(p)
+
+# Generate the true prior matrix and a random matrix
+true_prior = adj_matrix.copy()
+np.fill_diagonal(true_prior, 0)
+random_prior = np.random.randint(2, size=(25, 25))
+np.fill_diagonal(random_prior, 0)
+
+# Generate a sequence of modified prior matrices with increasing number of replacements
+replacements = [250, 100, 50, 10, 1]
+modified_priors = [] # [modify_prior_matrix(true_prior, random_prior, r) for r in replacements]
+
+modified_priors.append(true_prior)  # Display the first modified prior matrix for reference
+
+# Run optimization
+optimizer = SubsampleOptimizer(data, true_prior)
 edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
-# print(edge_counts_all.shape)
 
-lambda_np, p_k_matrix, theta_matrix = estimate_lambda_np(edge_counts_all, Q, lambda_range)
-print(lambda_np)
+# Estimate lambda_wp for each prior matrix
+lambda_wp_values = []
+for prior_matrix in modified_priors:
+    # lambda_np, p_k_matrix, theta_matrix = estimate_lambda_np(edge_counts_all, 10, np.linspace(0.01, 0.2, 10))
+    lambda_wp, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
+    lambda_wp_values.append(lambda_wp)
 
-lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
-print(lambda_wp)
+print(lambda_wp_values)
 
 
 
