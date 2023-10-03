@@ -1,10 +1,12 @@
 import numpy as np
+import networkx as nx
 import math
 from random import sample
-from scipy.special import comb
+from numpy.random import multivariate_normal
+from scipy.special import comb, erf
 from scipy.optimize import minimize
 import scipy.stats as stats
-from scipy.linalg import block_diag
+from scipy.linalg import block_diag, eigh, inv
 from itertools import combinations
 from itertools import product
 from sklearn.covariance import empirical_covariance
@@ -118,7 +120,7 @@ class SubsampleOptimizer:
 
         # calculate inverse of S
         try:
-            S_inv = np.linalg.inv(S)
+            S_inv = inv(S)
         except np.linalg.LinAlgError:
             # print("Warning: non-invertible matrix")
             return selected_sub_idx, lambdax, np.zeros((p, p))
@@ -126,7 +128,7 @@ class SubsampleOptimizer:
         det_value = np.linalg.det(S_inv)
 
         # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
-        L_init = np.linalg.cholesky(np.linalg.inv(S))
+        L_init = np.linalg.cholesky(inv(S))
         # Convert L_init to a vector representing its unique elements
         initial_L_vector = L_init[np.tril_indices(p)]
 
@@ -249,7 +251,7 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
 
 
-def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
+def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix):
     """
     Estimates the lambda value for the prior edges.
     Parameters
@@ -262,8 +264,8 @@ def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
         The number of sub-samples.
     p_k_matrix : array-like, shape (p, p)
         The probability of an edge being present for each edge, calculated across all sub-samples and lambdas.
-    zks : array-like, shape (p, p, J)
-        The probability of z_k edges being present, given a certain lambda.
+    edge_counts_all : array-like, shape (p, p, J)
+        The edge counts across sub-samples, for a  a certain lambda.
     lambda_range : array-like, shape (J)
         The range of lambda values.
     prior_matrix : array-like, shape (p, p)
@@ -283,13 +285,14 @@ def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
 
     # reshape the prior matrix to only contain the edges in the lower triangle of the matrix
     wp_tr = [(i, j) for i, j in combinations(range(p), 2) if prior_matrix[i, j] != 0] # THIS SETS THE INDICES FOR ALL VECTORIZED OPERATIONS
-    wp_tr_weights = [prior_matrix[comb[0], comb[1]] for comb in wp_tr]
+    wp_tr_weights = np.array([prior_matrix[comb[0], comb[1]] for comb in wp_tr])
     psis = wp_tr_weights * Q                   # expansion: add a third dimension of length r, corresponding to the number of prior sources
 
     p_k_vec = [p_k_matrix[comb[0], comb[1]] for comb in wp_tr]    
-    count_mat = np.zeros((len(lambda_range), len(wp_tr))) # Stores zks for each edge across lambdas (shape: lambdas x edges)
+
+    count_mat = np.zeros((len(lambda_range), len(wp_tr))) # Stores counts for each edge across lambdas (shape: lambdas x edges)
     for l in range(len(lambda_range)):
-        count_mat[l,:] =  [zks[comb[0], comb[1], l] for comb in wp_tr]
+        count_mat[l,:] =  [edge_counts_all[comb[0], comb[1], l] for comb in wp_tr]
 
     # Alternative code for count_mat (=z_mat)
     # wp_tr_rows, wp_tr_cols = zip(*wp_tr)  # Unzip the wp_tr tuples into two separate lists
@@ -297,18 +300,19 @@ def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
 
 
     # calculate mus, vars and tau_tr (=SD of the prior distribution)
-    mus = [p_k * Q for p_k in p_k_vec]
-    vars = [p_k * (1 - p_k) * Q for p_k in p_k_vec]
+    mus = np.array([p_k * Q for p_k in p_k_vec])
+    variances = np.array([p_k * (1 - p_k) * Q for p_k in p_k_vec])
     tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr) # NOTE: alternatively, divide by np.sum(np.abs(wp_tr))
+
 
     ######## POSTERIOR DISTRIBUTION ######################################################################
     mus = np.array(mus)
-    vars = np.array(vars)
+    variances = np.array(variances)
     psis = np.array(psis)
 
     # Vectorized computation of post_mu and post_var
-    post_mu = (mus * tau_tr**2 + psis * vars) / (vars + tau_tr**2)
-    post_var = (vars * tau_tr**2) / (vars + tau_tr**2)
+    post_mu = (mus * tau_tr**2 + psis * variances) / (variances + tau_tr**2)
+    post_var = (variances * tau_tr**2) / (variances + tau_tr**2)
 
     # Since the normal distribution parameters are arrays...
     # Compute the CDF values directly using the formula for the normal distribution CDF
@@ -318,7 +322,7 @@ def estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix):
     
     # Compute CDF values using the error function
     # By subtracting 2 values of the CDF, the 1s cancel 
-    thetas = 0.5 * (scipy.special.erf(z_scores_plus / np.sqrt(2)) - scipy.special.erf(z_scores_minus / np.sqrt(2)))
+    thetas = 0.5 * (erf(z_scores_plus / np.sqrt(2)) - erf(z_scores_minus / np.sqrt(2)))
 
     ######### SCORING #####################################################################
     # Frequency, instability, and score
@@ -415,73 +419,56 @@ def test():
 
 
 ######## Computations ####################################################################################################################
-# # DATA MATRIX
-# # Set random seed for reproducibility
-# np.random.seed(42)
-
-# # Dimensions
-# n, p = 50, 10  # 50 samples, 10 variables
-
-# # Create block diagonal covariance matrix
-# block_size = p // 2  # assuming two blocks for simplicity
-# block1 = np.random.rand(block_size, block_size)
-# block2 = np.random.rand(block_size, block_size)
-# cov_block1 = np.dot(block1, block1.transpose())
-# cov_block2 = np.dot(block2, block2.transpose())
-# cov_matrix = block_diag(cov_block1, cov_block2)  # This will create a block diagonal covariance matrix
-
-# # Generate synthetic data (log-normal distribution)
-# mean = np.zeros(p)  # Assuming a mean of 0 for simplicity
-# log_data = np.random.multivariate_normal(mean, cov_matrix, size=n)
-
-# # Exponentiate to emulate log-normal distribution
-# data = np.exp(log_data)
-
-# # Display the first 5 rows of the generated data
-# data[:5]
-
-
-# # PRIOR MATRIX
-# # Confidence of prior edges is between 0.7 and 0.9
-# prior_matrix = np.random.uniform(0.7, 0.9, size=(p, p))
-
-# # Setting edges with no prior to 0
-# sparsity_pattern = np.random.choice([0, 1], size=(p, p), p=[0.8, 0.2])
-# prior_matrix *= sparsity_pattern
-
-
-# MODEL PARAMETERS
-n = 50
-b = 25
-Q = 3
-lambda_range = np.linspace(0.01, 0.02, 1)
-
-
-##### imported from minimizer_test.py ##############################
-# P = number of nodes
-p = 10
-
-# Empricial covariance matrix
+# Set random seed for reproducibility
 np.random.seed(42)
-random_matrix = np.random.rand(p, p)
-S = np.dot(random_matrix, random_matrix.transpose()) # Ensure positive definite
 
-# generate n x p data matrix from S
-data = np.random.multivariate_normal(np.zeros(p), S, size=n)
+p = 10 # number of nodes
+n = 50 # sample number
+b = 25 # sub-sample size
+Q = 10  # number of sub-samples
+lambda_range = np.linspace(0.01, 0.2, 10) # range of lambda values
 
+########### TRUE NETWORK ##############################################################
+# Generate the BA graph, with a desired density of ~0.04
+G = nx.barabasi_albert_graph(p, 5)
+# obtain the adjacency matrix
+adj_matrix = nx.to_numpy_array(G)
+# Ensuring positive-definiteness of the matrix
+min_eig = np.min(np.real(eigh(adj_matrix)[0]))
+if min_eig < 0:
+    adj_matrix -= 10*min_eig * np.eye(adj_matrix.shape[0])
+# Check if the regularized matrix is now positive definite
+eigenvalues, _ = eigh(adj_matrix)
+print(f'matrix is positive definite: {np.all(eigenvalues > 0)}')
+
+covariance_matrix = inv(adj_matrix)
+
+############## PRIOR MATRIX ###########################################################
+# set the values of the prior matrix to 0.8 for indices where the adjacency matrix is 1
 prior_matrix = np.zeros((p, p))
-# select random combinations of indeces symetrically from the prior matrix
 for i in range(p):
     for j in range(i, p):
-        # randomly select 0 or 1
-        prior_matrix[i, j] = np.random.randint(2)
-        # set the corresponding entry in the lower triangle
-        prior_matrix[j, i] = prior_matrix[i, j]
+        if adj_matrix[i, j] == 1:
+            prior_matrix[i, j] = 1.0
+            prior_matrix[j, i] = 1.0
 # set diagonal to 0
 np.fill_diagonal(prior_matrix, 0)
 
+############### DATA MATRIX ###########################################################
+data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_matrix, size=n)
+# # add some noise
+# data += np.random.normal(0, 0.1, size=(n, p))
+
+############## MODEL RUN ##############################################################
 optimizer = SubsampleOptimizer(data, prior_matrix)
 edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
+# print(edge_counts_all.shape)
+
+lambda_np, p_k_matrix, theta_matrix = estimate_lambda_np(edge_counts_all, Q, lambda_range)
+print(lambda_np)
+
+lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
+print(lambda_wp)
 
 
 
