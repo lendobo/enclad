@@ -11,6 +11,8 @@ from itertools import combinations
 from itertools import product
 from sklearn.covariance import empirical_covariance
 from concurrent.futures import ProcessPoolExecutor
+from tqdm import tqdm
+import sys
 
 class SubsampleOptimizer:
     """
@@ -75,7 +77,7 @@ class SubsampleOptimizer:
         det_value = np.linalg.det(precision_matrix)
 
         if det_value <= 0 or np.isclose(det_value, 0):
-            print("Warning: non-invertible matrix")
+            print("Optimizer: non-invertible matrix")
             return np.inf  # return a high cost for non-invertible matrix
 
         
@@ -117,18 +119,15 @@ class SubsampleOptimizer:
         prior_matrix = self.prior_matrix
         sub_sample = data[np.array(selected_sub_idx), :]
         S = empirical_covariance(sub_sample)
-
-        # calculate inverse of S
-        try:
-            S_inv = inv(S)
-        except np.linalg.LinAlgError:
-            # print("Warning: non-invertible matrix")
-            return selected_sub_idx, lambdax, np.zeros((p, p))
-
-        det_value = np.linalg.det(S_inv)
-
+        Eye = np.eye(p)
+        
         # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
-        L_init = np.linalg.cholesky(inv(S))
+        try:
+            epsilon = 1e-3
+            L_init = np.linalg.cholesky(inv(Eye + epsilon * np.eye(p)))
+        except np.linalg.LinAlgError:
+            print("Initial Guess: non-invertible matrix")
+            return selected_sub_idx, lambdax, np.zeros((p, p))
         # Convert L_init to a vector representing its unique elements
         initial_L_vector = L_init[np.tril_indices(p)]
 
@@ -176,7 +175,7 @@ class SubsampleOptimizer:
             raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
 
         # Sub-sampling n without replacement
-        np.random.seed(42)
+        # np.random.seed(42)
         generated_combinations = set()
 
         while len(generated_combinations) < Q:
@@ -201,6 +200,16 @@ class SubsampleOptimizer:
             edge_counts_all[:, :, l] += edge_counts
 
         return edge_counts_all
+
+
+
+
+
+
+
+
+
+
 
 
 def estimate_lambda_np(edge_counts_all, Q, lambda_range):
@@ -251,7 +260,7 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
 
 
-def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix):
+def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix, prior_label, multiplier=1):
     """
     Estimates the lambda value for the prior edges.
     Parameters
@@ -281,35 +290,36 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
         The mean of the prior distribution.
     """
     n, p = data.shape
-    results = []
 
     # reshape the prior matrix to only contain the edges in the lower triangle of the matrix
-    wp_tr = [(i, j) for i, j in combinations(range(p), 2) if prior_matrix[i, j] != 0] # THIS SETS THE INDICES FOR ALL VECTORIZED OPERATIONS
-    wp_tr_weights = np.array([prior_matrix[comb[0], comb[1]] for comb in wp_tr])
-    psis = wp_tr_weights * Q                   # expansion: add a third dimension of length r, corresponding to the number of prior sources
+    wp_tr_idx = [(i, j) for i, j in combinations(range(p), 2) if prior_matrix[i, j] != 0] # THIS SETS THE INDICES FOR ALL VECTORIZED OPERATIONS
+    
+    # wp_tr_weights and p_k_vec give the prob of an edge in the prior and the data, respectively
+    wp_tr_weights = np.array([prior_matrix[ind[0], ind[1]] for ind in wp_tr_idx])
+    p_k_vec = np.array([p_k_matrix[ind[0], ind[1]] for ind in wp_tr_idx]) * multiplier
 
-    p_k_vec = [p_k_matrix[comb[0], comb[1]] for comb in wp_tr]    
-
-    count_mat = np.zeros((len(lambda_range), len(wp_tr))) # Stores counts for each edge across lambdas (shape: lambdas x edges)
+    count_mat = np.zeros((len(lambda_range), len(wp_tr_idx))) # Stores counts for each edge across lambdas (shape: lambdas x edges)
     for l in range(len(lambda_range)):
-        count_mat[l,:] =  [edge_counts_all[comb[0], comb[1], l] for comb in wp_tr]
+        count_mat[l,:] =  [edge_counts_all[ind[0], ind[1], l] for ind in wp_tr_idx]
 
     # Alternative code for count_mat (=z_mat)
     # wp_tr_rows, wp_tr_cols = zip(*wp_tr)  # Unzip the wp_tr tuples into two separate lists
     # z_mat = zks[wp_tr_rows, wp_tr_cols, np.arange(len(lambda_range))[:, None]]
 
 
-    # calculate mus, vars and tau_tr (=SD of the prior distribution)
-    mus = np.array([p_k * Q for p_k in p_k_vec])
-    variances = np.array([p_k * (1 - p_k) * Q for p_k in p_k_vec])
-    tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr) # NOTE: alternatively, divide by np.sum(np.abs(wp_tr))
+    ######### DATA DISTRIBUTION #####################################################################
+    # calculate mus, vars 
+    mus = p_k_vec * Q
+    variances = p_k_vec * (1 - p_k_vec) * Q
+
+    ######### PRIOR DISTRIBUTION #####################################################################
+    #psi (=prior mean)
+    psis = wp_tr_weights * Q                   # expansion to multipe prior sources: add a third dimension of length r, corresponding to the number of prior sources
+    # tau_tr (=SD of the prior distribution)
+    tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr_idx) # NOTE: eq. 12 alternatively, divide by np.sum(np.abs(wp_tr))
 
 
     ######## POSTERIOR DISTRIBUTION ######################################################################
-    mus = np.array(mus)
-    variances = np.array(variances)
-    psis = np.array(psis)
-
     # Vectorized computation of post_mu and post_var
     post_mu = (mus * tau_tr**2 + psis * variances) / (variances + tau_tr**2)
     post_var = (variances * tau_tr**2) / (variances + tau_tr**2)
@@ -323,6 +333,7 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     # Compute CDF values using the error function
     # By subtracting 2 values of the CDF, the 1s cancel 
     thetas = 0.5 * (erf(z_scores_plus / np.sqrt(2)) - erf(z_scores_minus / np.sqrt(2)))
+    print('shape of thetas: ', {thetas.shape})
 
     ######### SCORING #####################################################################
     # Frequency, instability, and score
@@ -330,235 +341,188 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     g_mat = 4 * freq_mat * (1 - freq_mat)
 
     # Scoring function
-    scores = np.sum(thetas * (1 - g_mat), axis=1)
+    scores = np.sum(thetas, axis=1) # * (1 - g_mat)
 
     # Find the lambda_j that maximizes the score
     lambda_wp = lambda_range[np.argmax(scores)]
 
+    # print(f'mus; {mus}')
+    # print('variances: ', variances)
+    # print(f'psis: {psis}')
+    # print(f'tau_tr: {tau_tr}')
+    # print(f'post_mu: {post_mu}')
+    # print(f'post_var: {post_var}')
+
+    # Writing to a file for diagnosis
+    original_stdout = sys.stdout
+    with open(f'out/{prior_label}_diagnosis.txt', 'w') as f:
+        sys.stdout = f
+        print(prior_label)
+        for e in range(len(wp_tr_idx)):
+            print('\n\n\n')
+            for j in range(len(lambda_range)):
+                print('\n')
+                print(f'lambda: {lambda_range[j]}')
+                print(f'z_k_{str(e)}: {count_mat[j, e]}')
+                print(f'prior_mu: {psis[e]}')
+                print(f'data_mu: {mus[e]}')
+                print(f'posterior_mu: {post_mu[e]}')
+                print('posterior var: ', post_var[e])
+                print(f'thetas: {thetas[j, e]}')
+                print(f'g_mat: {g_mat[j, e]}')
+                print(f'scores: {scores[j]}')
+    
+    sys.stdout = original_stdout
+
     return lambda_wp, tau_tr, mus
 
 
-def tau_permutations(data, tau_tr, prior_matrix, wp_tr, Q, mus, N_permutations=10000):
-    """
-    Calculates the p-value for the tau statistic.
-    Parameters
-    ----------
-    data : array-like, shape (n, p)
-        The data matrix.
-    tau_tr : float
-        The standard deviation of the prior distribution.
-    prior_matrix : array-like, shape (p, p)
-        The prior matrix. Used to identify which edges are penalized by lambda_wp.
-    wp_tr : array-like, shape (r, 2)
-        The indices of the prior edges.
-    Q : int
-        The number of sub-samples.
-    mus : array-like, shape (p, p)
-        The mean of the prior distribution.
-    N_permutations : int, optional
-        The number of permutations to perform. The default is 10000.
-
-    Returns
-    -------
-    p_value : float
-        The p-value for the tau statistic.
-    """
-    n, p = data.shape
-    # Generate empirical null distribution of tau, similar to GSEA
-    tau_perm = np.zeros((N_permutations))
-
-    num_edges = len(wp_tr)
-
-    for _ in range(N_permutations):
-        permuted_edges = [tuple(random.sample(range(n), 2)) for _ in range(num_edges)]
-        permuted_weights = [prior_matrix[comb[0], comb[1]] for comb in permuted_edges]
-
-        psi_perm = permuted_weights * Q
-
-        tau_perm[_] = np.sum(np.abs(mus - psi_perm)) / num_edges
-    
-    tau_mean = np.mean(tau_perm)
-    tau_perm_normalized = tau_perm / tau_mean
-    tau_normalized = tau_tr / tau_mean
-
-    # calculate percentage of taus that are greater than tau_tr, and subtract from 1 to get p-value
-    p_value = 1 - (np.sum(tau_perm_normalized >= tau_normalized) / N_permutations)
-
-    return p_value
 
 
-def test():
-    """
-    Tests the functions in this file.
-    """
-    data = np.random.rand(50, 10)
-    b = 20
-    Q = 3
-    lambda_range = np.linspace(0.01, 1, 2)
-    prior_matrix = np.random.rand(10, 10)
-    
-    # Test subsampler function
-    edge_counts_all = subsample_optimiser(data, b, Q, lambda_range, prior_matrix)
-    assert edge_counts_all.shape == (10, 10, 10), f"Expected (10, 10, 10), but got {edge_counts_all.shape}"
-    
-    # Test estimate_lambda_np function
-    lambda_np, p_k_matrix, zks = estimate_lambda_np(data, b, Q, lambda_range, edge_counts_all)
-    assert lambda_np in lambda_range, f"lambda_np not in lambda_range"
-    assert p_k_matrix.shape == (10, 10), f"Expected (10, 10), but got {p_k_matrix.shape}"
-    assert zks.shape == (10, 10, 10), f"Expected (10, 10, 10), but got {zks.shape}"
-    
-    # Test estimate_lambda_wp function
-    lambda_wp, tau_tr, mus = estimate_lambda_wp(data, b, Q, p_k_matrix, zks, lambda_range, prior_matrix)
-    assert lambda_wp in lambda_range, f"lambda_wp not in lambda_range"
-    
-    # Test tau_permutations function
-    p_value = tau_permutations(data, tau_tr, prior_matrix, [(i, j) for i, j in combinations(range(10), 2)], Q, mus, N_permutations=100)
-    assert 0 <= p_value <= 1, f"p_value out of range: {p_value}"
-    
-    print("All tests passed.")
 
 
-def synthetic_run(p = 10, n = 50, b = 25, Q = 10, lambda_range = np.linspace(0.01, 0.2, 10)):
-    # Set random seed for reproducibility
-    np.random.seed(42)
+
+
+
+
+
+
+def synthetic_run(run_nm, p = 50, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
+    # # Set random seed for reproducibility
+    # np.random.seed(42)
 
     # TRUE NETWORK
-    G = nx.barabasi_albert_graph(p, 5)
+    G = nx.barabasi_albert_graph(p, 1, seed=1)
     adj_matrix = nx.to_numpy_array(G)
-    min_eig = np.min(np.real(eigh(adj_matrix)[0]))
-    if min_eig < 0:
-        adj_matrix -= 10 * min_eig * np.eye(adj_matrix.shape[0])
-    eigenvalues, _ = eigh(adj_matrix)
-    print(f'matrix is positive definite: {np.all(eigenvalues > 0)}')
-    covariance_matrix = inv(adj_matrix)
+    
+    # PRECISION MATRIX
+    precision_matrix = -0.5 * adj_matrix
+
+    # Add to the diagonal to ensure positive definiteness
+    # Set each diagonal entry to be larger than the sum of the absolute values of the off-diagonal elements in the corresponding row
+    diagonal_values = 2 * np.abs(precision_matrix).sum(axis=1)
+    np.fill_diagonal(precision_matrix, diagonal_values)
+
+    # Check if the precision matrix is positive definite
+    # A simple check is to see if all eigenvalues are positive
+    eigenvalues = np.linalg.eigh(precision_matrix)[0]
+    is_positive_definite = np.all(eigenvalues > 0)
+
+    # Compute the scaling factors for each variable (square root of the diagonal of the precision matrix)
+    scaling_factors = np.sqrt(np.diag(precision_matrix))
+    # Scale the precision matrix
+    adjusted_precision = np.outer(1 / scaling_factors, 1 / scaling_factors) * precision_matrix
+
+    covariance_mat = inv(adjusted_precision)
 
     # PRIOR MATRIX
     prior_matrix = np.zeros((p, p))
     for i in range(p):
         for j in range(i, p):
-            if adj_matrix[i, j] == 1:
-                prior_matrix[i, j] = 1.0
-                prior_matrix[j, i] = 1.0
+            if adj_matrix[i, j] != 0:
+                prior_matrix[i, j] = 1
+                prior_matrix[j, i] = 1
     np.fill_diagonal(prior_matrix, 0)
 
+    # Create an anti prior matrix
+    anti_prior = np.ones((p, p)) - prior_matrix
+    np.fill_diagonal(anti_prior, 0)
+
+    # # scale both prior matrices
+    prior_matrix = prior_matrix * 0.8
+    anti_prior = anti_prior * 0.8
+
     # DATA MATRIX
-    data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_matrix, size=n)
+    data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
 
     # MODEL RUN
     optimizer = SubsampleOptimizer(data, prior_matrix)
     edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
+    lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
+    # print(f'np:{lambda_np}')
+    # Estimate true p lambda_wp
+    lambda_wp, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix, "true prior")
+    # print(f'true_wp:{lambda_wp} \n ##############################')
+    # Estimate random p lambda_wp
+    lambda_wp_random, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, anti_prior, "anti prior")
+    # print(f'rand_wp: {lambda_wp_random} \n ##############################')
 
-    lambda_np, p_k_matrix, theta_matrix = estimate_lambda_np(edge_counts_all, Q, lambda_range)
-    print(lambda_np)
-
-    lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
-    print(lambda_wp)
-    
-    return lambda_np, lambda_wp
-
-# # Example usage
-# num_runs = 10
-# lambda_np_values = []
-# lambda_wp_values = []
-
-# for _ in range(num_runs):
-#     lambda_np, lambda_wp = synthetic_run()
-#     lambda_np_values.append(lambda_np)
-#     lambda_wp_values.append(lambda_wp)
-
-# mean_lambda_np = np.mean(lambda_np_values)
-# mean_lambda_wp = np.mean(lambda_wp_values)
-
-# print("Mean lambda_np:", mean_lambda_np)
-# print("Mean lambda_wp:", mean_lambda_wp)
+    # write p_k_matrix to csv
+    filename = f'out/edge_counts/p_k_matrix_{str(run_nm), str(lambda_range[0])} - {str(lambda_range[-1]), str(n)}_gran{lambda_granularity}.csv'
+    with open(filename, 'a') as f:
+        np.savetxt(f, p_k_matrix, delimiter=',')
+    # write spearate file for each entry in 3rd dimension of edge_counts_all
+    for i in range(len(lambda_range)):
+        # if any value in edge_counts_all[:, :, i] is not 0, write to csv
+        if np.any(edge_counts_all[:, :, i] != 0):
+            filename = f'out/edge_counts/edge_counts_{str(run_nm), str(lambda_range[i]), str(n)}_gran{lambda_granularity}.csv'
+            with open(filename, 'a') as f:
+                np.savetxt(f, edge_counts_all[:, :, i], delimiter=',')
 
 
-# Demonstrating the prior penalty estimation
-def generate_data_from_network(p=25):
-    """
-    Generate a data matrix from a synthetic network.
-    Returns the adjacency matrix (representing the true network) and the data matrix.
-    """
-    # Generate a Barabasi-Albert graph
-    G = nx.barabasi_albert_graph(p, 3)
-    adj_matrix = nx.to_numpy_array(G)
-
-    # Ensure the matrix is positive definite
-    min_eig = np.min(np.real(eigh(adj_matrix)[0]))
-    if min_eig < 0:
-        adj_matrix -= 10 * min_eig * np.eye(adj_matrix.shape[0])
-
-    # Derive the covariance matrix from the adjacency matrix and generate data
-    covariance_matrix = inv(adj_matrix)
-    data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_matrix, size=50)
-
-    return adj_matrix, data
-
-def modify_prior_matrix(true_prior, random_prior, num_replacements):
-    """
-    Modify the true prior matrix by replacing specified number of fields with the random prior matrix.
-    """
-    p = true_prior.shape[0]
-    modified_prior = true_prior.copy()
-
-    # Get the indices of the fields to be replaced
-    indices = np.array([(i, j) for i in range(p) for j in range(p)])
-    selected_indices = indices[np.random.choice(indices.shape[0], num_replacements, replace=False)]
-
-    # Replace the fields in the true prior matrix with the fields from the random prior matrix
-    for idx in selected_indices:
-        modified_prior[idx[0], idx[1]] = random_prior[idx[0], idx[1]]
-        modified_prior[idx[1], idx[0]] = random_prior[idx[1], idx[0]]  # Keep the matrix symmetric
-
-    return modified_prior
 
 
-# PARAMS
-p = 25
-n = 50
-b = 25
-Q = 10
-lambda_range = np.linspace(0.01, 0.2, 5)
+    return lambda_np, lambda_wp, lambda_wp_random, edge_counts_all
 
-# Generate a single data matrix from a synthetic network
-adj_matrix, data = generate_data_from_network(p)
+# Example usage
+num_runs = 100
+p = 10
+n = 500
+b = int(n / 2)
+Q = 50
+lambda_granularity = 15
+lambda_range = np.linspace(0.03, 0.2, lambda_granularity)
 
-# Generate the true prior matrix and a random matrix
-true_prior = adj_matrix.copy()
-np.fill_diagonal(true_prior, 0)
-random_prior = np.random.randint(2, size=(25, 25))
-np.fill_diagonal(random_prior, 0)
-
-# Generate a sequence of modified prior matrices with increasing number of replacements
-replacements = [250, 100, 50, 10, 1]
-modified_priors = [] # [modify_prior_matrix(true_prior, random_prior, r) for r in replacements]
-
-modified_priors.append(true_prior)  # Display the first modified prior matrix for reference
-
-# Run optimization
-optimizer = SubsampleOptimizer(data, true_prior)
-edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
-
-# Estimate lambda_wp for each prior matrix
+lambda_np_values = []
 lambda_wp_values = []
-for prior_matrix in modified_priors:
-    # lambda_np, p_k_matrix, theta_matrix = estimate_lambda_np(edge_counts_all, 10, np.linspace(0.01, 0.2, 10))
-    lambda_wp, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
+random_lambda_wp_values = []
+edge_counts_all_runs = []
+
+# Set the filenames based on initial parameters
+lambda_wp_filename = f'out/lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+random_lambda_wp_filename = f'out/random_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+
+for _ in tqdm(range(num_runs)):
+    lambda_np, lambda_wp, random_lambda_wp, edge_counts_all = synthetic_run(_, p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
+    
+
+    lambda_np_values.append(lambda_np)
     lambda_wp_values.append(lambda_wp)
+    random_lambda_wp_values.append(random_lambda_wp)
+    edge_counts_all_runs.append(edge_counts_all)
 
-print(lambda_wp_values)
+    # save lambda_wp values and random_lambda_wp values to csv, every 10 runs
+    if _ % 10 == 0:
+        with open(lambda_wp_filename, 'a') as f:
+            np.savetxt(f, lambda_wp_values, delimiter=',')
+        
+        with open(random_lambda_wp_filename, 'a') as f:
+            np.savetxt(f, random_lambda_wp_values, delimiter=',')
 
+# RESULTS
+mean_lambda_np = np.mean(lambda_np_values)
+mean_lambda_wp = np.mean(lambda_wp_values)
+mean_random_lambda_wp = np.mean(random_lambda_wp_values)
 
+print("Mean lambda_np:", mean_lambda_np)
+print("Mean lambda_wp:", mean_lambda_wp)
+print("Mean random lambda_wp:", mean_random_lambda_wp)
 
-####### TODO #######
-# SWITCH TO PSEUDO LOG-LIKELIHOOD
-# (mostly DONE) Vectorize the for loops 
-# (DONE) implement parallelization for Q * J optimization runs 
-# Once it runs, implement alternative and check if results are still the same
-# check if the denominator of eq (12) is implemented correctly (Run both versions and compare)
+# Save the results to csv
+mean_lambda_wp_filename = f'out/mean_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+mean_random_lambda_wp_filename = f'out/mean_random_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+edge_counts_all_runs_filename = f'out/edge_counts_all_runs_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
 
-###### Possible adjustments to experiment with #######
-# Currently, we assume an edge is present if the optimized precision matrix has an absolute value > 1e-5.
-# If the resulting network is too dense, we might have to change this threshold. However, the LASSO pushes many values to exactly 0, 
-# so this might not be a problem.
+with open(mean_lambda_wp_filename, 'a') as f:
+    np.savetxt(f, [mean_lambda_wp], delimiter=',')
+with open(mean_random_lambda_wp_filename, 'a') as f:
+    np.savetxt(f, [mean_random_lambda_wp], delimiter=',')
+# Flatten and stack edge_counts_all_runs
+stacked_edge_counts_all_runs = np.vstack([arr.flatten() for arr in edge_counts_all_runs])
+with open(edge_counts_all_runs_filename, 'a') as f:
+    np.savetxt(f, stacked_edge_counts_all_runs, delimiter=',')
+# To open and reshape back into original shape:
+# loaded_data = np.loadtxt(filename, delimiter=',')
+# list_of_reshaped_arrays = [row.reshape((p, p, J)) for row in loaded_data]
+
 

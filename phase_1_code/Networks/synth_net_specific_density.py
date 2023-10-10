@@ -21,13 +21,13 @@ m = int(round(m))
 print(f'density parameter for scale-free network: {m}')
 
 # Generate the BA graph
-G = nx.barabasi_albert_graph(25, 3)
+G = nx.barabasi_albert_graph(50, 1)
 
 # Check the actual number of nodes and edges in the generated graph
 actual_N = G.number_of_nodes()
 actual_E = G.number_of_edges()
 
-actual_N, actual_E
+print(f'nodes and edges: {actual_N, actual_E}')
 
 # Calculate the actual density of the generated graph
 actual_density = 2 * actual_E / (actual_N * (actual_N - 1))
