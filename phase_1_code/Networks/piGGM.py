@@ -138,7 +138,7 @@ class SubsampleOptimizer:
             method='L-BFGS-B',
         )
         if result.success:
-            # print(result)
+            print('success')
             # Convert result.x back to a lower triangular matrix
             L_opt = np.zeros((p, p))
             L_opt[np.tril_indices(p)] = result.x
@@ -147,6 +147,7 @@ class SubsampleOptimizer:
             edge_counts = (np.abs(opt_precision_mat) > 1e-5).astype(int)
             return selected_sub_idx, lambdax, edge_counts
         else:
+            print('failure')
             return selected_sub_idx, lambdax, np.zeros((p, p))
 
     def subsample_optimiser(self, b, Q, lambda_range):
@@ -260,7 +261,7 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
 
 
-def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix, prior_label, multiplier=1):
+def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix):
     """
     Estimates the lambda value for the prior edges.
     Parameters
@@ -296,7 +297,7 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     
     # wp_tr_weights and p_k_vec give the prob of an edge in the prior and the data, respectively
     wp_tr_weights = np.array([prior_matrix[ind[0], ind[1]] for ind in wp_tr_idx])
-    p_k_vec = np.array([p_k_matrix[ind[0], ind[1]] for ind in wp_tr_idx]) * multiplier
+    p_k_vec = np.array([p_k_matrix[ind[0], ind[1]] for ind in wp_tr_idx])
 
     count_mat = np.zeros((len(lambda_range), len(wp_tr_idx))) # Stores counts for each edge across lambdas (shape: lambdas x edges)
     for l in range(len(lambda_range)):
@@ -333,7 +334,6 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     # Compute CDF values using the error function
     # By subtracting 2 values of the CDF, the 1s cancel 
     thetas = 0.5 * (erf(z_scores_plus / np.sqrt(2)) - erf(z_scores_minus / np.sqrt(2)))
-    print('shape of thetas: ', {thetas.shape})
 
     ######### SCORING #####################################################################
     # Frequency, instability, and score
@@ -341,7 +341,7 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     g_mat = 4 * freq_mat * (1 - freq_mat)
 
     # Scoring function
-    scores = np.sum(thetas, axis=1) # * (1 - g_mat)
+    scores = np.sum(thetas * (1 - g_mat), axis=1)
 
     # Find the lambda_j that maximizes the score
     lambda_wp = lambda_range[np.argmax(scores)]
@@ -353,26 +353,24 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     # print(f'post_mu: {post_mu}')
     # print(f'post_var: {post_var}')
 
-    # Writing to a file for diagnosis
-    original_stdout = sys.stdout
-    with open(f'out/{prior_label}_diagnosis.txt', 'w') as f:
-        sys.stdout = f
-        print(prior_label)
-        for e in range(len(wp_tr_idx)):
-            print('\n\n\n')
-            for j in range(len(lambda_range)):
-                print('\n')
-                print(f'lambda: {lambda_range[j]}')
-                print(f'z_k_{str(e)}: {count_mat[j, e]}')
-                print(f'prior_mu: {psis[e]}')
-                print(f'data_mu: {mus[e]}')
-                print(f'posterior_mu: {post_mu[e]}')
-                print('posterior var: ', post_var[e])
-                print(f'thetas: {thetas[j, e]}')
-                print(f'g_mat: {g_mat[j, e]}')
-                print(f'scores: {scores[j]}')
-    
-    sys.stdout = original_stdout
+    # # Writing to a file for diagnosis
+    # original_stdout = sys.stdout
+    # with open(f'out/eval_diagnosis.txt', 'w') as f:
+    #     sys.stdout = f
+    #     for e in range(len(wp_tr_idx)):
+    #         print('\n\n\n')
+    #         for j in range(len(lambda_range)):
+    #             print('\n')
+    #             print(f'lambda: {lambda_range[j]}')
+    #             print(f'z_k_{str(e)}: {count_mat[j, e]}')
+    #             print(f'prior_mu: {psis[e]}')
+    #             print(f'data_mu: {mus[e]}')
+    #             print(f'posterior_mu: {post_mu[e]}')
+    #             print('posterior var: ', post_var[e])
+    #             print(f'thetas: {thetas[j, e]}')
+    #             print(f'g_mat: {g_mat[j, e]}')
+    #             print(f'scores: {scores[j]}')
+    # sys.stdout = original_stdout
 
     return lambda_wp, tau_tr, mus
 
@@ -386,8 +384,62 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
 
 
 
+def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
+    """
+    Optimizes the objective function using the entire data set and the estimated lambdas.
 
-def synthetic_run(run_nm, p = 50, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
+    Parameters
+    ----------
+    data : array-like, shape (n, p)
+        The data matrix.
+    prior_matrix : array-like, shape (p, p)
+        The prior matrix.
+    lambda_np : float
+        The regularization parameter for the non-prior edges.
+    lambda_wp : float
+        The regularization parameter for the prior edges.
+
+    Returns
+    -------
+    opt_precision_mat : array-like, shape (p, p)
+        The optimized precision matrix.
+    """
+    n, p = data.shape
+    optimizer = SubsampleOptimizer(data, prior_matrix)
+    S = empirical_covariance(data)
+    Eye = np.eye(p)
+
+    # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
+    try:
+        epsilon = 1e-3
+        L_init = np.linalg.cholesky(inv(Eye + epsilon * np.eye(p)))
+    except np.linalg.LinAlgError:
+        print("Initial Guess: non-invertible matrix")
+        return np.zeros((p, p))
+    
+    # Convert L_init to a vector representing its unique elements
+    initial_L_vector = L_init[np.tril_indices(p)]
+
+    result = minimize(
+        optimizer.objective,  
+        initial_L_vector,
+        args=(S, lambda_np, lambda_wp, prior_matrix),
+        method='L-BFGS-B',
+    )
+
+    if result.success:
+        # Convert result.x back to a lower triangular matrix
+        L_opt = np.zeros((p, p))
+        L_opt[np.tril_indices(p)] = result.x
+        # Compute the optimized precision matrix
+        opt_precision_mat = np.dot(L_opt, L_opt.T)
+        return opt_precision_mat
+    else:
+        return np.zeros((p, p))
+
+
+
+def synthetic_run(p = 50, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
     # # Set random seed for reproducibility
     # np.random.seed(42)
 
@@ -419,18 +471,13 @@ def synthetic_run(run_nm, p = 50, n = 500, b = 250, Q = 50, lambda_range = np.li
     prior_matrix = np.zeros((p, p))
     for i in range(p):
         for j in range(i, p):
-            if adj_matrix[i, j] != 0:
+            if adj_matrix[i, j] != 0 and np.random.rand() < 0.9 :
+                prior_matrix[i, j] = 1
+                prior_matrix[j, i] = 1
+            elif adj_matrix[i, j] == 0 and np.random.rand() < 0.1:
                 prior_matrix[i, j] = 1
                 prior_matrix[j, i] = 1
     np.fill_diagonal(prior_matrix, 0)
-
-    # Create an anti prior matrix
-    anti_prior = np.ones((p, p)) - prior_matrix
-    np.fill_diagonal(anti_prior, 0)
-
-    # # scale both prior matrices
-    prior_matrix = prior_matrix * 0.8
-    anti_prior = anti_prior * 0.8
 
     # DATA MATRIX
     data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
@@ -438,31 +485,64 @@ def synthetic_run(run_nm, p = 50, n = 500, b = 250, Q = 50, lambda_range = np.li
     # MODEL RUN
     optimizer = SubsampleOptimizer(data, prior_matrix)
     edge_counts_all = optimizer.subsample_optimiser(b, Q, lambda_range)
+    print(f'check0: edge_counts_all: {edge_counts_all[0, 0, 0]}')
     lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
-    # print(f'np:{lambda_np}')
+    print(f'check1: lambda_np: {lambda_np}')
     # Estimate true p lambda_wp
-    lambda_wp, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix, "true prior")
-    # print(f'true_wp:{lambda_wp} \n ##############################')
-    # Estimate random p lambda_wp
-    lambda_wp_random, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, anti_prior, "anti prior")
-    # print(f'rand_wp: {lambda_wp_random} \n ##############################')
+    lambda_wp, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
+    print(f'check2: lambda_wp: {lambda_wp}')
 
-    # write p_k_matrix to csv
-    filename = f'out/edge_counts/p_k_matrix_{str(run_nm), str(lambda_range[0])} - {str(lambda_range[-1]), str(n)}_gran{lambda_granularity}.csv'
-    with open(filename, 'a') as f:
-        np.savetxt(f, p_k_matrix, delimiter=',')
-    # write spearate file for each entry in 3rd dimension of edge_counts_all
-    for i in range(len(lambda_range)):
-        # if any value in edge_counts_all[:, :, i] is not 0, write to csv
-        if np.any(edge_counts_all[:, :, i] != 0):
-            filename = f'out/edge_counts/edge_counts_{str(run_nm), str(lambda_range[i]), str(n)}_gran{lambda_granularity}.csv'
-            with open(filename, 'a') as f:
-                np.savetxt(f, edge_counts_all[:, :, i], delimiter=',')
+    opt_precision_mat = optimize_graph(data, prior_matrix, lambda_np, lambda_wp)
+    print(f'check3: opt_precision_mat: {opt_precision_mat}')
+
+    return lambda_np, lambda_wp, opt_precision_mat, adj_matrix
 
 
+def evaluate_reconstruction(adj_matrix, opt_precision_mat, threshold=1e-5):
+    """
+    Evaluate the accuracy of the reconstructed adjacency matrix.
 
+    Parameters
+    ----------
+    adj_matrix : array-like, shape (p, p)
+        The original adjacency matrix.
+    opt_precision_mat : array-like, shape (p, p)
+        The optimized precision matrix.
+    threshold : float, optional
+        The threshold for considering an edge in the precision matrix. Default is 1e-5.
 
-    return lambda_np, lambda_wp, lambda_wp_random, edge_counts_all
+    Returns
+    -------
+    metrics : dict
+        Dictionary containing precision, recall, f1_score, and jaccard_similarity.
+    """
+    # Convert the optimized precision matrix to binary form
+    reconstructed_adj = (np.abs(opt_precision_mat) > threshold).astype(int)
+    np.fill_diagonal(reconstructed_adj, 0)
+
+    # True positives, false positives, etc.
+    tp = np.sum((reconstructed_adj == 1) & (adj_matrix == 1))
+    fp = np.sum((reconstructed_adj == 1) & (adj_matrix == 0))
+    fn = np.sum((reconstructed_adj == 0) & (adj_matrix == 1))
+    tn = np.sum((reconstructed_adj == 0) & (adj_matrix == 0))
+
+    # Precision, recall, F1 score
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0
+
+    # Jaccard similarity
+    jaccard_similarity = tp / (tp + fp + fn)
+
+    metrics = {
+        'precision': precision,
+        'recall': recall,
+        'f1_score': f1_score,
+        'jaccard_similarity': jaccard_similarity
+    }
+
+    return metrics
+
 
 # Example usage
 num_runs = 100
@@ -471,58 +551,69 @@ n = 500
 b = int(n / 2)
 Q = 50
 lambda_granularity = 15
-lambda_range = np.linspace(0.03, 0.2, lambda_granularity)
+lambda_range = np.linspace(0.03, 0.06, lambda_granularity)
 
-lambda_np_values = []
-lambda_wp_values = []
-random_lambda_wp_values = []
-edge_counts_all_runs = []
+# sample run
+lambda_np, lambda_wp, opt_precision_mat, adj_matrix = synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
+print("lambda_np:", lambda_np)
+print("lambda_wp:", lambda_wp)
 
-# Set the filenames based on initial parameters
-lambda_wp_filename = f'out/lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
-random_lambda_wp_filename = f'out/random_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+# sample evaluation
+metrics = evaluate_reconstruction(adj_matrix, opt_precision_mat)
+print("metrics:", metrics)
 
-for _ in tqdm(range(num_runs)):
-    lambda_np, lambda_wp, random_lambda_wp, edge_counts_all = synthetic_run(_, p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
+
+
+
+
+# lambda_np_values = []
+# lambda_wp_values = []
+# random_lambda_wp_values = []
+# edge_counts_all_runs = []
+
+# # Set the filenames based on initial parameters
+# lambda_wp_filename = f'out/lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+# random_lambda_wp_filename = f'out/random_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+
+# for _ in tqdm(range(num_runs)):
+#     lambda_np, lambda_wp, random_lambda_wp, edge_counts_all = synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
     
 
-    lambda_np_values.append(lambda_np)
-    lambda_wp_values.append(lambda_wp)
-    random_lambda_wp_values.append(random_lambda_wp)
-    edge_counts_all_runs.append(edge_counts_all)
+#     lambda_np_values.append(lambda_np)
+#     lambda_wp_values.append(lambda_wp)
+#     random_lambda_wp_values.append(random_lambda_wp)
+#     edge_counts_all_runs.append(edge_counts_all)
 
-    # save lambda_wp values and random_lambda_wp values to csv, every 10 runs
-    if _ % 10 == 0:
-        with open(lambda_wp_filename, 'a') as f:
-            np.savetxt(f, lambda_wp_values, delimiter=',')
+#     # save lambda_wp values and random_lambda_wp values to csv, every 10 runs
+#     if _ % 10 == 0:
+#         with open(lambda_wp_filename, 'a') as f:
+#             np.savetxt(f, lambda_wp_values, delimiter=',')
         
-        with open(random_lambda_wp_filename, 'a') as f:
-            np.savetxt(f, random_lambda_wp_values, delimiter=',')
+#         with open(random_lambda_wp_filename, 'a') as f:
+#             np.savetxt(f, random_lambda_wp_values, delimiter=',')
 
-# RESULTS
-mean_lambda_np = np.mean(lambda_np_values)
-mean_lambda_wp = np.mean(lambda_wp_values)
-mean_random_lambda_wp = np.mean(random_lambda_wp_values)
+# # RESULTS
+# mean_lambda_np = np.mean(lambda_np_values)
+# mean_lambda_wp = np.mean(lambda_wp_values)
+# mean_random_lambda_wp = np.mean(random_lambda_wp_values)
 
-print("Mean lambda_np:", mean_lambda_np)
-print("Mean lambda_wp:", mean_lambda_wp)
-print("Mean random lambda_wp:", mean_random_lambda_wp)
+# print("Mean lambda_np:", mean_lambda_np)
+# print("Mean lambda_wp:", mean_lambda_wp)
+# print("Mean random lambda_wp:", mean_random_lambda_wp)
 
-# Save the results to csv
-mean_lambda_wp_filename = f'out/mean_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
-mean_random_lambda_wp_filename = f'out/mean_random_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
-edge_counts_all_runs_filename = f'out/edge_counts_all_runs_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+# # Save the results to csv
+# mean_lambda_wp_filename = f'out/mean_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+# mean_random_lambda_wp_filename = f'out/mean_random_lambda_wp_values_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
+# edge_counts_all_runs_filename = f'out/edge_counts_all_runs_{str(lambda_range[0])} - {str(lambda_range[1]), str(n)}_gran{lambda_granularity}.csv'
 
-with open(mean_lambda_wp_filename, 'a') as f:
-    np.savetxt(f, [mean_lambda_wp], delimiter=',')
-with open(mean_random_lambda_wp_filename, 'a') as f:
-    np.savetxt(f, [mean_random_lambda_wp], delimiter=',')
-# Flatten and stack edge_counts_all_runs
-stacked_edge_counts_all_runs = np.vstack([arr.flatten() for arr in edge_counts_all_runs])
-with open(edge_counts_all_runs_filename, 'a') as f:
-    np.savetxt(f, stacked_edge_counts_all_runs, delimiter=',')
-# To open and reshape back into original shape:
-# loaded_data = np.loadtxt(filename, delimiter=',')
-# list_of_reshaped_arrays = [row.reshape((p, p, J)) for row in loaded_data]
-
-
+# with open(mean_lambda_wp_filename, 'a') as f:
+#     np.savetxt(f, [mean_lambda_wp], delimiter=',')
+# with open(mean_random_lambda_wp_filename, 'a') as f:
+#     np.savetxt(f, [mean_random_lambda_wp], delimiter=',')
+# # Flatten and stack edge_counts_all_runs
+# stacked_edge_counts_all_runs = np.vstack([arr.flatten() for arr in edge_counts_all_runs])
+# with open(edge_counts_all_runs_filename, 'a') as f:
+#     np.savetxt(f, stacked_edge_counts_all_runs, delimiter=',')
+# # To open and reshape back into original shape:
+# # loaded_data = np.loadtxt(filename, delimiter=',')
+# # list_of_reshaped_arrays = [row.reshape((p, p, J)) for row in loaded_data]
