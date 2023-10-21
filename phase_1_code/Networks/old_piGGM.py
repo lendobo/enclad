@@ -10,7 +10,7 @@ import scipy.stats as stats
 from scipy.linalg import block_diag, eigh, inv
 from itertools import combinations
 from itertools import product
-from sklearn.covariance import empirical_covariance
+from sklearn.covariance import empirical_covariance, GraphicalLasso
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 from concurrent.futures import as_completed
@@ -151,12 +151,12 @@ class SubsampleOptimizer:
             edge_counts = (np.abs(opt_precision_mat) > 1e-5).astype(int)
             return selected_sub_idx, lambdax, edge_counts, 1
         else:
-            print("Optimization did not succeed.")
-            print("Reason:", result.message)
-            print("Status code:", result.status)
-            print("Objective function value:", result.fun)
-            print("Number of function evaluations:", result.nfev)
-            print("Number of iterations:", result.nit)
+            # print("Optimization did not succeed.")
+            # print("Reason:", result.message)
+            # print("Status code:", result.status)
+            # print("Objective function value:", result.fun)
+            # print("Number of function evaluations:", result.nfev)
+            # print("Number of iterations:", result.nit)
             return selected_sub_idx, lambdax, np.zeros((p, p)), 0
 
     def subsample_optimiser(self, b, Q, lambda_range):
@@ -526,12 +526,12 @@ def synthetic_run(lambda_np, lambda_wp, p = 10, n = 500, b = 250, Q = 50, lambda
     opt_precision_mat = np.zeros((p,p)) # optimize_graph(data, prior_matrix, lambda_np, lambda_wp)
     # print(f'check3: opt_precision_mat: {opt_precision_mat}')
 
-    return lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_counts
+    return lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc
 
-p = 10
-n = 250
+p = 100
+n = 80
 b = int(n / 2)
-Q = 30
+Q = 70
 lambda_granularity = 20
 lambda_range_np = np.linspace(0.01, 0.4, lambda_granularity)
 lambda_range_wp = np.linspace(0.01, 0.4, lambda_granularity)
