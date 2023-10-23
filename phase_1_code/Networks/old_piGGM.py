@@ -3,6 +3,7 @@ import networkx as nx
 import math
 import matplotlib.pyplot as plt
 from random import sample
+import random
 from numpy.random import multivariate_normal
 from scipy.special import comb, erf
 from scipy.optimize import minimize
@@ -16,6 +17,10 @@ from tqdm import tqdm
 from concurrent.futures import as_completed
 import sys
 import pickle
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+
+# from piGGM.py import optimize_graph, evaluate_reconstruction
 
 class SubsampleOptimizer:
     """
@@ -48,58 +53,6 @@ class SubsampleOptimizer:
         self.selected_sub_idx = None
     
 
-    def objective(self, L_vector, S, lambda_np, lambda_wp, prior_matrix):
-        """
-        Objective function for the piGGM optimization problem.
-        Parameters
-        ----------
-        L_vector : array-like, shape (p, p)
-            The vector of lower diagonal precision matrix to be optimised (parameter vector).
-        S : array-like, shape (p, p)
-            The empirical covariance matrix.
-        lambda_np : float
-            The regularization parameter for the non-prior edges.
-        lambda_wp : float
-            The regularization parameter for the prior edges.
-        prior_matrix : array-like, shape (p, p)
-            The prior matrix. Used to identify which edges are penalized by lambda_wp.
-
-        Returns
-        -------
-        objective_value : float
-            The objective function value.
-        """
-        p = self.p
-
-        # Cholesky: Reconstruct the lower triangular matrix L from the vector L_vector
-        L = np.zeros((p, p))
-        L[np.tril_indices(p)] = L_vector
-        # Reconstruct the precision matrix P = LL^T
-        precision_matrix = np.dot(L, L.T)
-
-        logdet_sign, logdet_value = np.linalg.slogdet(precision_matrix)
-
-        if logdet_sign == -1 or np.isclose(logdet_value, 0):
-            print("Optimizer: non-invertible matrix")
-            return np.inf  # return a high cost for non-invertible matrix
-
-        
-        # Terms of the base objective function (log-likelihood)
-        log_det = np.linalg.slogdet(precision_matrix)[1]
-        trace_term = np.trace(np.dot(S, precision_matrix))
-        base_objective = -log_det + trace_term
-
-        # # penalty terms
-        # prior_entries = prior_matrix != 0
-        # non_prior_entries = prior_matrix == 0
-        # penalty_wp = lambda_wp * np.sum(np.abs(precision_matrix[prior_entries]))
-        # penalty_np = lambda_np * np.sum(np.abs(precision_matrix[non_prior_entries]))
-        penalty = lambda_wp * np.sum(np.abs(precision_matrix))
-
-        objective_value = base_objective + penalty # penalty_wp + penalty_np
-        
-        return objective_value
-
     def optimize_for_q_and_j(self, params):
         """
         Optimizes the objective function for a given sub-sample (q) and lambda (j).
@@ -123,41 +76,21 @@ class SubsampleOptimizer:
         prior_matrix = self.prior_matrix
         sub_sample = data[np.array(selected_sub_idx), :]
         S = empirical_covariance(sub_sample)
-        Eye = np.eye(p)
-        
-        # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
-        try:
-            epsilon = 1e-3
-            L_init = np.linalg.cholesky(inv(Eye + epsilon * np.eye(p)))
-        except np.linalg.LinAlgError:
-            print("Initial Guess: non-invertible matrix")
-            return selected_sub_idx, lambdax, np.zeros((p, p))
-        # Convert L_init to a vector representing its unique elements
-        initial_L_vector = L_init[np.tril_indices(p)]
 
-        result = minimize(
-            self.objective,  
-            initial_L_vector,
-            args=(S, lambdax, lambdax, prior_matrix),
-            method='L-BFGS-B',
-        )
-        if result.success:
-            # print(result)
-            # Convert result.x back to a lower triangular matrix
-            L_opt = np.zeros((p, p))
-            L_opt[np.tril_indices(p)] = result.x
-            # Compute the optimized precision matrix
-            opt_precision_mat = np.dot(L_opt, L_opt.T)
-            edge_counts = (np.abs(opt_precision_mat) > 1e-5).astype(int)
-            return selected_sub_idx, lambdax, edge_counts, 1
-        else:
-            # print("Optimization did not succeed.")
-            # print("Reason:", result.message)
-            # print("Status code:", result.status)
-            # print("Objective function value:", result.fun)
-            # print("Number of function evaluations:", result.nfev)
-            # print("Number of iterations:", result.nit)
-            return selected_sub_idx, lambdax, np.zeros((p, p)), 0
+        # Graphical Lasso for precision matrix inference via coordinate descent
+        model = GraphicalLasso(alpha=lambdax, mode='cd', max_iter=100)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", category=UserWarning)  # Convert UserWarning to errors
+            warnings.filterwarnings("error", category=ConvergenceWarning)  # Convert ConvergenceWarning to errors
+            try:
+                model.fit(sub_sample)
+                precision_matrix = model.precision_
+                edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
+                return selected_sub_idx, lambdax, edge_counts, precision_matrix, 1
+            except (UserWarning, ConvergenceWarning) as e:
+                print(f"Warning caught: {str(e)}")
+                return selected_sub_idx, lambdax, np.zeros((p,p)), precision_matrix, 0
+
 
     def subsample_optimiser(self, b, Q, lambda_range):
         """
@@ -185,7 +118,8 @@ class SubsampleOptimizer:
             raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
 
         # Sub-sampling n without replacement
-        # np.random.seed(42)
+        np.random.seed(42)
+        # random.seed(42)
         generated_combinations = set()
 
         while len(generated_combinations) < Q:
@@ -220,7 +154,7 @@ class SubsampleOptimizer:
 
         success_counts = np.zeros(len(lambda_range))
 
-        for q, lambdax, edge_counts, success_check in results:
+        for q, lambdax, edge_counts, prec_mat, success_check in results:
             l = np.where(lambda_range == lambdax)[0][0]
             edge_counts_all[:, :, l] += edge_counts
             success_counts[l] += success_check
@@ -372,52 +306,15 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
 
     # Find the lambda_j that maximizes the score
     lambda_wp = lambda_range[np.argmax(scores)]
-
-    # print(f'mus; {mus}')
-    # print('variances: ', variances)
-    # print(f'psis: {psis}')
-    # print(f'tau_tr: {tau_tr}')
-    # print(f'post_mu: {post_mu}')
-    # print(f'post_var: {post_var}')
-
-    # Writing to a file for diagnosis
-    original_stdout = sys.stdout
-    with open(f'out/old_diagnosis.txt', 'w') as f:
-        sys.stdout = f
-        for e in range(len(wp_tr_idx)):
-            print('\n\n\n')
-            for j in range(len(lambda_range)):
-                print('\n')
-                print(f'lambda: {lambda_range[j]}')
-                print(f'z_k_{str(e)}: {count_mat[j, e]}')
-                print(f'prior_mu: {psis[e]}')
-                print(f'data_mu: {mus[e]}')
-                print(f'posterior_mu: {post_mu[e]}')
-                print('posterior var: ', post_var[e])
-                print(f'thetas: {thetas[j, e]}')
-                print(f'g_mat: {g_mat[j, e]}')
-                print(f'scores: {scores[j]}')
     
     sys.stdout = original_stdout
 
     return lambda_wp, tau_tr, mus
 
 
-
-
-
-
-
-
-
-
-
-
-    # return lambda_np, lambda_wp, edge_counts_all
-
-def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
+def optimize_graph(data, prior_matrix, lambda_val):
     """
-    Optimizes the objective function using the entire data set and the estimated lambdas.
+    Optimizes the objective function using the entire data set and the estimated lambda.
 
     Parameters
     ----------
@@ -425,54 +322,29 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
         The data matrix.
     prior_matrix : array-like, shape (p, p)
         The prior matrix.
-    lambda_np : float
-        The regularization parameter for the non-prior edges.
-    lambda_wp : float
-        The regularization parameter for the prior edges.
+    lambda_val : float
+        The regularization parameter for the edges.
 
     Returns
     -------
     opt_precision_mat : array-like, shape (p, p)
         The optimized precision matrix.
     """
-    n, p = data.shape
-    optimizer = SubsampleOptimizer(data, prior_matrix)
-    S = empirical_covariance(data)
-    Eye = np.eye(p)
-
-    # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
+    # Use GraphicalLasso to estimate the precision matrix
+    model = GraphicalLasso(alpha=lambda_val, mode='cd', max_iter=100)
     try:
-        epsilon = 1e-3
-        L_init = np.linalg.cholesky(inv(Eye + epsilon * np.eye(p)))
-    except np.linalg.LinAlgError:
-        print("Initial Guess: non-invertible matrix")
-        return np.zeros((p, p))
-    
-    # Convert L_init to a vector representing its unique elements
-    initial_L_vector = L_init[np.tril_indices(p)]
-
-    result = minimize(
-        optimizer.objective,  
-        initial_L_vector,
-        args=(S, lambda_np, lambda_wp, prior_matrix),
-        method='L-BFGS-B',
-    )
-
-    if result.success:
-        # Convert result.x back to a lower triangular matrix
-        L_opt = np.zeros((p, p))
-        L_opt[np.tril_indices(p)] = result.x
-        # Compute the optimized precision matrix
-        opt_precision_mat = np.dot(L_opt, L_opt.T)
-        return opt_precision_mat
-    else:
-        return np.zeros((p, p))
+        model.fit(data)
+        return model.precision_
+    except Exception as e:
+        print(f"Optimization did not succeed due to {str(e)}")
+        return np.zeros((data.shape[1], data.shape[1]))
 
 
 
-def synthetic_run(lambda_np, lambda_wp, p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
+
+def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
     # # Set random seed for reproducibility
-    # np.random.seed(42)
+    np.random.seed(42)
 
     # TRUE NETWORK
     G = nx.barabasi_albert_graph(p, 1, seed=1)
@@ -516,27 +388,188 @@ def synthetic_run(lambda_np, lambda_wp, p = 10, n = 500, b = 250, Q = 50, lambda
     # # MODEL RUN
     optimizer = SubsampleOptimizer(data, prior_matrix)
     edge_counts_all, success_counts, success_perc = optimizer.subsample_optimiser(b, Q, lambda_range)
-    # print(f'check0: edge_counts_all: {edge_counts_all}')
-    # lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
-    # print(f'check1: lambda_np: {lambda_np}')
+    lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
     # # Estimate true p lambda_wp
-    # lambda_wp, _, _ = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
-    # print(f'check2: lambda_wp: {lambda_wp}')
+    # lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
     
-    opt_precision_mat = np.zeros((p,p)) # optimize_graph(data, prior_matrix, lambda_np, lambda_wp)
-    # print(f'check3: opt_precision_mat: {opt_precision_mat}')
+    # print(lambda_np)
+    # lambda_np = 0.078 # 0.07157894736842105
 
-    return lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc
+    opt_precision_mat = optimize_graph(data, prior_matrix, lambda_np)
 
-p = 100
-n = 80
-b = int(n / 2)
-Q = 70
-lambda_granularity = 20
-lambda_range_np = np.linspace(0.01, 0.4, lambda_granularity)
-lambda_range_wp = np.linspace(0.01, 0.4, lambda_granularity)
+    return opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc, lambda_np
 
-lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc = synthetic_run(0,0, p, n, b, Q, lambda_range_np)
+
+def parallel_synthetic_run(params):
+    p, n, b, Q, lambda_range = params
+    return synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
+
+
+def synthetic_sweep(p_range=[10], n=60, b_values=[250], Q_values=[50], 
+                           lambda_ranges=[np.linspace(0.01, 0.05, 20)]):
+    
+    # Ensure the input parameters are in list format
+    if not isinstance(p_range, list): p_range = [p_range]
+    if not isinstance(b_values, list): b_values = [b_values]
+    if not isinstance(Q_values, list): Q_values = [Q_values]
+    if not isinstance(lambda_ranges, list): lambda_ranges = [lambda_ranges]
+
+    results_dict = {}
+
+    # Create a list of parameter combinations
+    param_combinations = list(product(p_range, [n], b_values, Q_values, lambda_ranges))
+    
+    # Use ProcessPoolExecutor to run in parallel
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(parallel_synthetic_run, param_combinations))
+    
+    for params, result in zip(param_combinations, results):
+        key = tuple(list(params[:-1]) + [str(params[-1])])
+        results_dict[key] = {
+            'opt_precision_mat': result[0],
+            'adj_matrix': result[1],
+            'edge_counts_all': result[2],
+            'success_counts': result[3],
+            'success_perc': result[4],
+            'lambda_np': result[5]
+        }
+    
+    return results_dict
+
+
+
+def evaluate_reconstruction(adj_matrix, opt_precision_mat, threshold=1e-5):
+    """
+    Evaluate the accuracy of the reconstructed adjacency matrix.
+
+    Parameters
+    ----------
+    adj_matrix : array-like, shape (p, p)
+        The original adjacency matrix.
+    opt_precision_mat : array-like, shape (p, p)
+        The optimized precision matrix.
+    threshold : float, optional
+        The threshold for considering an edge in the precision matrix. Default is 1e-5.
+
+    Returns
+    -------
+    metrics : dict
+        Dictionary containing precision, recall, f1_score, and jaccard_similarity.
+    """
+    # Convert the optimized precision matrix to binary form
+    reconstructed_adj = (np.abs(opt_precision_mat) > threshold).astype(int)
+    print(reconstructed_adj)
+    np.fill_diagonal(reconstructed_adj, 0)
+
+    # True positives, false positives, etc.
+    tp = np.sum((reconstructed_adj == 1) & (adj_matrix == 1))
+    fp = np.sum((reconstructed_adj == 1) & (adj_matrix == 0))
+    fn = np.sum((reconstructed_adj == 0) & (adj_matrix == 1))
+    tn = np.sum((reconstructed_adj == 0) & (adj_matrix == 0))
+
+    # Precision, recall, F1 score
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0
+
+    # Jaccard similarity
+    jaccard_similarity = tp / (tp + fp + fn)
+
+    metrics = {
+        'precision': precision,
+        'recall': recall,
+        'f1_score': f1_score,
+        'jaccard_similarity': jaccard_similarity
+    }
+
+    return metrics
+
+l_lo = 0 # 0.042105263157894736
+l_hi = 0.4 # 0.12631578947368421
+lambda_range = np.linspace(l_lo, l_hi, 20)
+
+p_range = 10
+n = 300
+b_values = int((2 / 3) * n)
+Q_values = 500
+
+
+lambda_estimates = []
+
+
+# Create a single figure and axis for all plots
+fig, ax = plt.subplots(figsize=(10, 6))
+
+for i in range(30):
+    results_single = synthetic_sweep(p_range=p_range, n = n, b_values=b_values, Q_values=Q_values, lambda_ranges=lambda_range)
+    # save to pkl file
+    with open(f'phase_1_code/Networks/out/results_single_{p_range,n,b_values,Q_values,len(lambda_range)}.pkl', 'wb') as f:
+        pickle.dump(results_single, f)
+
+    # Get the lambda estimate
+    lambda_estimate = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['lambda_np']
+    lambda_estimates.append(lambda_estimate)
+    print(lambda_estimate)
+
+    edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
+
+    success_counts = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_counts']
+    success_perc = np.sum(results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_perc']) / len(lambda_range)
+
+    # print(success_perc)
+    # get the right dimensions for edge_counts_all for plotting
+    # mask = np.triu(np.ones((p, p, len(lambda_range))), k=1)
+    # Element-wise multiplication and sum along the first two dimensions
+    edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range))]
+
+    # Add the scatter plot to the shared figure and provide a label for the legend
+    ax.plot(lambda_range, edges_per_lambda, label=f'Lambda estimate: {lambda_estimate}')
+
+    opt_precision_mat = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['opt_precision_mat']
+    adj_matrix = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['adj_matrix']
+
+    # evaluate metrics  
+    metrics = evaluate_reconstruction(adj_matrix, opt_precision_mat)
+    print(metrics)
+
+
+
+# # Set the axis labels and title
+# ax.set_xlabel("Penalty value")
+# ax.set_ylabel("Number of edges")
+# ax.set_title('Comparison of different runs')
+
+# # Display the legend
+# ax.legend()
+
+# # Display the final figure
+# plt.show()
+
+# save lambda_estimates to pkl file
+with open(f'phase_1_code/Networks/out/lambda_estimates_{p_range,n,b_values,Q_values,len(lambda_range)}.pkl', 'wb') as f:
+    pickle.dump(lambda_estimates, f)
+
+# plot a distribution of lambda estimates
+plt.figure(figsize=(10, 6))
+plt.hist(lambda_estimates)
+plt.xlabel("Lambda estimate")
+plt.ylabel("Frequency")
+plt.title('Distribution of lambda estimates')
+plt.show()
+
+
+
+
+
+# p = 300
+# n = 500
+# b = int(n / 2)
+# Q = 50
+# lambda_granularity = 20
+# lambda_range_np = np.linspace(0.01, 0.4, lambda_granularity)
+# lambda_range_wp = np.linspace(0.01, 0.4, lambda_granularity)
+
+# lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc = synthetic_run(0,0, p, n, b, Q, lambda_range_np)
 
 # # save edge_coutns_all to pkl file
 # with open(f'out/edge_counts_all.pkl{p,n,b,Q,len(lambda_range_np)}', 'wb') as f:
@@ -552,19 +585,19 @@ lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_co
 # with open(f'out/success_counts.pkl{p,n,b,Q,len(lambda_range_np)}', 'rb') as f:
 #     success_counts = pickle.load(f)
 
-print(success_perc)
-# get the right dimensions for edge_counts_all for plotting
-# mask = np.triu(np.ones((p, p, len(lambda_range_np))), k=1)
-# Element-wise multiplication and sum along the first two dimensions
-edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range_np))]
+# print(success_perc)
+# # get the right dimensions for edge_counts_all for plotting
+# # mask = np.triu(np.ones((p, p, len(lambda_range_np))), k=1)
+# # Element-wise multiplication and sum along the first two dimensions
+# edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range_np))]
 
-# plot the fitted curves to the left and right of the knee point
-plt.figure(figsize=(10, 6))
-plt.scatter(lambda_range_np, edges_per_lambda)
-# plt.plot(penalty_values[:knee_point_index], linear_func(penalty_values[:knee_point_index], *params_left), color="red")
-# plt.plot(penalty_values[knee_point_index+1:], linear_func(penalty_values[knee_point_index+1:], *params_right), color="green")
-plt.xlabel("Penalty value")
-plt.ylabel("Number of edges")
-plt.show()
+# # plot the fitted curves to the left and right of the knee point
+# plt.figure(figsize=(10, 6))
+# plt.scatter(lambda_range_np, edges_per_lambda)
+# # plt.plot(penalty_values[:knee_point_index], linear_func(penalty_values[:knee_point_index], *params_left), color="red")
+# # plt.plot(penalty_values[knee_point_index+1:], linear_func(penalty_values[knee_point_index+1:], *params_right), color="green")
+# plt.xlabel("Penalty value")
+# plt.ylabel("Number of edges")
+# plt.show()
 
     

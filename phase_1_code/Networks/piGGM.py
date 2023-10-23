@@ -384,9 +384,11 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
 
 
 
-def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
+from sklearn.covariance import GraphicalLasso, empirical_covariance
+
+def optimize_graph(data, prior_matrix, lambda_val):
     """
-    Optimizes the objective function using the entire data set and the estimated lambdas.
+    Optimizes the objective function using the entire data set and the estimated lambda.
 
     Parameters
     ----------
@@ -394,48 +396,23 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
         The data matrix.
     prior_matrix : array-like, shape (p, p)
         The prior matrix.
-    lambda_np : float
-        The regularization parameter for the non-prior edges.
-    lambda_wp : float
-        The regularization parameter for the prior edges.
+    lambda_val : float
+        The regularization parameter for the edges.
 
     Returns
     -------
     opt_precision_mat : array-like, shape (p, p)
         The optimized precision matrix.
     """
-    n, p = data.shape
-    optimizer = SubsampleOptimizer(data, prior_matrix)
-    S = empirical_covariance(data)
-    Eye = np.eye(p)
-
-    # Compute the Cholesky decomposition of the inverse of the empirical covariance matrix
+    # Use GraphicalLasso to estimate the precision matrix
+    model = GraphicalLasso(alpha=lambda_val, mode='cd', max_iter=100)
     try:
-        epsilon = 1e-3
-        L_init = np.linalg.cholesky(inv(Eye + epsilon * np.eye(p)))
-    except np.linalg.LinAlgError:
-        print("Initial Guess: non-invertible matrix")
-        return np.zeros((p, p))
-    
-    # Convert L_init to a vector representing its unique elements
-    initial_L_vector = L_init[np.tril_indices(p)]
+        model.fit(data)
+        return model.precision_
+    except Exception as e:
+        print(f"Optimization did not succeed due to {str(e)}")
+        return np.zeros((data.shape[1], data.shape[1]))
 
-    result = minimize(
-        optimizer.objective,  
-        initial_L_vector,
-        args=(S, lambda_np, lambda_wp, prior_matrix),
-        method='L-BFGS-B',
-    )
-
-    if result.success:
-        # Convert result.x back to a lower triangular matrix
-        L_opt = np.zeros((p, p))
-        L_opt[np.tril_indices(p)] = result.x
-        # Compute the optimized precision matrix
-        opt_precision_mat = np.dot(L_opt, L_opt.T)
-        return opt_precision_mat
-    else:
-        return np.zeros((p, p))
 
 
 
