@@ -567,7 +567,7 @@ def sparse_enet_coordinate_descent(
 
 def enet_coordinate_descent_gram(
     floating[::1] w,
-    floating[::1] alpha, # Passing vector of regularization strengths
+    floating alpha,
     floating beta,
     const floating[:, ::1] Q,
     const floating[::1] q,
@@ -669,10 +669,8 @@ def enet_coordinate_descent_gram(
                 if positive and tmp < 0:
                     w[ii] = 0.0
                 else:
-                    # Use alpha[ii]
-                    w[ii] = (fsign(tmp) * fmax(fabs(tmp) - alpha[ii], 0)  /
-                        (Q[ii, ii] + beta))
-
+                    w[ii] = fsign(tmp) * fmax(fabs(tmp) - alpha, 0) \
+                        / (Q[ii, ii] + beta)
 
                 if w[ii] != 0.0:
                     # H +=  w[ii] * Q[ii] # Update H = X.T X w
