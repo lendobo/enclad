@@ -1,0 +1,5 @@
+"CyCSV-Version","1"
+"module","Node List","Node Percentage","Nodes in Module","Sample Percentage","Samples in Module"
+"java.lang.Integer","java.lang.String","java.lang.Integer","java.lang.Integer","java.lang.Double","java.lang.Integer"
+"","mutable","mutable","mutable","mutable","mutable"
+"Network Modules","mutable"

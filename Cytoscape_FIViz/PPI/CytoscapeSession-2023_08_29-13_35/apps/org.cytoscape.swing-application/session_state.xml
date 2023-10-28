@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sessionState documentVersion="1.1">
+    <cytopanels>
+        <cytopanel id="CytoPanel1">
+            <panelState>DOCK</panelState>
+            <panelStateInternal>DOCK</panelStateInternal>
+            <selectedPanel>1</selectedPanel>
+        </cytopanel>
+        <cytopanel id="CytoPanel2">
+            <panelState>DOCK</panelState>
+            <panelStateInternal>DOCK</panelStateInternal>
+            <selectedPanel>1</selectedPanel>
+        </cytopanel>
+        <cytopanel id="CytoPanel3">
+            <panelState>HIDE</panelState>
+            <panelStateInternal>DOCK</panelStateInternal>
+            <selectedPanel>-1</selectedPanel>
+        </cytopanel>
+    </cytopanels>
+</sessionState>

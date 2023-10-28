@@ -1,0 +1,597 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cyTables>
+    <virtualColumns>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="module" sourceColumn="module" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="commonName" sourceColumn="commonName" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeToolTip" sourceColumn="nodeToolTip" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeLabel" sourceColumn="nodeLabel" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeType" sourceColumn="nodeType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="sampleNumber" sourceColumn="sampleNumber" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isLinker" sourceColumn="isLinker" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="samples" sourceColumn="samples" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-1350656+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared interaction" sourceColumn="shared interaction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="EDGE_TYPE" sourceColumn="EDGE_TYPE" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Annotation" sourceColumn="FI Annotation" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Direction" sourceColumn="FI Direction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Score" sourceColumn="FI Score" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-1350656+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared interaction" sourceColumn="shared interaction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-1350656+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="EDGE_TYPE" sourceColumn="EDGE_TYPE" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-1350656+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Annotation" sourceColumn="FI Annotation" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-1350656+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Direction" sourceColumn="FI Direction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-1350656+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Score" sourceColumn="FI Score" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-1350656+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="module" sourceColumn="module" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="commonName" sourceColumn="commonName" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeToolTip" sourceColumn="nodeToolTip" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeLabel" sourceColumn="nodeLabel" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeType" sourceColumn="nodeType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="sampleNumber" sourceColumn="sampleNumber" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isLinker" sourceColumn="isLinker" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="samples" sourceColumn="samples" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="clustering_Type" sourceColumn="clustering_Type" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="dataSetType" sourceColumn="dataSetType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isReactomeFINetwork" sourceColumn="isReactomeFINetwork" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="Reactome_FI_Network_Version" sourceColumn="Reactome_FI_Network_Version" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="ReactomeNetworkType" sourceColumn="ReactomeNetworkType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared interaction" sourceColumn="shared interaction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="EDGE_TYPE" sourceColumn="EDGE_TYPE" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Annotation" sourceColumn="FI Annotation" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Direction" sourceColumn="FI Direction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Score" sourceColumn="FI Score" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared interaction" sourceColumn="shared interaction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="EDGE_TYPE" sourceColumn="EDGE_TYPE" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Annotation" sourceColumn="FI Annotation" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Direction" sourceColumn="FI Direction" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="FI Score" sourceColumn="FI Score" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyEdge-1350656+shared+edge.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isReactomeFINetwork" sourceColumn="isReactomeFINetwork" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="Reactome_FI_Network_Version" sourceColumn="Reactome_FI_Network_Version" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="dataSetType" sourceColumn="dataSetType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="clustering_Type" sourceColumn="clustering_Type" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="ReactomeNetworkType" sourceColumn="ReactomeNetworkType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="commonName" sourceColumn="commonName" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isLinker" sourceColumn="isLinker" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="module" sourceColumn="module" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeLabel" sourceColumn="nodeLabel" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeToolTip" sourceColumn="nodeToolTip" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeType" sourceColumn="nodeType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="sampleNumber" sourceColumn="sampleNumber" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="samples" sourceColumn="samples" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="commonName" sourceColumn="commonName" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isLinker" sourceColumn="isLinker" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="module" sourceColumn="module" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeLabel" sourceColumn="nodeLabel" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeToolTip" sourceColumn="nodeToolTip" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="nodeType" sourceColumn="nodeType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="sampleNumber" sourceColumn="sampleNumber" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="samples" sourceColumn="samples" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNode-1350656+shared+node.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="clustering_Type" sourceColumn="clustering_Type" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="dataSetType" sourceColumn="dataSetType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isReactomeFINetwork" sourceColumn="isReactomeFINetwork" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="Reactome_FI_Network_Version" sourceColumn="Reactome_FI_Network_Version" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="ReactomeNetworkType" sourceColumn="ReactomeNetworkType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="shared name" sourceColumn="shared name" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-1350656+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="isReactomeFINetwork" sourceColumn="isReactomeFINetwork" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-1350656+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="Reactome_FI_Network_Version" sourceColumn="Reactome_FI_Network_Version" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-1350656+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="dataSetType" sourceColumn="dataSetType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-1350656+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="clustering_Type" sourceColumn="clustering_Type" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-1350656+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+        <virtualColumn name="ReactomeNetworkType" sourceColumn="ReactomeNetworkType" sourceTable="1350656-protein_indeces.txt/SHARED_ATTRS-org.cytoscape.model.CyNetwork-1350656+shared+network.cytable" sourceJoinKey="SUID" targetTable="1350656-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-1350656+default+network.cytable" targetJoinKey="SUID" immutable="false"/>
+    </virtualColumns>
+    <tableViews>
+        <tableView table="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%281%29+default+network.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="false"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="false"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="__Annotations">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+            <columnView columnName="clustering_Type">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="162"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="dataSetType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="144"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="isReactomeFINetwork">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="199"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="Reactome_FI_Network_Version">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="254"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="ReactomeNetworkType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="223"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%281%29+default+node.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <bypassValue name="TABLE_ALTERNATE_ROW_COLORS" value="true"/>
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="113"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="116"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="commonName">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="154"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="isLinker">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="112"/>
+                <bypassValue name="COLUMN_GRAVITY" value="10.0"/>
+            </columnView>
+            <columnView columnName="module">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="111"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="nodeLabel">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="130"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="nodeToolTip">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="141"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="nodeType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="126"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+            <columnView columnName="sampleNumber">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="159"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+            <columnView columnName="samples">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="117"/>
+                <bypassValue name="COLUMN_GRAVITY" value="11.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1556950-protein_indeces.txt%281%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%281%29+default+edge.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <bypassValue name="TABLE_VIEW_MODE" value="AUTO"/>
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="113"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="shared interaction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="196"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="116"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="interaction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="130"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="EDGE_TYPE">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="FI Annotation">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="148"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="FI Direction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+            <columnView columnName="FI Score">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="115"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt+default+node.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <bypassValue name="TABLE_VIEW_MODE" value="SELECTED"/>
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="113"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name" styleTitle="8debc991-356c-4c48-a9bc-93b0f5cc638d">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="116"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="module">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="111"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="commonName">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="154"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="nodeToolTip">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="141"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="nodeLabel">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="130"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="nodeType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="126"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+            <columnView columnName="sampleNumber">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="159"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+            <columnView columnName="isLinker">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="112"/>
+                <bypassValue name="COLUMN_GRAVITY" value="10.0"/>
+            </columnView>
+            <columnView columnName="samples">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="117"/>
+                <bypassValue name="COLUMN_GRAVITY" value="11.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt+default+edge.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <bypassValue name="TABLE_VIEW_MODE" value="SELECTED"/>
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="113"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="shared interaction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="196"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="116"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="interaction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="130"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="EDGE_TYPE">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="FI Annotation">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="148"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="FI Direction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+            <columnView columnName="FI Score">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="115"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt%282%29+default+network.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="false"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="false"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="__Annotations">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+            <columnView columnName="clustering_Type">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="162"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="dataSetType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="144"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="isReactomeFINetwork">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="199"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="Reactome_FI_Network_Version">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="254"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="ReactomeNetworkType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="223"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1350697-protein_indeces.txt/LOCAL_ATTRS-org.cytoscape.model.CyNetwork-protein_indeces.txt+default+network.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="false"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="false"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="__Annotations">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+            <columnView columnName="isReactomeFINetwork">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="199"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="Reactome_FI_Network_Version">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="254"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="dataSetType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="144"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="clustering_Type">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="162"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="ReactomeNetworkType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="223"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyNode-protein_indeces.txt%282%29+default+node.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <bypassValue name="TABLE_VIEW_MODE" value="SELECTED"/>
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="113"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name" styleTitle="8debc991-356c-4c48-a9bc-93b0f5cc638d">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="116"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="commonName">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="154"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="isLinker">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="112"/>
+                <bypassValue name="COLUMN_GRAVITY" value="10.0"/>
+            </columnView>
+            <columnView columnName="module">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="111"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="nodeLabel">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="130"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="nodeToolTip">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="141"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="nodeType">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="126"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+            <columnView columnName="sampleNumber">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="159"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+            <columnView columnName="samples">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="117"/>
+                <bypassValue name="COLUMN_GRAVITY" value="11.0"/>
+            </columnView>
+        </tableView>
+        <tableView table="1571554-protein_indeces.txt%282%29/LOCAL_ATTRS-org.cytoscape.model.CyEdge-protein_indeces.txt%282%29+default+edge.cytable" rendererId="org.cytoscape.view.table.renderer" tableNamespace="USER">
+            <columnView columnName="SUID">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="113"/>
+                <bypassValue name="COLUMN_GRAVITY" value="0.0"/>
+            </columnView>
+            <columnView columnName="shared name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="163"/>
+                <bypassValue name="COLUMN_GRAVITY" value="1.0"/>
+            </columnView>
+            <columnView columnName="shared interaction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="196"/>
+                <bypassValue name="COLUMN_GRAVITY" value="3.0"/>
+            </columnView>
+            <columnView columnName="name">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="97"/>
+                <bypassValue name="COLUMN_GRAVITY" value="4.0"/>
+            </columnView>
+            <columnView columnName="selected">
+                <bypassValue name="COLUMN_EDITABLE" value="false"/>
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="116"/>
+                <bypassValue name="COLUMN_GRAVITY" value="2.0"/>
+            </columnView>
+            <columnView columnName="interaction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="130"/>
+                <bypassValue name="COLUMN_GRAVITY" value="5.0"/>
+            </columnView>
+            <columnView columnName="EDGE_TYPE">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="6.0"/>
+            </columnView>
+            <columnView columnName="FI Annotation">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="148"/>
+                <bypassValue name="COLUMN_GRAVITY" value="7.0"/>
+            </columnView>
+            <columnView columnName="FI Direction">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="135"/>
+                <bypassValue name="COLUMN_GRAVITY" value="8.0"/>
+            </columnView>
+            <columnView columnName="FI Score">
+                <bypassValue name="COLUMN_VISIBLE" value="true"/>
+                <bypassValue name="COLUMN_WIDTH" value="115"/>
+                <bypassValue name="COLUMN_GRAVITY" value="9.0"/>
+            </columnView>
+        </tableView>
+    </tableViews>
+</cyTables>

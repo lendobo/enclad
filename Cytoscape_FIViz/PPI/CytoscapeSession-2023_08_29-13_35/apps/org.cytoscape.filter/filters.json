@@ -1,0 +1,10 @@
+[ {
+  "name" : "Default filter",
+  "transformers" : [ {
+    "id" : "org.cytoscape.CompositeFilter",
+    "parameters" : {
+      "type" : "ALL"
+    },
+    "transformers" : [ ]
+  } ]
+} ]

@@ -1,36 +1,36 @@
 # Load necessary libraries
 library(DESeq2)
-library(tidyverse)
 
-# Read the data
-data <- read.csv("../data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_ALL_labelled.csv")
+# Read in the data
+data <- read.csv("path_to_your_file/TCGACRC_expression_ALL_labelled.csv", header = TRUE, row.names = 1)
 
-# Filter data for 'CMS2' and 'CMS4' subtypes only
-filtered_data <- data %>% filter(CMS_Label %in% c('CMS2', 'CMS4'))
+# Split data into metadata and count data
+metadata <- data[, c(1, 2)]
+rownames(metadata) <- rownames(data)
+counts <- data[, -c(1, 2)]
 
-# Separate the metadata (Sample_ID and CMS_Label) and the gene expression data
-coldata <- filtered_data[,c('Sample_ID', 'CMS_Label')]
-counts <- as.matrix(filtered_data %>% select(-Sample_ID, -CMS_Label))
+# Revert the log2 transformation
+counts <- 2^counts
 
-# Identify samples in coldata that don't exist in counts matrix and remove them
-missing_samples <- setdiff(coldata$Sample_ID, colnames(counts))
-coldata <- coldata[!coldata$Sample_ID %in% missing_samples,]
+# Check dimensions
+print(dim(counts))
+print(dim(metadata))
 
-# Reorder the columns of counts matrix to match order of samples in coldata
-counts <- counts[, coldata$Sample_ID]
+# Ensure the rownames of metadata and counts are in the same order
+metadata <- metadata[rownames(counts), ]
+# Now, attempt to create the DESeq2 dataset object again
+dds <- DESeqDataSetFromMatrix(
+    countData = counts,
+    colData = metadata,
+    design = ~condition
+)
 
-# Ensure rownames of coldata match column names of counts for DESeq2 processing
-rownames(coldata) <- coldata$Sample_ID
+# Estimate size factors and dispersion
+dds <- estimateSizeFactors(dds)
+dds <- estimateDispersions(dds)
 
-# Construct DESeqDataSet
-dds <- DESeqDataSetFromMatrix(countData = counts, colData = coldata, design = ~ CMS_Label)
+# Apply Variance Stabilizing Transformation
+vst_data <- assay(varianceStabilizingTransformation(dds))
 
-# Perform differential expression analysis
-dds <- DESeq(dds)
-
-# Retrieve and order results by p-value
-res <- results(dds)
-res_ordered <- res[order(res$pvalue),]
-
-# View top differentially expressed genes
-head(res_ordered)
+# Save the VST data to a CSV file
+write.csv(vst_data, "path_to_save/VST_transformed_data.csv")

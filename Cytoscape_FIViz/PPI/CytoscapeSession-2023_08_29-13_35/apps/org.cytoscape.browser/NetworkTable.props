@@ -1,0 +1,30 @@
+protein_indeces.txt(2) default network,0,SUID,false
+protein_indeces.txt(2) default network,1,selected,false
+protein_indeces.txt(2) default network,2,shared name,true
+protein_indeces.txt(2) default network,3,name,true
+protein_indeces.txt(2) default network,4,isReactomeFINetwork,true
+protein_indeces.txt(2) default network,5,Reactome_FI_Network_Version,true
+protein_indeces.txt(2) default network,6,dataSetType,true
+protein_indeces.txt(2) default network,7,clustering_Type,true
+protein_indeces.txt(2) default network,8,ReactomeNetworkType,true
+protein_indeces.txt(2) default network,9,__Annotations,true
+protein_indeces.txt default network,0,SUID,false
+protein_indeces.txt default network,1,selected,false
+protein_indeces.txt default network,2,shared name,true
+protein_indeces.txt default network,3,name,true
+protein_indeces.txt default network,4,isReactomeFINetwork,true
+protein_indeces.txt default network,5,Reactome_FI_Network_Version,true
+protein_indeces.txt default network,6,dataSetType,true
+protein_indeces.txt default network,7,clustering_Type,true
+protein_indeces.txt default network,8,ReactomeNetworkType,true
+protein_indeces.txt default network,9,__Annotations,true
+protein_indeces.txt(1) default network,0,SUID,false
+protein_indeces.txt(1) default network,1,selected,false
+protein_indeces.txt(1) default network,2,shared name,true
+protein_indeces.txt(1) default network,3,name,true
+protein_indeces.txt(1) default network,4,isReactomeFINetwork,true
+protein_indeces.txt(1) default network,5,Reactome_FI_Network_Version,true
+protein_indeces.txt(1) default network,6,dataSetType,true
+protein_indeces.txt(1) default network,7,clustering_Type,true
+protein_indeces.txt(1) default network,8,ReactomeNetworkType,true
+protein_indeces.txt(1) default network,9,__Annotations,true

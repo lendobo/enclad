@@ -1,0 +1,36 @@
+protein_indeces.txt default node,0,SUID,true
+protein_indeces.txt default node,1,shared name,true
+protein_indeces.txt default node,2,selected,true
+protein_indeces.txt default node,3,name,true
+protein_indeces.txt default node,4,module,true
+protein_indeces.txt default node,5,commonName,true
+protein_indeces.txt default node,6,nodeToolTip,true
+protein_indeces.txt default node,7,nodeLabel,true
+protein_indeces.txt default node,8,nodeType,true
+protein_indeces.txt default node,9,sampleNumber,true
+protein_indeces.txt default node,10,isLinker,true
+protein_indeces.txt default node,11,samples,true
+protein_indeces.txt(2) default node,0,SUID,true
+protein_indeces.txt(2) default node,1,shared name,true
+protein_indeces.txt(2) default node,2,selected,true
+protein_indeces.txt(2) default node,3,name,true
+protein_indeces.txt(2) default node,4,module,true
+protein_indeces.txt(2) default node,5,commonName,true
+protein_indeces.txt(2) default node,6,nodeToolTip,true
+protein_indeces.txt(2) default node,7,nodeLabel,true
+protein_indeces.txt(2) default node,8,nodeType,true
+protein_indeces.txt(2) default node,9,sampleNumber,true
+protein_indeces.txt(2) default node,10,isLinker,true
+protein_indeces.txt(2) default node,11,samples,true
+protein_indeces.txt(1) default node,0,SUID,true
+protein_indeces.txt(1) default node,1,shared name,true
+protein_indeces.txt(1) default node,2,selected,true
+protein_indeces.txt(1) default node,3,name,true
+protein_indeces.txt(1) default node,4,module,true
+protein_indeces.txt(1) default node,5,commonName,true
+protein_indeces.txt(1) default node,6,nodeToolTip,true
+protein_indeces.txt(1) default node,7,nodeLabel,true
+protein_indeces.txt(1) default node,8,nodeType,true
+protein_indeces.txt(1) default node,9,sampleNumber,true
+protein_indeces.txt(1) default node,10,isLinker,true
+protein_indeces.txt(1) default node,11,samples,true

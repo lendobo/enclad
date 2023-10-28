@@ -19,6 +19,7 @@ import sys
 import pickle
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+import time
 
 # from piGGM.py import optimize_graph, evaluate_reconstruction
 
@@ -118,7 +119,7 @@ class SubsampleOptimizer:
             raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
 
         # Sub-sampling n without replacement
-        np.random.seed(42)
+        # np.random.seed(42)
         # random.seed(42)
         generated_combinations = set()
 
@@ -142,7 +143,7 @@ class SubsampleOptimizer:
         progress_bar = tqdm(total=len(params_list), desc="Processing", ncols=100)
 
         # Feeding parameters to parallel processing
-        with ProcessPoolExecutor() as executor:
+        with ProcessPoolExecutor(max_workers=16) as executor:
             # Using executor.submit to get futures and as_completed to retrieve results in the order they complete
             futures = {executor.submit(self.optimize_for_q_and_j, param): param for param in params_list}
             for future in as_completed(futures):
@@ -341,13 +342,63 @@ def optimize_graph(data, prior_matrix, lambda_val):
 
 
 
+def evaluate_reconstruction(adj_matrix, opt_precision_mat, threshold=1e-5):
+    """
+    Evaluate the accuracy of the reconstructed adjacency matrix.
+
+    Parameters
+    ----------
+    adj_matrix : array-like, shape (p, p)
+        The original adjacency matrix.
+    opt_precision_mat : array-like, shape (p, p)
+        The optimized precision matrix.
+    threshold : float, optional
+        The threshold for considering an edge in the precision matrix. Default is 1e-5.
+
+    Returns
+    -------
+    metrics : dict
+        Dictionary containing precision, recall, f1_score, and jaccard_similarity.
+    """
+    # Convert the optimized precision matrix to binary form
+    reconstructed_adj = (np.abs(opt_precision_mat) > threshold).astype(int)
+    np.fill_diagonal(reconstructed_adj, 0)
+
+    # True positives, false positives, etc.
+    tp = np.sum((reconstructed_adj == 1) & (adj_matrix == 1))
+    fp = np.sum((reconstructed_adj == 1) & (adj_matrix == 0))
+    fn = np.sum((reconstructed_adj == 0) & (adj_matrix == 1))
+    tn = np.sum((reconstructed_adj == 0) & (adj_matrix == 0))
+
+    # Precision, recall, F1 score
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0
+
+    # Jaccard similarity
+    jaccard_similarity = tp / (tp + fp + fn)
+
+    metrics = {
+        'precision': precision,
+        'recall': recall,
+        'f1_score': f1_score,
+        'jaccard_similarity': jaccard_similarity
+    }
+
+    return metrics
+
+
+
 
 def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
     # # Set random seed for reproducibility
-    np.random.seed(42)
+    # np.random.seed(42)
+
+    # choose density parameter randomly from 3, 5, 6 to create networks of varying density
+    m = random.choice([3,5,6])
 
     # TRUE NETWORK
-    G = nx.barabasi_albert_graph(p, 1, seed=1)
+    G = nx.barabasi_albert_graph(p, m)
     adj_matrix = nx.to_numpy_array(G)
     
     # PRECISION MATRIX
@@ -384,6 +435,8 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
 
     # DATA MATRIX
     data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
+    # print('data below \n')
+    # print(data)
 
     # # MODEL RUN
     optimizer = SubsampleOptimizer(data, prior_matrix)
@@ -401,28 +454,39 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
 
 
 def parallel_synthetic_run(params):
-    p, n, b, Q, lambda_range = params
+    p, (n, b, Q), lambda_range = params
     return synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
 
 
-def synthetic_sweep(p_range=[10], n=60, b_values=[250], Q_values=[50], 
+def synthetic_sweep(p_range=[10], n_range=[60], b_values=None, Q_values=[50], 
                            lambda_ranges=[np.linspace(0.01, 0.05, 20)]):
     
     # Ensure the input parameters are in list format
     if not isinstance(p_range, list): p_range = [p_range]
-    if not isinstance(b_values, list): b_values = [b_values]
+    if not isinstance(n_range, list): n_range = [n_range]
     if not isinstance(Q_values, list): Q_values = [Q_values]
     if not isinstance(lambda_ranges, list): lambda_ranges = [lambda_ranges]
 
     results_dict = {}
 
     # Create a list of parameter combinations
-    param_combinations = list(product(p_range, [n], b_values, Q_values, lambda_ranges))
+    param_combinations = list(product(p_range, zip(n_range, b_values, Q_values), lambda_ranges))
     
-    # Use ProcessPoolExecutor to run in parallel
+    results = []
+
+    # Create a tqdm progress bar
+    progress_bar = tqdm(total=len(param_combinations), desc="Processing", ncols=100)
+
+    # Use ProcessPoolExecutor for parallel processing
     with ProcessPoolExecutor() as executor:
-        results = list(executor.map(parallel_synthetic_run, param_combinations))
-    
+        futures = {executor.submit(parallel_synthetic_run, param): param for param in param_combinations}
+        for future in as_completed(futures):
+            progress_bar.update(1)
+            results.append(future.result())
+
+    progress_bar.close()
+
+    # Adjust the key generation for results_dict since we have zipped n, b, and Q
     for params, result in zip(param_combinations, results):
         key = tuple(list(params[:-1]) + [str(params[-1])])
         results_dict[key] = {
@@ -437,101 +501,62 @@ def synthetic_sweep(p_range=[10], n=60, b_values=[250], Q_values=[50],
     return results_dict
 
 
+# Some experiments
+# 
 
-def evaluate_reconstruction(adj_matrix, opt_precision_mat, threshold=1e-5):
-    """
-    Evaluate the accuracy of the reconstructed adjacency matrix.
+l_lo = 0 # 0.04050632911392405
+l_hi = 0.4 # 0.1569620253164557
+lambda_range = np.linspace(l_lo, l_hi, 80)
 
-    Parameters
-    ----------
-    adj_matrix : array-like, shape (p, p)
-        The original adjacency matrix.
-    opt_precision_mat : array-like, shape (p, p)
-        The optimized precision matrix.
-    threshold : float, optional
-        The threshold for considering an edge in the precision matrix. Default is 1e-5.
+p_range = 300
+n = [500, 250, 100, 50]
+b_values = [int(0.7 * sampsize) for sampsize in n]   # [int(0.7 * n), int(0.75 * n), int(0.8 * n)]
+Q_values = [800, 600, 450, 250]
 
-    Returns
-    -------
-    metrics : dict
-        Dictionary containing precision, recall, f1_score, and jaccard_similarity.
-    """
-    # Convert the optimized precision matrix to binary form
-    reconstructed_adj = (np.abs(opt_precision_mat) > threshold).astype(int)
-    print(reconstructed_adj)
-    np.fill_diagonal(reconstructed_adj, 0)
+# capture start time ````````````````````````````
+start = time.time()
 
-    # True positives, false positives, etc.
-    tp = np.sum((reconstructed_adj == 1) & (adj_matrix == 1))
-    fp = np.sum((reconstructed_adj == 1) & (adj_matrix == 0))
-    fn = np.sum((reconstructed_adj == 0) & (adj_matrix == 1))
-    tn = np.sum((reconstructed_adj == 0) & (adj_matrix == 0))
+# F1_per_run = []
+for i in range(20):
+    # results_single = synthetic_sweep(p_range=p_range, n_range = n, b_values=b_values, Q_values=Q_values, lambda_ranges=lambda_range)
+    results_combos = synthetic_sweep(p_range=p_range, n_range = n, b_values=b_values, Q_values=Q_values, lambda_ranges=lambda_range)
 
-    # Precision, recall, F1 score
-    precision = tp / (tp + fp) if (tp + fp) != 0 else 0
-    recall = tp / (tp + fn) if (tp + fn) != 0 else 0
-    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0
+    # # Get the lambda estimate
+    # lambda_estimate = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['lambda_np']
+    # lambda_estimates.append(lambda_estimate)
+    # print(lambda_estimate)
 
-    # Jaccard similarity
-    jaccard_similarity = tp / (tp + fp + fn)
+    # edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
 
-    metrics = {
-        'precision': precision,
-        'recall': recall,
-        'f1_score': f1_score,
-        'jaccard_similarity': jaccard_similarity
-    }
+    # success_counts = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_counts']
+    # success_perc = np.sum(results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_perc']) / len(lambda_range)
 
-    return metrics
+    # # Element-wise multiplication and sum along the first two dimensions
+    # edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range))]
 
-l_lo = 0 # 0.042105263157894736
-l_hi = 0.4 # 0.12631578947368421
-lambda_range = np.linspace(l_lo, l_hi, 20)
+    # opt_precision_mat = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['opt_precision_mat']
+    # adj_matrix = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['adj_matrix']
 
-p_range = 10
-n = 300
-b_values = int((2 / 3) * n)
-Q_values = 500
+    # # evaluate metrics  
+    # metrics = evaluate_reconstruction(adj_matrix, opt_precision_mat)
+    
+    # write outputs to file
+    with open(f'out/results_{p_range,n,b_values,Q_values,len(lambda_range)}__{i}.pkl', 'wb') as f:
+        pickle.dump(results_combos, f)
 
+    # # write metrics to file
+    # with open(f'phase_1_code/Networks/out/metrics_{p_range,n,b_values,Q_values,len(lambda_range)}__{i}.txt', 'w') as f:
+    #     f.write(f"{metrics}")
+    
 
-lambda_estimates = []
+# capture end time
+end = time.time()
+# calculate the total time it took to complete the work
+duration = end - start
 
-
-# Create a single figure and axis for all plots
-fig, ax = plt.subplots(figsize=(10, 6))
-
-for i in range(30):
-    results_single = synthetic_sweep(p_range=p_range, n = n, b_values=b_values, Q_values=Q_values, lambda_ranges=lambda_range)
-    # save to pkl file
-    with open(f'phase_1_code/Networks/out/results_single_{p_range,n,b_values,Q_values,len(lambda_range)}.pkl', 'wb') as f:
-        pickle.dump(results_single, f)
-
-    # Get the lambda estimate
-    lambda_estimate = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['lambda_np']
-    lambda_estimates.append(lambda_estimate)
-    print(lambda_estimate)
-
-    edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
-
-    success_counts = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_counts']
-    success_perc = np.sum(results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_perc']) / len(lambda_range)
-
-    # print(success_perc)
-    # get the right dimensions for edge_counts_all for plotting
-    # mask = np.triu(np.ones((p, p, len(lambda_range))), k=1)
-    # Element-wise multiplication and sum along the first two dimensions
-    edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range))]
-
-    # Add the scatter plot to the shared figure and provide a label for the legend
-    ax.plot(lambda_range, edges_per_lambda, label=f'Lambda estimate: {lambda_estimate}')
-
-    opt_precision_mat = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['opt_precision_mat']
-    adj_matrix = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['adj_matrix']
-
-    # evaluate metrics  
-    metrics = evaluate_reconstruction(adj_matrix, opt_precision_mat)
-    print(metrics)
-
+# save duration to a file
+with open(f'out/duration_{p_range,n,b_values,Q_values,len(lambda_range)}.txt', 'w') as f:
+    f.write(f"{duration} seconds")
 
 
 # # Set the axis labels and title
@@ -545,17 +570,17 @@ for i in range(30):
 # # Display the final figure
 # plt.show()
 
-# save lambda_estimates to pkl file
-with open(f'phase_1_code/Networks/out/lambda_estimates_{p_range,n,b_values,Q_values,len(lambda_range)}.pkl', 'wb') as f:
-    pickle.dump(lambda_estimates, f)
+# # save lambda_estimates to pkl file
+# with open(f'phase_1_code/Networks/out/lambda_estimates_{p_range,n,b_values,Q_values,len(lambda_range)}.pkl', 'wb') as f:
+#     pickle.dump(lambda_estimates, f)
 
-# plot a distribution of lambda estimates
-plt.figure(figsize=(10, 6))
-plt.hist(lambda_estimates)
-plt.xlabel("Lambda estimate")
-plt.ylabel("Frequency")
-plt.title('Distribution of lambda estimates')
-plt.show()
+# # plot a distribution of lambda estimates
+# plt.figure(figsize=(10, 6))
+# plt.hist(lambda_estimates)
+# plt.xlabel("Lambda estimate")
+# plt.ylabel("Frequency")
+# plt.title('Distribution of lambda estimates')
+# plt.show()
 
 
 

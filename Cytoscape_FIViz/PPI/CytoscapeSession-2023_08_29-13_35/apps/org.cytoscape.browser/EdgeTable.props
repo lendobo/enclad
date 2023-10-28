@@ -1,0 +1,30 @@
+protein_indeces.txt default edge,0,SUID,true
+protein_indeces.txt default edge,1,shared name,true
+protein_indeces.txt default edge,2,selected,true
+protein_indeces.txt default edge,3,shared interaction,true
+protein_indeces.txt default edge,4,name,true
+protein_indeces.txt default edge,5,interaction,true
+protein_indeces.txt default edge,6,EDGE_TYPE,true
+protein_indeces.txt default edge,7,FI Annotation,true
+protein_indeces.txt default edge,8,FI Direction,true
+protein_indeces.txt default edge,9,FI Score,true
+protein_indeces.txt(1) default edge,0,SUID,true
+protein_indeces.txt(1) default edge,1,shared name,true
+protein_indeces.txt(1) default edge,2,selected,true
+protein_indeces.txt(1) default edge,3,shared interaction,true
+protein_indeces.txt(1) default edge,4,name,true
+protein_indeces.txt(1) default edge,5,interaction,true
+protein_indeces.txt(1) default edge,6,EDGE_TYPE,true
+protein_indeces.txt(1) default edge,7,FI Annotation,true
+protein_indeces.txt(1) default edge,8,FI Direction,true
+protein_indeces.txt(1) default edge,9,FI Score,true
+protein_indeces.txt(2) default edge,0,SUID,true
+protein_indeces.txt(2) default edge,1,shared name,true
+protein_indeces.txt(2) default edge,2,selected,true
+protein_indeces.txt(2) default edge,3,shared interaction,true
+protein_indeces.txt(2) default edge,4,name,true
+protein_indeces.txt(2) default edge,5,interaction,true
+protein_indeces.txt(2) default edge,6,EDGE_TYPE,true
+protein_indeces.txt(2) default edge,7,FI Annotation,true
+protein_indeces.txt(2) default edge,8,FI Direction,true
+protein_indeces.txt(2) default edge,9,FI Score,true
