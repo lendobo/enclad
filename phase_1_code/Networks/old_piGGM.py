@@ -20,6 +20,7 @@ import pickle
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 import time
+import os
 
 # from piGGM.py import optimize_graph, evaluate_reconstruction
 
@@ -453,11 +454,6 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
     return opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc, lambda_np
 
 
-def parallel_synthetic_run(params):
-    p, (n, b, Q), lambda_range = params
-    return synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
-
-
 def synthetic_sweep(p_range=[10], n_range=[60], b_values=None, Q_values=[50], 
                            lambda_ranges=[np.linspace(0.01, 0.05, 20)]):
     
@@ -477,12 +473,12 @@ def synthetic_sweep(p_range=[10], n_range=[60], b_values=None, Q_values=[50],
     # Create a tqdm progress bar
     progress_bar = tqdm(total=len(param_combinations), desc="Processing", ncols=100)
 
-    # Use ProcessPoolExecutor for parallel processing
-    with ProcessPoolExecutor() as executor:
-        futures = {executor.submit(parallel_synthetic_run, param): param for param in param_combinations}
-        for future in as_completed(futures):
-            progress_bar.update(1)
-            results.append(future.result())
+    # Loop through parameter combinations and directly call the function
+    for param in param_combinations:
+        p, (n, b, Q), lambda_range = param
+        result = synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
+        results.append(result)
+        progress_bar.update(1)
 
     progress_bar.close()
 
@@ -496,7 +492,14 @@ def synthetic_sweep(p_range=[10], n_range=[60], b_values=None, Q_values=[50],
             'success_counts': result[3],
             'success_perc': result[4],
             'lambda_np': result[5]
-        }
+        }l_lo = 0 # 0.04050632911392405
+l_hi = 0.4 # 0.1569620253164557
+lambda_range = np.linspace(l_lo, l_hi, 80)
+
+p_range = 300
+n = [500, 250, 100, 50]
+b_values = [int(0.7 * sampsize) for sampsize in n]   # [int(0.7 * n), int(0.75 * n), int(0.8 * n)]
+Q_values = [800, 600, 450, 250]
     
     return results_dict
 
