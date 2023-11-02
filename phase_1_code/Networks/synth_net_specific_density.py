@@ -5,8 +5,6 @@ import numpy as np
 # Desired density
 desired_densities = [0.02, 0.03, 0.04]
 
-# An initial guess for the number of nodes
-N_guess = 300
 
 # Desired node sizes
 node_sizes = [100, 300, 500, 1000]

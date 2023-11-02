@@ -21,6 +21,7 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 import time
 import os
+import argparse
 
 # from piGGM.py import optimize_graph, evaluate_reconstruction
 
@@ -120,8 +121,8 @@ class SubsampleOptimizer:
             raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
 
         # Sub-sampling n without replacement
-        # np.random.seed(42)
-        # random.seed(42)
+        np.random.seed(42)
+        random.seed(42)
         generated_combinations = set()
 
         while len(generated_combinations) < Q:
@@ -144,7 +145,7 @@ class SubsampleOptimizer:
         progress_bar = tqdm(total=len(params_list), desc="Processing", ncols=100)
 
         # Feeding parameters to parallel processing
-        with ProcessPoolExecutor(max_workers=16) as executor:
+        with ProcessPoolExecutor() as executor:
             # Using executor.submit to get futures and as_completed to retrieve results in the order they complete
             futures = {executor.submit(self.optimize_for_q_and_j, param): param for param in params_list}
             for future in as_completed(futures):
@@ -277,7 +278,7 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
 
     ######### PRIOR DISTRIBUTION #####################################################################
     #psi (=prior mean)
-    psis = wp_tr_weights * Q                   # expansion to multipe prior sources: add a third dimension of length r, corresponding to the number of prior sources
+    psis = wp_tr_weights * Q # expansion to multipe prior sources: add a third dimension of length r, corresponding to the number of prior sources
     # tau_tr (=SD of the prior distribution)
     tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr_idx) # NOTE: eq. 12 alternatively, divide by np.sum(np.abs(wp_tr))
 
@@ -391,22 +392,31 @@ def evaluate_reconstruction(adj_matrix, opt_precision_mat, threshold=1e-5):
 
 
 
-def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 20)):
+def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0.01, 0.05, 80)):
     # # Set random seed for reproducibility
     # np.random.seed(42)
 
-    # choose density parameter randomly from 3, 5, 6 to create networks of varying density
-    m = random.choice([3,5,6])
+    if p == 100:
+        m = random.choice([1,2,2])
+    elif p == 300:
+        m = random.choice([3,5,6])
+    elif p == 500:
+        m = random.choice([5,8,10])
+    elif p == 1000:
+        m = random.choice([10,15,20])
+    else:
+        m = 5
 
     # TRUE NETWORK
-    G = nx.barabasi_albert_graph(p, m)
+    G = nx.barabasi_albert_graph(p, m, seed=42)
     adj_matrix = nx.to_numpy_array(G)
     
     # PRECISION MATRIX
     precision_matrix = -0.5 * adj_matrix
 
     # Add to the diagonal to ensure positive definiteness
-    # Set each diagonal entry to be larger than the sum of the absolute values of the off-diagonal elements in the corresponding row
+    # Set each diagonal entry to be larger than the sum of the absolute values of the off-diagonal elements
+    # in the corresponding row
     diagonal_values = 2 * np.abs(precision_matrix).sum(axis=1)
     np.fill_diagonal(precision_matrix, diagonal_values)
 
@@ -434,7 +444,10 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
                 prior_matrix[j, i] = 0.9
     np.fill_diagonal(prior_matrix, 0)
 
+    prior_matrix = np.zeros((p, p))
+
     # DATA MATRIX
+    np.random.seed(42)
     data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
     # print('data below \n')
     # print(data)
@@ -442,9 +455,11 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
     # # MODEL RUN
     optimizer = SubsampleOptimizer(data, prior_matrix)
     edge_counts_all, success_counts, success_perc = optimizer.subsample_optimiser(b, Q, lambda_range)
+
     lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
     # # Estimate true p lambda_wp
-    # lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix)
+    # lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, 
+    # prior_matrix)
     
     # print(lambda_np)
     # lambda_np = 0.078 # 0.07157894736842105
@@ -453,179 +468,75 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
 
     return opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc, lambda_np
 
+def get_lambda_chunk(lambda_range, total_nodes, node_index):
+    """Return a chunk of lambda values based on the node index."""
+    chunk_size = len(lambda_range) // total_nodes
+    start_idx = node_index * chunk_size
+    end_idx = start_idx + chunk_size
 
-def synthetic_sweep(p_range=[10], n_range=[60], b_values=None, Q_values=[50], 
-                           lambda_ranges=[np.linspace(0.01, 0.05, 20)]):
+    return lambda_range[start_idx:end_idx]
+
+
+def main(node_index=0, total_nodes=5, use_full_lambda_range=False):
+    #######################
+    p = 300
+    n = 500
+    b = int(0.75 * n)
+    Q = 800
     
-    # Ensure the input parameters are in list format
-    if not isinstance(p_range, list): p_range = [p_range]
-    if not isinstance(n_range, list): n_range = [n_range]
-    if not isinstance(Q_values, list): Q_values = [Q_values]
-    if not isinstance(lambda_ranges, list): lambda_ranges = [lambda_ranges]
+    l_lo = 0 # 0.04050632911392405
+    l_hi = 0.4 # 0.1569620253164557
+    lambda_range = np.linspace(l_lo, l_hi, 40)
+    #######################
 
-    results_dict = {}
-
-    # Create a list of parameter combinations
-    param_combinations = list(product(p_range, zip(n_range, b_values, Q_values), lambda_ranges))
-    
-    results = []
-
-    # Create a tqdm progress bar
-    progress_bar = tqdm(total=len(param_combinations), desc="Processing", ncols=100)
-
-    # Loop through parameter combinations and directly call the function
-    for param in param_combinations:
-        p, (n, b, Q), lambda_range = param
-        result = synthetic_run(p=p, n=n, b=b, Q=Q, lambda_range=lambda_range)
-        results.append(result)
-        progress_bar.update(1)
-
-    progress_bar.close()
-
-    # Adjust the key generation for results_dict since we have zipped n, b, and Q
-    for params, result in zip(param_combinations, results):
-        key = tuple(list(params[:-1]) + [str(params[-1])])
-        results_dict[key] = {
-            'opt_precision_mat': result[0],
-            'adj_matrix': result[1],
-            'edge_counts_all': result[2],
-            'success_counts': result[3],
-            'success_perc': result[4],
-            'lambda_np': result[5]
-        }l_lo = 0 # 0.04050632911392405
-l_hi = 0.4 # 0.1569620253164557
-lambda_range = np.linspace(l_lo, l_hi, 80)
-
-p_range = 300
-n = [500, 250, 100, 50]
-b_values = [int(0.7 * sampsize) for sampsize in n]   # [int(0.7 * n), int(0.75 * n), int(0.8 * n)]
-Q_values = [800, 600, 450, 250]
-    
-    return results_dict
+    if not use_full_lambda_range:
+        # Get chunk of lambda values based on the node index
+        lambda_range = get_lambda_chunk(lambda_range, total_nodes, node_index)
 
 
-# Some experiments
-# 
+    # run synthetic_run() for these values
 
-l_lo = 0 # 0.04050632911392405
-l_hi = 0.4 # 0.1569620253164557
-lambda_range = np.linspace(l_lo, l_hi, 80)
-
-p_range = 300
-n = [500, 250, 100, 50]
-b_values = [int(0.7 * sampsize) for sampsize in n]   # [int(0.7 * n), int(0.75 * n), int(0.8 * n)]
-Q_values = [800, 600, 450, 250]
-
-# capture start time ````````````````````````````
-start = time.time()
-
-# F1_per_run = []
-for i in range(20):
-    # results_single = synthetic_sweep(p_range=p_range, n_range = n, b_values=b_values, Q_values=Q_values, lambda_ranges=lambda_range)
-    results_combos = synthetic_sweep(p_range=p_range, n_range = n, b_values=b_values, Q_values=Q_values, lambda_ranges=lambda_range)
-
-    # # Get the lambda estimate
-    # lambda_estimate = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['lambda_np']
-    # lambda_estimates.append(lambda_estimate)
-    # print(lambda_estimate)
-
-    # edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
-
-    # success_counts = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_counts']
-    # success_perc = np.sum(results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['success_perc']) / len(lambda_range)
-
-    # # Element-wise multiplication and sum along the first two dimensions
-    # edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range))]
-
-    # opt_precision_mat = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['opt_precision_mat']
-    # adj_matrix = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['adj_matrix']
-
-    # # evaluate metrics  
-    # metrics = evaluate_reconstruction(adj_matrix, opt_precision_mat)
-    
-    # write outputs to file
-    with open(f'out/results_{p_range,n,b_values,Q_values,len(lambda_range)}__{i}.pkl', 'wb') as f:
-        pickle.dump(results_combos, f)
-
-    # # write metrics to file
-    # with open(f'phase_1_code/Networks/out/metrics_{p_range,n,b_values,Q_values,len(lambda_range)}__{i}.txt', 'w') as f:
-    #     f.write(f"{metrics}")
-    
-
-# capture end time
-end = time.time()
-# calculate the total time it took to complete the work
-duration = end - start
-
-# save duration to a file
-with open(f'out/duration_{p_range,n,b_values,Q_values,len(lambda_range)}.txt', 'w') as f:
-    f.write(f"{duration} seconds")
+    start_time = time.time()
+    results = synthetic_run(p, n, b, Q, lambda_range)
+    edge_counts_all = results[2]
 
 
-# # Set the axis labels and title
-# ax.set_xlabel("Penalty value")
-# ax.set_ylabel("Number of edges")
-# ax.set_title('Comparison of different runs')
+    # save results to pickle file
+    with open(f'net_results/results_{p,n,Q}_lamrange{lambda_range[0],lambda_range[1]}.pkl', 'wb') as f:
+        pickle.dump(results, f)
 
-# # Display the legend
-# ax.legend()
+    end_time = time.time()
+    duration = end_time - start_time
 
-# # Display the final figure
-# plt.show()
+    return edge_counts_all,p,n,Q, lambda_range
 
-# # save lambda_estimates to pkl file
-# with open(f'phase_1_code/Networks/out/lambda_estimates_{p_range,n,b_values,Q_values,len(lambda_range)}.pkl', 'wb') as f:
-#     pickle.dump(lambda_estimates, f)
+if __name__ == "__main__":
+    # Check if running in SLURM environment
+    if "SLURM_ARRAY_TASK_ID" in os.environ:
+        node_index = int(os.environ["SLURM_ARRAY_TASK_ID"])
+        edges,p,n,Q, lambda_range = main(node_index=node_index, total_nodes=4)
 
-# # plot a distribution of lambda estimates
-# plt.figure(figsize=(10, 6))
-# plt.hist(lambda_estimates)
-# plt.xlabel("Lambda estimate")
-# plt.ylabel("Frequency")
-# plt.title('Distribution of lambda estimates')
-# plt.show()
+        # Get TMPDIR from environment variables
+        tmpdir = os.environ.get("TMPDIR", "/tmp")  # Default to "/tmp" if TMPDIR is not set
+        output_dir = os.path.join(tmpdir, "net_results")
 
+        # Create the directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
+        # Now save your results to this directory
+        output_file = os.path.join(output_dir, f'edge_counts_all{p,n,Q}_lams{lambda_range[0],lambda_range[1]}_n{node_index}.pkl')
+        with open(output_file, 'wb') as f:
+            pickle.dump(edges, f)
 
+    else:
+        # If no SLURM environment, run for entire lambda range
+        main(use_full_lambda_range=True)
 
+        # save results to pickle file
+        with open(f'net_results/edge_counts_all_{p,n,Q}_fullrange.pkl', 'wb') as f:
+            pickle.dump(edge_counts_all, f)
 
-# p = 300
-# n = 500
-# b = int(n / 2)
-# Q = 50
-# lambda_granularity = 20
-# lambda_range_np = np.linspace(0.01, 0.4, lambda_granularity)
-# lambda_range_wp = np.linspace(0.01, 0.4, lambda_granularity)
-
-# lambda_np, lambda_wp, opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc = synthetic_run(0,0, p, n, b, Q, lambda_range_np)
-
-# # save edge_coutns_all to pkl file
-# with open(f'out/edge_counts_all.pkl{p,n,b,Q,len(lambda_range_np)}', 'wb') as f:
-#     pickle.dump(edge_counts_all, f)
-# # save success_counts to pkl file
-# with open(f'out/success_counts.pkl{p,n,b,Q,len(lambda_range_np)}', 'wb') as f:
-#     pickle.dump(success_counts, f)
-
-# # open edge_counts_all from pkl file
-# with open(f'out/edge_counts_all.pkl{p,n,b,Q,len(lambda_range_np)}', 'rb') as f:
-#     edge_counts_all = pickle.load(f)
-# # open edge_counts_all from pkl file
-# with open(f'out/success_counts.pkl{p,n,b,Q,len(lambda_range_np)}', 'rb') as f:
-#     success_counts = pickle.load(f)
-
-# print(success_perc)
-# # get the right dimensions for edge_counts_all for plotting
-# # mask = np.triu(np.ones((p, p, len(lambda_range_np))), k=1)
-# # Element-wise multiplication and sum along the first two dimensions
-# edges_per_lambda = [np.sum(np.triu(edge_counts_all[:,:,i], k=1)) / success_counts[i] if success_counts[i] != 0 else 0 for i in range(len(lambda_range_np))]
-
-# # plot the fitted curves to the left and right of the knee point
-# plt.figure(figsize=(10, 6))
-# plt.scatter(lambda_range_np, edges_per_lambda)
-# # plt.plot(penalty_values[:knee_point_index], linear_func(penalty_values[:knee_point_index], *params_left), color="red")
-# # plt.plot(penalty_values[knee_point_index+1:], linear_func(penalty_values[knee_point_index+1:], *params_right), color="green")
-# plt.xlabel("Penalty value")
-# plt.ylabel("Number of edges")
-# plt.show()
-
-    
+        print(f'Time taken: {duration} seconds')
+        with open(f'net_results/duration_{p,n,Q}_lamnum{node_index}.pkl', 'wb') as f:
+            pickle.dump(duration, f)

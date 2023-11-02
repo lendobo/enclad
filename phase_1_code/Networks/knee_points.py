@@ -50,7 +50,7 @@ Q_values = 50 # int((1 / 3) * n)
 
 # edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
 
-filename_edges = 'out/edge_counts_all_(100, 300, 250, 50, 80).pkl'
+filename_edges = 'net_results/edge_counts_all_(10, 500, 100).pkl'
 with open(filename_edges, 'rb') as f:
     edge_counts_all = pickle.load(f)
 
