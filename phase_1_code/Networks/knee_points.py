@@ -36,7 +36,7 @@ def find_single_knee_point(lambdas, edge_counts_all):
 
 #### Main code ####
 
-lambda_range = np.linspace(0, 0.4, 80)
+lambda_range = np.linspace(0, 0.4, 20)
 
 p_range = 100
 n = 300
@@ -50,7 +50,7 @@ Q_values = 50 # int((1 / 3) * n)
 
 # edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
 
-filename_edges = 'net_results/edge_counts_all_(10, 500, 100).pkl'
+filename_edges = 'edge_counts_all_top100_lambda_(0.03, 0.38)_Q300_b84cms2.pkl'
 with open(filename_edges, 'rb') as f:
     edge_counts_all = pickle.load(f)
 
@@ -96,12 +96,12 @@ params_right_r, _ = curve_fit(linear_func, right_data_r, edge_counts[right_knee_
 # plot the fitted curves to the left and right of the knee point
 plt.figure(figsize=(10, 6))
 plt.scatter(lambda_range, edge_counts, label="Data")
-plt.plot(lambda_range[:knee_point_index], linear_func(lambda_range[:knee_point_index], *params_left), color="green", label="Left Fit")
-plt.plot(lambda_range[knee_point_index+1:], linear_func(lambda_range[knee_point_index+1:], *params_right), color="green", label="Right Fit")
-plt.plot(lambda_range[:left_knee_point_index+1], linear_func(lambda_range[:left_knee_point_index+1], *params_left_l), color="orange", label="Left, L")
-plt.plot(lambda_range[left_knee_point_index+1:], linear_func(lambda_range[left_knee_point_index+1:], *params_right_l), color="orange", label="right, L")
-plt.plot(lambda_range[:right_knee_point_index+1], linear_func(lambda_range[:right_knee_point_index+1], *params_left_r), color="purple", label="Left, R")
-plt.plot(lambda_range[right_knee_point_index+1:], linear_func(lambda_range[right_knee_point_index+1:], *params_right_r), color="purple", label="right, R")
+plt.plot(lambda_range[:knee_point_index], linear_func(lambda_range[:knee_point_index], *params_left), color="green", label="Left Fit", alpha=0.4)
+plt.plot(lambda_range[knee_point_index+1:], linear_func(lambda_range[knee_point_index+1:], *params_right), color="green", label="Right Fit", alpha=0.4)
+plt.plot(lambda_range[:left_knee_point_index+1], linear_func(lambda_range[:left_knee_point_index+1], *params_left_l), color="orange", label="Left, L", alpha=0.4)
+plt.plot(lambda_range[left_knee_point_index+1:], linear_func(lambda_range[left_knee_point_index+1:], *params_right_l), color="orange", label="right, L", alpha=0.4)
+plt.plot(lambda_range[:right_knee_point_index+1], linear_func(lambda_range[:right_knee_point_index+1], *params_left_r), color="purple", label="Left, R", alpha=0.4)
+plt.plot(lambda_range[right_knee_point_index+1:], linear_func(lambda_range[right_knee_point_index+1:], *params_right_r), color="purple", label="right, R", alpha=0.4)
 plt.axvline(x=lambda_range[knee_point_index], color="green", linestyle="--", label="Knee Point")
 plt.axvline(x=lambda_range[left_knee_point_index], color="orange", linestyle="--", label="Left Knee Point")
 plt.axvline(x=lambda_range[right_knee_point_index], color="purple", linestyle="--", label="Right Knee Point")

@@ -12,18 +12,32 @@ from scipy.linalg import block_diag, eigh, inv
 from itertools import combinations
 from itertools import product
 from sklearn.covariance import empirical_covariance, GraphicalLasso
+import rpy2.robjects as ro
+from rpy2.robjects import numpy2ri
+from rpy2.robjects.packages import importr
 from concurrent.futures import ProcessPoolExecutor
+from mpi4py import MPI
 from tqdm import tqdm
 from concurrent.futures import as_completed
 import sys
 import pickle
 import warnings
 from sklearn.exceptions import ConvergenceWarning
-import time
 import os
 import argparse
 
-# from piGGM.py import optimize_graph, evaluate_reconstruction
+
+# Activate the automatic conversion of numpy objects to R objects
+numpy2ri.activate()
+
+# Define the R function for weighted graphical lasso
+ro.r('''
+weighted_glasso <- function(data, penalty_matrix, nobs) {
+  library(glasso)
+  result <- glasso(s=as.matrix(data), rho=penalty_matrix, nobs=nobs)
+  return(list(precision_matrix=result$wi, edge_counts=result$wi != 0))
+}
+''')
 
 class SubsampleOptimizer:
     """
@@ -80,19 +94,28 @@ class SubsampleOptimizer:
         sub_sample = data[np.array(selected_sub_idx), :]
         S = empirical_covariance(sub_sample)
 
-        # Graphical Lasso for precision matrix inference via coordinate descent
-        model = GraphicalLasso(alpha=lambdax, mode='cd', max_iter=100)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("error", category=UserWarning)  # Convert UserWarning to errors
-            warnings.filterwarnings("error", category=ConvergenceWarning)  # Convert ConvergenceWarning to errors
-            try:
-                model.fit(sub_sample)
-                precision_matrix = model.precision_
+        # Number of observations
+        nobs = sub_sample.shape[0]
+
+        # Penalty matrix (adapt this to your actual penalty matrix logic)
+        penalty_matrix = lambdax * np.ones((p,p)) # prior_matrix
+
+        # print(f'P: {p}')
+
+        # Call the R function from Python
+        weighted_glasso = ro.globalenv['weighted_glasso']
+        try:
+            result = weighted_glasso(S, penalty_matrix, nobs)
+            if 'error' in result.names:
+                print(f"R Error or Warning: {result.rx('message')[0]}")
+                return selected_sub_idx, lambdax, np.zeros((p,p)), np.zeros((p,p)), 0
+            else:
+                precision_matrix = np.array(result.rx('precision_matrix')[0])
                 edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
                 return selected_sub_idx, lambdax, edge_counts, precision_matrix, 1
-            except (UserWarning, ConvergenceWarning) as e:
-                print(f"Warning caught: {str(e)}")
-                return selected_sub_idx, lambdax, np.zeros((p,p)), precision_matrix, 0
+        except RRuntimeError as e:
+            print(f"RRuntimeError: {e}")
+            return selected_sub_idx, lambdax, np.zeros((p,p)), np.zeros((p,p)), 0
 
 
     def subsample_optimiser(self, b, Q, lambda_range):
@@ -100,7 +123,7 @@ class SubsampleOptimizer:
         Optimizes the objective function for all sub-samples and lambda values.
         Parameters
         ----------
-        b : int
+        b : intpip 
             The size of the sub-samples.
         Q : int
             The number of sub-samples.
@@ -203,6 +226,10 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
     # Precompute the N_k_matrix and p_k_matrix, as they do not depend on lambda
     N_k_matrix = np.sum(edge_counts_all, axis=2)
+
+    assert Q > 0, "before call: Q must be greater than zero"
+    assert J > 0, "before call: J must be greater than zero"
+
     p_k_matrix = N_k_matrix / (Q * J)
 
     # Compute theta_lj_matrix, f_k_lj_matrix, and g_l_matrix for all lambdas simultaneously
@@ -456,33 +483,45 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
     optimizer = SubsampleOptimizer(data, prior_matrix)
     edge_counts_all, success_counts, success_perc = optimizer.subsample_optimiser(b, Q, lambda_range)
 
-    lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
-    # # Estimate true p lambda_wp
-    # lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, 
-    # prior_matrix)
-    
-    # print(lambda_np)
-    # lambda_np = 0.078 # 0.07157894736842105
+    # lambda_np, p_k_matrix, _ = estimate_lambda_np(edge_counts_all, Q, lambda_range)
+    lambda_np = 0.078 
+    p_k_matrix = np.zeros((p,p))
 
     opt_precision_mat = optimize_graph(data, prior_matrix, lambda_np)
 
+    # # Estimate true p lambda_wp
+    # lambda_wp, tau_tr, mus = estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, 
+    # prior_matrix)
+
+
     return opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc, lambda_np
 
-def get_lambda_chunk(lambda_range, total_nodes, node_index):
+def get_lambda_chunk(lambda_range, total_nodes, rank):
     """Return a chunk of lambda values based on the node index."""
-    chunk_size = len(lambda_range) // total_nodes
-    start_idx = node_index * chunk_size
-    end_idx = start_idx + chunk_size
+    
+    split_point = int(0.08 * len(lambda_range) / 0.4)  # find the index where 0.08 lies in lambda_range
+    
+    # Determine how many nodes will process the longer-running lambdas
+    longer_lambda_nodes = 2 * total_nodes // 5
+    if rank < longer_lambda_nodes:
+        chunk_size = split_point // longer_lambda_nodes
+        start_idx = rank * chunk_size
+        end_idx = start_idx + chunk_size
+    else:
+        chunk_size = (len(lambda_range) - split_point) // (total_nodes - longer_lambda_nodes)
+        start_idx = split_point + (rank - longer_lambda_nodes) * chunk_size
+        end_idx = start_idx + chunk_size
 
     return lambda_range[start_idx:end_idx]
 
 
-def main(node_index=0, total_nodes=5, use_full_lambda_range=False):
+
+def main(rank, size, use_full_lambda_range=False):
     #######################
-    p = 300
+    p = 100
     n = 500
     b = int(0.75 * n)
-    Q = 800
+    Q = 100
     
     l_lo = 0 # 0.04050632911392405
     l_hi = 0.4 # 0.1569620253164557
@@ -490,53 +529,53 @@ def main(node_index=0, total_nodes=5, use_full_lambda_range=False):
     #######################
 
     if not use_full_lambda_range:
+        total_nodes = size
         # Get chunk of lambda values based on the node index
-        lambda_range = get_lambda_chunk(lambda_range, total_nodes, node_index)
+        lambda_range = get_lambda_chunk(lambda_range, total_nodes, rank)
 
 
     # run synthetic_run() for these values
-
-    start_time = time.time()
     results = synthetic_run(p, n, b, Q, lambda_range)
     edge_counts_all = results[2]
 
 
-    # save results to pickle file
-    with open(f'net_results/results_{p,n,Q}_lamrange{lambda_range[0],lambda_range[1]}.pkl', 'wb') as f:
-        pickle.dump(results, f)
+    # When saving the results, handle the case where lambda_range might be empty
+    try:
+        lambda_min = lambda_range[0] if lambda_range.size > 0 else 'none'
+        lambda_max = lambda_range[-1] if lambda_range.size > 0 else 'none'
+        filename = f'net_results/results_{p,n,Q}_lamrange{lambda_min,lambda_max}.pkl'
+        with open(filename, 'wb') as f:
+            pickle.dump(results, f)
+    except Exception as e:
+        print(f"Error saving results: {e}")
 
-    end_time = time.time()
-    duration = end_time - start_time
-
-    return edge_counts_all,p,n,Q, lambda_range
+    return edge_counts_all,p,n,Q,lambda_range
 
 if __name__ == "__main__":
+    # Initialize MPI communicator, rank, and size
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
     # Check if running in SLURM environment
-    if "SLURM_ARRAY_TASK_ID" in os.environ:
-        node_index = int(os.environ["SLURM_ARRAY_TASK_ID"])
-        edges,p,n,Q, lambda_range = main(node_index=node_index, total_nodes=4)
+    if "SLURM_JOB_ID" in os.environ:
+        edges,p,n,Q, lambda_range = main(rank=rank, size=size)
 
-        # Get TMPDIR from environment variables
-        tmpdir = os.environ.get("TMPDIR", "/tmp")  # Default to "/tmp" if TMPDIR is not set
-        output_dir = os.path.join(tmpdir, "net_results")
+        try:
+            all_edges = comm.gather(edges, root=0)
+            if rank == 0:
+                # Save combined results
+                with open(f'net_results/combined_edge_counts_all.pkl', 'wb') as f:
+                    pickle.dump(all_edges, f)
 
-        # Create the directory if it doesn't exist
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        # Now save your results to this directory
-        output_file = os.path.join(output_dir, f'edge_counts_all{p,n,Q}_lams{lambda_range[0],lambda_range[1]}_n{node_index}.pkl')
-        with open(output_file, 'wb') as f:
-            pickle.dump(edges, f)
+                # Transfer results to $HOME
+                os.system(f"cp -r net_results/ $HOME/")
+        except Exception as e:
+            print(f"Error during MPI communication or file operations: {e}")
 
     else:
         # If no SLURM environment, run for entire lambda range
-        main(use_full_lambda_range=True)
+        edges, p, n, Q, lambda_range = main(rank=0, size=0,use_full_lambda_range=True)
 
         # save results to pickle file
         with open(f'net_results/edge_counts_all_{p,n,Q}_fullrange.pkl', 'wb') as f:
-            pickle.dump(edge_counts_all, f)
-
-        print(f'Time taken: {duration} seconds')
-        with open(f'net_results/duration_{p,n,Q}_lamnum{node_index}.pkl', 'wb') as f:
-            pickle.dump(duration, f)
+            pickle.dump(edges, f)

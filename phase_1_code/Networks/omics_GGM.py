@@ -13,6 +13,9 @@ from scipy.linalg import block_diag, eigh, inv
 from itertools import combinations
 from itertools import product
 from sklearn.covariance import empirical_covariance, GraphicalLasso
+import rpy2.robjects as ro
+from rpy2.robjects import numpy2ri
+from rpy2.robjects.packages import importr
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 from concurrent.futures import as_completed
@@ -23,7 +26,17 @@ from sklearn.exceptions import ConvergenceWarning
 import time
 import os
 
-# from piGGM.py import optimize_graph, evaluate_reconstruction
+# Activate the automatic conversion of numpy objects to R objects
+numpy2ri.activate()
+
+# Define the R function for weighted graphical lasso
+ro.r('''
+weighted_glasso <- function(data, penalty_matrix, nobs) {
+  library(glasso)
+  result <- glasso(s=as.matrix(data), rho=penalty_matrix, nobs=nobs)
+  return(list(precision_matrix=result$wi, edge_counts=result$wi != 0))
+}
+''')
 
 class SubsampleOptimizer:
     """
@@ -80,19 +93,28 @@ class SubsampleOptimizer:
         sub_sample = data[np.array(selected_sub_idx), :]
         S = empirical_covariance(sub_sample)
 
-        # Graphical Lasso for precision matrix inference via coordinate descent
-        model = GraphicalLasso(alpha=lambdax, mode='cd', max_iter=100, tol=1e-2)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("error", category=UserWarning)  # Convert UserWarning to errors
-            warnings.filterwarnings("error", category=ConvergenceWarning)  # Convert ConvergenceWarning to errors
-            try:
-                model.fit(sub_sample)
-                precision_matrix = model.precision_
+        # Number of observations
+        nobs = sub_sample.shape[0]
+
+        # Penalty matrix (adapt this to your actual penalty matrix logic)
+        penalty_matrix = lambdax * np.ones((p,p)) # prior_matrix
+
+        # print(f'P: {p}')
+
+        # Call the R function from Python
+        weighted_glasso = ro.globalenv['weighted_glasso']
+        try:
+            result = weighted_glasso(S, penalty_matrix, nobs)
+            if 'error' in result.names:
+                print(f"R Error or Warning: {result.rx('message')[0]}")
+                return selected_sub_idx, lambdax, np.zeros((p,p)), np.zeros((p,p)), 0
+            else:
+                precision_matrix = np.array(result.rx('precision_matrix')[0])
                 edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
                 return selected_sub_idx, lambdax, edge_counts, precision_matrix, 1
-            except (UserWarning, ConvergenceWarning) as e:
-                print(f"Warning caught: {str(e)}")
-                return selected_sub_idx, lambdax, np.zeros((p,p)), precision_matrix, 0
+        except RRuntimeError as e:
+            print(f"RRuntimeError: {e}")
+            return selected_sub_idx, lambdax, np.zeros((p,p)), np.zeros((p,p)), 0
 
 
     def subsample_optimiser(self, b, Q, lambda_range):
@@ -380,8 +402,8 @@ prior_matrix = np.zeros((network_size, network_size))
 
 
 # Parameters
-l_lo = 0.03 # 0.04050632911392405
-l_hi = 0.38 # 0.1569620253164557
+l_lo = 0 # 0.04050632911392405
+l_hi = 0.5 # 0.1569620253164557
 lambda_range = np.linspace(l_lo, l_hi, 20)
 
 n = cms2_array.shape[0]

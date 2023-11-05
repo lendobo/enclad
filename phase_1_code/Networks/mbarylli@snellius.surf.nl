@@ -13,13 +13,13 @@ from itertools import combinations
 from itertools import product
 from sklearn.covariance import empirical_covariance, GraphicalLasso
 from concurrent.futures import ProcessPoolExecutor
+from mpi4py import MPI
 from tqdm import tqdm
 from concurrent.futures import as_completed
 import sys
 import pickle
 import warnings
 from sklearn.exceptions import ConvergenceWarning
-import time
 import os
 import argparse
 
@@ -468,25 +468,36 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
 
     return opt_precision_mat, adj_matrix, edge_counts_all, success_counts, success_perc, lambda_np
 
-def get_lambda_chunk(lambda_range, total_nodes, node_index):
+def get_lambda_chunk(lambda_range, total_nodes, rank):
     """Return a chunk of lambda values based on the node index."""
-    chunk_size = len(lambda_range) // total_nodes
-    start_idx = node_index * chunk_size
-    end_idx = start_idx + chunk_size
+    
+    split_point = int(0.08 * len(lambda_range) / 0.4)  # find the index where 0.08 lies in lambda_range
+    
+    # Determine how many nodes will process the longer-running lambdas
+    longer_lambda_nodes = 2 * total_nodes // 5
+    if rank < longer_lambda_nodes:
+        chunk_size = split_point // longer_lambda_nodes
+        start_idx = rank * chunk_size
+        end_idx = start_idx + chunk_size
+    else:
+        chunk_size = (len(lambda_range) - split_point) // (total_nodes - longer_lambda_nodes)
+        start_idx = split_point + (rank - longer_lambda_nodes) * chunk_size
+        end_idx = start_idx + chunk_size
 
     return lambda_range[start_idx:end_idx]
 
 
+
 def main(node_index=0, total_nodes=5, use_full_lambda_range=False):
     #######################
-    p = 300
+    p = 10
     n = 500
     b = int(0.75 * n)
-    Q = 800
+    Q = 100
     
     l_lo = 0 # 0.04050632911392405
-    l_hi = 0.08 # 0.1569620253164557
-    lambda_range = np.linspace(l_lo, l_hi, 8)
+    l_hi = 0.4 # 0.1569620253164557
+    lambda_range = np.linspace(l_lo, l_hi, 40)
     #######################
 
     if not use_full_lambda_range:
@@ -495,8 +506,6 @@ def main(node_index=0, total_nodes=5, use_full_lambda_range=False):
 
 
     # run synthetic_run() for these values
-
-    start_time = time.time()
     results = synthetic_run(p, n, b, Q, lambda_range)
     edge_counts_all = results[2]
 
@@ -505,38 +514,32 @@ def main(node_index=0, total_nodes=5, use_full_lambda_range=False):
     with open(f'net_results/results_{p,n,Q}_lamrange{lambda_range[0],lambda_range[1]}.pkl', 'wb') as f:
         pickle.dump(results, f)
 
-    end_time = time.time()
-    duration = end_time - start_time
-
-    return edge_counts_all,p,n,Q, lambda_range
+    return edge_counts_all,p,n,Q,lambda_range
 
 if __name__ == "__main__":
+    # Initialize MPI communicator, rank, and size
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
     # Check if running in SLURM environment
-    if "SLURM_ARRAY_TASK_ID" in os.environ:
-        node_index = int(os.environ["SLURM_ARRAY_TASK_ID"])
-        edges,p,n,Q, lambda_range = main(node_index=node_index, total_nodes=4)
+    if "SLURM_JOB_ID" in os.environ:
+        # node_index = int(os.environ["SLURM_ARRAY_TASK_ID"])
+        edges,p,n,Q, lambda_range = main(node_index=rank, total_nodes=4)
 
-        # Get TMPDIR from environment variables
-        tmpdir = os.environ.get("TMPDIR", "/tmp")  # Default to "/tmp" if TMPDIR is not set
-        output_dir = os.path.join(tmpdir, "net_results")
+        all_edges = comm.gather(edges, root=0)
 
-        # Create the directory if it doesn't exist
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if rank == 0:
+            # Save combined results
+            with open(f'net_results/combined_edge_counts_all.pkl', 'wb') as f:
+                pickle.dump(all_edges, f)
 
-        # Now save your results to this directory
-        output_file = os.path.join(output_dir, f'edge_counts_all{p,n,Q}_lams{lambda_range[0],lambda_range[1]}_n{node_index}.pkl')
-        with open(output_file, 'wb') as f:
-            pickle.dump(edges, f)
+            # Transfer results to $HOME
+            os.system(f"cp -r net_results/ $HOME/")
 
     else:
         # If no SLURM environment, run for entire lambda range
-        main(use_full_lambda_range=True)
+        edges, p, n, Q, lambda_range = main(use_full_lambda_range=True)
 
         # save results to pickle file
         with open(f'net_results/edge_counts_all_{p,n,Q}_fullrange.pkl', 'wb') as f:
-            pickle.dump(edge_counts_all, f)
-
-        print(f'Time taken: {duration} seconds')
-        with open(f'net_results/duration_{p,n,Q}_lamnum{node_index}.pkl', 'wb') as f:
-            pickle.dump(duration, f)
+            pickle.dump(edges, f)
