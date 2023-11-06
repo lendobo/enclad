@@ -498,21 +498,22 @@ def synthetic_run(p = 10, n = 500, b = 250, Q = 50, lambda_range = np.linspace(0
 
 def get_lambda_chunk(lambda_range, total_nodes, rank):
     """Return a chunk of lambda values based on the node index."""
-    
-    split_point = int(0.08 * len(lambda_range) / 0.4)  # find the index where 0.08 lies in lambda_range
-    
-    # Determine how many nodes will process the longer-running lambdas
-    longer_lambda_nodes = 2 * total_nodes // 5
-    if rank < longer_lambda_nodes:
-        chunk_size = split_point // longer_lambda_nodes
-        start_idx = rank * chunk_size
-        end_idx = start_idx + chunk_size
-    else:
-        chunk_size = (len(lambda_range) - split_point) // (total_nodes - longer_lambda_nodes)
-        start_idx = split_point + (rank - longer_lambda_nodes) * chunk_size
-        end_idx = start_idx + chunk_size
+    total_lambdas = len(lambda_range)
+    lambdas_per_node = total_lambdas // total_nodes
+    remainder = total_lambdas % total_nodes
 
-    return lambda_range[start_idx:end_idx]
+    # Assign an extra lambda value to nodes with a rank less than the remainder
+    if rank < remainder:
+        start_idx = rank * (lambdas_per_node + 1)
+        end_idx = start_idx + lambdas_per_node + 1
+    else:
+        start_idx = rank * lambdas_per_node + remainder
+        end_idx = start_idx + lambdas_per_node
+
+    # Ensure we don't go out of bounds
+    end_idx = min(end_idx, total_lambdas)
+
+    return lambda_range[start_idx:end_idx], start_idx, end_idx
 
 
 
@@ -525,31 +526,33 @@ def main(rank, size, use_full_lambda_range=False):
     
     l_lo = 0 # 0.04050632911392405
     l_hi = 0.4 # 0.1569620253164557
-    lambda_range = np.linspace(l_lo, l_hi, 40)
+    lambda_range = np.linspace(l_lo, l_hi, 80)
     #######################
 
     if not use_full_lambda_range:
-        total_nodes = size
         # Get chunk of lambda values based on the node index
-        lambda_range = get_lambda_chunk(lambda_range, total_nodes, rank)
+        lambda_chunk, global_start_idx, global_end_idx = get_lambda_chunk(lambda_range, size, rank)
+    else:
+        lambda_chunk = lambda_range
+        global_start_idx, global_end_idx = 0, len(lambda_range)
 
 
     # run synthetic_run() for these values
-    results = synthetic_run(p, n, b, Q, lambda_range)
+    results = synthetic_run(p, n, b, Q, lambda_chunk)
     edge_counts_all = results[2]
 
 
-    # When saving the results, handle the case where lambda_range might be empty
-    try:
-        lambda_min = lambda_range[0] if lambda_range.size > 0 else 'none'
-        lambda_max = lambda_range[-1] if lambda_range.size > 0 else 'none'
-        filename = f'net_results/results_{p,n,Q}_lamrange{lambda_min,lambda_max}.pkl'
-        with open(filename, 'wb') as f:
-            pickle.dump(results, f)
-    except Exception as e:
-        print(f"Error saving results: {e}")
+    # # When saving the results, handle the case where lambda_range might be empty
+    # try:
+    #     lambda_min = lambda_range[0] if lambda_range.size > 0 else 'none'
+    #     lambda_max = lambda_range[-1] if lambda_range.size > 0 else 'none'
+    #     filename = f'net_results/results_{p,n,Q}_lamrange{lambda_min,lambda_max}.pkl'
+    #     with open(filename, 'wb') as f:
+    #         pickle.dump(results, f)
+    # except Exception as e:
+    #     print(f"Error saving results: {e}")
 
-    return edge_counts_all,p,n,Q,lambda_range
+    return edge_counts_all, global_start_idx, global_end_idx, p, n, Q, lambda_chunk
 
 if __name__ == "__main__":
     # Initialize MPI communicator, rank, and size
@@ -558,23 +561,30 @@ if __name__ == "__main__":
     size = comm.Get_size()
     # Check if running in SLURM environment
     if "SLURM_JOB_ID" in os.environ:
-        edges,p,n,Q, lambda_range = main(rank=rank, size=size)
+        edge_counts, start_idx, end_idx, p, n, Q, lambda_chunk = main(rank=rank, size=size)
 
         try:
-            all_edges = comm.gather(edges, root=0)
+            all_edges = comm.gather((edge_counts, start_idx, end_idx), root=0)
             if rank == 0:
+                combined_edge_counts = np.zeros((p, p, len(lambda_range)))
+
+                # Concatenate the results in the correct order
+                for edge_counts, start_idx, end_idx in all_edges:
+                    combined_edge_counts[:, :, start_idx:end_idx] = edge_counts
+
                 # Save combined results
                 with open(f'net_results/combined_edge_counts_all.pkl', 'wb') as f:
-                    pickle.dump(all_edges, f)
+                    pickle.dump(combined_edge_counts, f)
 
                 # Transfer results to $HOME
-                os.system(f"cp -r net_results/ $HOME/")
+                os.system(f"cp -r net_results/ $HOME/phase_1_code/Networks/")
+
         except Exception as e:
             print(f"Error during MPI communication or file operations: {e}")
 
     else:
         # If no SLURM environment, run for entire lambda range
-        edges, p, n, Q, lambda_range = main(rank=0, size=0,use_full_lambda_range=True)
+        edges, start_idx, end_idx, p, n, Q, lambda_range = main(rank=1, size=1,use_full_lambda_range=True)
 
         # save results to pickle file
         with open(f'net_results/edge_counts_all_{p,n,Q}_fullrange.pkl', 'wb') as f:

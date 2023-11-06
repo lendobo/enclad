@@ -50,13 +50,15 @@ Q_values = 50 # int((1 / 3) * n)
 
 # edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
 
-filename_edges = 'edge_counts_all_top100_lambda_(0.03, 0.38)_Q300_b84cms2.pkl'
+filename_edges = 'net_results/combined_edge_counts_all.pkl'
 with open(filename_edges, 'rb') as f:
     edge_counts_all = pickle.load(f)
 
 
+
+
 print("Length of lambda_range:", len(lambda_range))
-print("Shape of edge_counts_all:", edge_counts_all.shape)
+print("Shape of edge_counts_all:", len(edge_counts_all))
 
 knee_point_index = find_single_knee_point(lambda_range, edge_counts_all)
 knee_point = lambda_range[knee_point_index]
