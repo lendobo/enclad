@@ -6,6 +6,8 @@ from itertools import combinations
 from scipy.special import comb, erf
 from scipy.stats import norm
 
+from old_piGGM import QJSweeper
+print('k')
 
 
 def estimate_lambda_np(edge_counts_all, Q, lambda_range):
@@ -52,11 +54,11 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     # Find the lambda that maximizes the score
     lambda_np = lambda_range[np.argmax(scores)]
     
-    return lambda_np, p_k_matrix, theta_matrix
+    return lambda_np, theta_matrix
 
 
 
-def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior_matrix):
+def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     """
     Estimates the lambda value for the prior edges.
     Parameters
@@ -85,7 +87,11 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     mus : array-like, shape (p, p)
         The mean of the prior distribution.
     """
-    n, p = data.shape
+    p, _, _ = edge_counts_all.shape
+    J = len(lambda_range)
+
+    N_k_matrix = np.sum(edge_counts_all, axis=2)
+    p_k_matrix = N_k_matrix / (Q * J)
 
     # reshape the prior matrix to only contain the edges in the lower triangle of the matrix
     wp_tr_idx = [(i, j) for i, j in combinations(range(p), 2) if prior_matrix[i, j] != 0] # THIS SETS THE INDICES FOR ALL VECTORIZED OPERATIONS
@@ -142,6 +148,39 @@ def estimate_lambda_wp(data, Q, p_k_matrix, edge_counts_all, lambda_range, prior
     # Find the lambda_j that maximizes the score
     lambda_wp = lambda_range[np.argmax(scores)]
     
-    sys.stdout = original_stdout
-
     return lambda_wp, tau_tr, mus
+
+# Load edge counts
+filename_edges = 'net_results/combined_edge_counts_all_pnQ(50, 500, 300).pkl'
+with open(filename_edges, 'rb') as f:
+    edge_counts_all = pickle.load(f)
+
+p = 50             # number of variables (nodes)
+n = 500             # number of samples
+b = int(0.75 * n)   # size of sub-samples
+Q = 300             # number of sub-samples
+
+l_lo = 0.041025641025641026
+l_hi = 0.15384615384615385
+lambda_range = np.linspace(l_lo, l_hi, 40)
+
+rank=1
+size=1
+
+# # Generate synthetic data and prior matrix
+data, prior_matrix_t, adj_matrix = QJSweeper.generate_synth_data(p, n)
+
+# make a random prior matrix with 0s and 1s
+prior_matrix_r = np.random.randint(2, size=(p, p))
+np.fill_diagonal(prior_matrix_r, 0)
+
+# check if prior_matrix_r and prior_matrix_t are the same
+print(np.array_equal(prior_matrix_r, prior_matrix_t))
+
+lambda_np, theta_mat = estimate_lambda_np(edge_counts_all, Q, lambda_range)
+lambda_wp_t, tau_tr, mus = estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix_t)
+lambda_wp_r, tau_tr, mus = estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix_r)
+
+print(lambda_np)
+print(lambda_wp_t)
+print(lambda_wp_r)

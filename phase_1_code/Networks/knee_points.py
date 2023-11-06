@@ -36,7 +36,7 @@ def find_single_knee_point(lambdas, edge_counts_all):
 
 #### Main code ####
 
-lambda_range = np.linspace(0, 0.4, 20)
+lambda_range = np.linspace(0, 0.4, 40)
 
 p_range = 100
 n = 300
@@ -50,15 +50,14 @@ Q_values = 50 # int((1 / 3) * n)
 
 # edge_counts_all = results_single[(p_range, n, b_values, Q_values, str(lambda_range))]['edge_counts_all']
 
-filename_edges = 'net_results/combined_edge_counts_all.pkl'
+filename_edges = 'net_results/combined_edge_counts_all_pnQ(50, 500, 300).pkl'
 with open(filename_edges, 'rb') as f:
     edge_counts_all = pickle.load(f)
 
 
 
 
-print("Length of lambda_range:", len(lambda_range))
-print("Shape of edge_counts_all:", len(edge_counts_all))
+print("[Nodes, Nodes, Lambdas]:", edge_counts_all.shape)
 
 knee_point_index = find_single_knee_point(lambda_range, edge_counts_all)
 knee_point = lambda_range[knee_point_index]
