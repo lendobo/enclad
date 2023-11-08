@@ -181,7 +181,7 @@ diff_expr_results['Rank-Based Log2 Fold Change'] = rank_based_log2_fc
 
 # %%
 # LOG - DIFF FC
-Log2FX_X = 0.5
+Log2FX_X = 0.35
 # Generate the volcano plot using LOG-DIFFERENCES
 x = diff_expr_results['Log-differences']
 y_corrected_p_values = -np.log10(diff_expr_results['Corrected P-Value'])
@@ -203,37 +203,40 @@ print('Log2 Diff')
 print(f'Number of data points below -{Log2FX_X}: {len(diff_expr_results[diff_expr_results["Log-differences"] < -Log2FX_X])}')
 print(f'Number of data points above {Log2FX_X}: {len(diff_expr_results[diff_expr_results["Log-differences"] > Log2FX_X])}')
 
-# TOP GENES
-selection_window = [50, 150, 250, 500]
 
-for top_n in selection_window:
-    # Isolate genes that are above diff_expr_results[diff_expr_results["Log-differences"] > logX2FC and above significance threshold
-    significant_genes = diff_expr_results[diff_expr_results['Corrected P-Value'] < 0.05]
-    top_genes_cms4 = significant_genes.sort_values(by='Log-differences', ascending=False).head(top_n)
-    top_genes_cms2 = significant_genes.sort_values(by='Log-differences', ascending=True).head(top_n)
+top_n = 500
 
-    # index filtered_data[filtered_data['CMS_Label'] == 'CMS4'] at significant genes
-    filtered_cms4_data = filtered_data[filtered_data['CMS_Label'] == 'CMS4'][top_genes_cms4.index]
-    filtered_cms4_data.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top{top_n}.csv')
+# Isolate genes that are above diff_expr_results[diff_expr_results["Log-differences"] > logX2FC and above significance threshold
+significant_genes = diff_expr_results[diff_expr_results['Corrected P-Value'] < 0.05]
+top_genes_cms4 = significant_genes.sort_values(by='Log-differences', ascending=False).head(top_n)
+top_genes_cms2 = significant_genes.sort_values(by='Log-differences', ascending=True).head(top_n)
 
-    # same for CMS2
-    filtered_cms2_data = filtered_data[filtered_data['CMS_Label'] == 'CMS2'][top_genes_cms2.index]
-    filtered_cms2_data.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top{top_n}.csv')
 
-# select 10 genes that are between 0.5 and 0.6 in log-differences
-mid_range_cms4_genes = diff_expr_results[(diff_expr_results['Log-differences'] > 0.5) & (diff_expr_results['Log-differences'] < 0.6)]
-# choose 10 with a significant p-value
-mid_range_cms4_genes = mid_range_cms4_genes[mid_range_cms4_genes['Corrected P-Value'] < 0.05]
 
-# index the filtered data at these genes
-mid_range_cms4_data = filtered_data[filtered_data['CMS_Label'] == 'CMS4'][mid_range_cms4_genes.index]
-mid_range_cms4_data.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_midrange.csv')
+# index filtered_data[filtered_data['CMS_Label'] == 'CMS4'] at significant genes
+filtered_cms4_data = filtered_data[filtered_data['CMS_Label'] == 'CMS4'][top_genes_cms4.index]
+filtered_cms4_data.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top_DEA.csv')
+# write names to file
+with open(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/top{top_n}_cms4_names.txt', 'w') as f:
+    for gene in top_genes_cms4.index:
+        f.write(gene + '\n')
+
+# same for CMS2
+filtered_cms2_data = filtered_data[filtered_data['CMS_Label'] == 'CMS2'][top_genes_cms2.index]
+filtered_cms2_data.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv')
+with open(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/top{top_n}_cms2_names.txt', 'w') as f:
+    for gene in top_genes_cms2.index:
+        f.write(gene + '\n')
+
+# Write a transposed version to a tab-separated file
+filtered_cms4_data.T.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top{top_n}_transposed.tsv', sep='\t')
+filtered_cms2_data.T.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top{top_n}_transposed.tsv', sep='\t')
 
 
 # %%
-logX2FC = 0.5
-aboveFC = 1 / logX2FC
-belowFC = 1 * logX2FC
+# logX2FC = 0.5
+# aboveFC = 1 / logX2FC
+# belowFC = 1 * logX2FC
 
 # # Generate the volcano plot using corrected p-values
 # x = diff_expr_results['Adjusted Log2 Fold Change']
@@ -253,18 +256,18 @@ belowFC = 1 * logX2FC
 # plt.tight_layout()
 # plt.show()
 
-# show number of data points below -1 on the x axis
-print('Log2FC')
-print(f'Number of data points below {belowFC}: {len(diff_expr_results[diff_expr_results["Adjusted Log2 Fold Change"] < belowFC])}')
-print(f'Number of data points above {aboveFC}: {len(diff_expr_results[diff_expr_results["Adjusted Log2 Fold Change"] > aboveFC])}')
+# # show number of data points below -1 on the x axis
+# print('Log2FC')
+# print(f'Number of data points below {belowFC}: {len(diff_expr_results[diff_expr_results["Adjusted Log2 Fold Change"] < belowFC])}')
+# print(f'Number of data points above {aboveFC}: {len(diff_expr_results[diff_expr_results["Adjusted Log2 Fold Change"] > aboveFC])}')
 
-# of the significant genes, select the top 500 with highest fold change
-significant_genes = diff_expr_results[diff_expr_results['Corrected P-Value'] < 0.05]
-significant_genes = significant_genes.sort_values(by='Adjusted Log2 Fold Change', ascending=False).head(500)
+# # of the significant genes, select the top 500 with highest fold change
+# significant_genes = diff_expr_results[diff_expr_results['Corrected P-Value'] < 0.05]
+# significant_genes = significant_genes.sort_values(by='Adjusted Log2 Fold Change', ascending=False).head(500)
 
-# Filter cms4 dataset by these genes and write to csv
-filtered_cms4_data = filtered_cms4_data[significant_genes.index]
-filtered_cms4_data.to_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top500.csv')
+# # Filter cms4 dataset by these genes and write to csv
+# filtered_cms4_data = filtered_cms4_data[significant_genes.index]
+# filtered_cms4_data.to_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top500.csv')
 
 
 # %%

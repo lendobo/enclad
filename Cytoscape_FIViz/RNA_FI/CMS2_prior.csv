@@ -1,0 +1,1521 @@
+“,FI Annotation,FI Direction,FI Score,interaction,name,selected,shared interaction,shared name
+FI,complex,-,1,,CEP290 (FI) PLK4,true,,CEP290 (FI) PLK4
+FI,predicted,-,0.91,,AURKA (FI) SRPK1,true,,AURKA (FI) SRPK1
+FI,input,-,1,,FNBP1L (FI) PIK3C2A,true,,FNBP1L (FI) PIK3C2A
+FI,predicted,-,0.9,,CKAP2L (FI) HMMR,true,,CKAP2L (FI) HMMR
+FI,predicted,-,0.91,,CEP290 (FI) SSX2IP,true,,CEP290 (FI) SSX2IP
+FI,predicted,-,0.92,,CCNA2 (FI) DEPDC1,true,,CCNA2 (FI) DEPDC1
+FI,predicted,-,0.9,,KIF5B (FI) LRPPRC,true,,KIF5B (FI) LRPPRC
+FI,complex,-,1,,NOP58 (FI) WDR36,true,,NOP58 (FI) WDR36
+FI,predicted,-,0.91,,ZNF700 (FI) ZNF823,true,,ZNF700 (FI) ZNF823
+FI,catalyze,->,1,,BRIP1 (FI) TP53,true,,BRIP1 (FI) TP53
+FI,predicted,-,0.9,,DTL (FI) TPX2,true,,DTL (FI) TPX2
+FI,predicted,-,0.92,,BRIP1 (FI) E2F7,true,,BRIP1 (FI) E2F7
+FI,predicted,-,0.91,,CHEK1 (FI) PLK4,true,,CHEK1 (FI) PLK4
+FI,expression regulated by,<-,1,,SHH (FI) SUZ12,true,,SHH (FI) SUZ12
+FI,predicted,-,0.97,,KIF20B (FI) MKI67,true,,KIF20B (FI) MKI67
+FI,reaction,-,1,,PPARA (FI) PPARGC1B,true,,PPARA (FI) PPARGC1B
+FI,predicted,-,0.93,,DDX21 (FI) LYAR,true,,DDX21 (FI) LYAR
+FI,predicted,-,0.9,,ZNF431 (FI) ZNF440,true,,ZNF431 (FI) ZNF440
+FI,activate,->,1,,CHEK1 (FI) FANCF,true,,CHEK1 (FI) FANCF
+FI,predicted,-,0.91,,CDK1 (FI) NEIL3,true,,CDK1 (FI) NEIL3
+FI,predicted,-,0.95,,CDC25C (FI) NCAPG,true,,CDC25C (FI) NCAPG
+FI,complex; input,-,1,,MAD2L1 (FI) PDS5A,true,,MAD2L1 (FI) PDS5A
+FI,predicted,-,0.96,,SKA3 (FI) UBE2C,true,,SKA3 (FI) UBE2C
+FI,predicted,-,0.92,,PRKAA1 (FI) PRKAR2A,true,,PRKAA1 (FI) PRKAR2A
+FI,catalyze; complex; input,->,1,,DDX46 (FI) PPIG,true,,DDX46 (FI) PPIG
+FI,complex; input,-,1,,CEP63 (FI) HMMR,true,,CEP63 (FI) HMMR
+FI,predicted,-,0.97,,BUB1B (FI) NCAPG2,true,,BUB1B (FI) NCAPG2
+FI,GErel: expression by,<-,1,,KRT23 (FI) NCOA3,true,,KRT23 (FI) NCOA3
+FI,predicted,-,0.92,,CCNA2 (FI) TOP2A,true,,CCNA2 (FI) TOP2A
+FI,predicted,-,0.91,,ITCH (FI) UBE2C,true,,ITCH (FI) UBE2C
+FI,catalyzed by,<-,1,,TP53 (FI) TPX2,true,,TP53 (FI) TPX2
+FI,catalyze,->,1,,NSMCE4A (FI) SMC3,true,,NSMCE4A (FI) SMC3
+FI,complex,-,1,,NSMCE4A (FI) SMC5,true,,NSMCE4A (FI) SMC5
+FI,predicted,-,0.91,,CBX5 (FI) TRIM24,true,,CBX5 (FI) TRIM24
+FI,predicted,-,0.91,,CDC25A (FI) HELLS,true,,CDC25A (FI) HELLS
+FI,complex,-,1,,NSMCE4A (FI) SMC6,true,,NSMCE4A (FI) SMC6
+FI,predicted,-,0.95,,CBX5 (FI) SCAI,true,,CBX5 (FI) SCAI
+FI,complex; input,-,1,,CENPK (FI) SMC3,true,,CENPK (FI) SMC3
+FI,predicted,-,0.9,,DTL (FI) SKP2,true,,DTL (FI) SKP2
+FI,complex,-,1,,DDX52 (FI) WDR36,true,,DDX52 (FI) WDR36
+FI,predicted,-,0.91,,CHEK2 (FI) RFC1,true,,CHEK2 (FI) RFC1
+FI,complex,-,1,,NOP58 (FI) UTP14A,true,,NOP58 (FI) UTP14A
+FI,catalyzed by; complex; input,<-,1,,CCAR1 (FI) RBM39,true,,CCAR1 (FI) RBM39
+FI,predicted,-,0.94,,CHEK1 (FI) KIF11,true,,CHEK1 (FI) KIF11
+FI,predicted,-,0.89,,BRCA1 (FI) DEPDC1,true,,BRCA1 (FI) DEPDC1
+FI,predicted,-,0.93,,BUB1B (FI) CDC7,true,,BUB1B (FI) CDC7
+FI,activate,->,1,,CHEK1 (FI) FANCA,true,,CHEK1 (FI) FANCA
+FI,predicted,-,0.91,,KIF14 (FI) KIF2A,true,,KIF14 (FI) KIF2A
+FI,predicted,-,0.94,,DEPDC1 (FI) TPX2,true,,DEPDC1 (FI) TPX2
+FI,predicted,-,0.93,,STK38 (FI) STK38L,true,,STK38 (FI) STK38L
+FI,predicted,-,0.98,,BUB1B (FI) SKA3,true,,BUB1B (FI) SKA3
+FI,predicted,-,0.96,,BUB1B (FI) NCAPG,true,,BUB1B (FI) NCAPG
+FI,predicted,-,0.9,,BRIX1 (FI) UTP14A,true,,BRIX1 (FI) UTP14A
+FI,predicted,-,0.92,,AURKA (FI) DEPDC1,true,,AURKA (FI) DEPDC1
+FI,complex,-,1,,CEP250 (FI) CEP63,true,,CEP250 (FI) CEP63
+FI,catalyzed by; complex; input,<-,1,,CCAR1 (FI) GTF2F2,true,,CCAR1 (FI) GTF2F2
+FI,predicted,-,0.91,,RAD18 (FI) RAD50,true,,RAD18 (FI) RAD50
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF799,true,,ZNF280C (FI) ZNF799
+FI,complex,-,1,,PDCD11 (FI) WDR36,true,,PDCD11 (FI) WDR36
+FI,activate; inhibited by; reaction,|->,1,,CEBPA (FI) NCOA3,true,,CEBPA (FI) NCOA3
+FI,predicted,-,0.91,,HNF4A (FI) NCOA3,true,,HNF4A (FI) NCOA3
+FI,predicted,-,0.98,,NOLC1 (FI) UTP14A,true,,NOLC1 (FI) UTP14A
+FI,predicted,-,0.92,,LUC7L3 (FI) SRPK1,true,,LUC7L3 (FI) SRPK1
+FI,predicted,-,0.9,,ZNF431 (FI) ZNF664,true,,ZNF431 (FI) ZNF664
+FI,predicted,-,0.94,,GINS1 (FI) TPX2,true,,GINS1 (FI) TPX2
+FI,catalyze,->,1,,PRKAA1 (FI) TP53,true,,PRKAA1 (FI) TP53
+FI,PPrel: activation,->,1,,FGFR3 (FI) PLCB4,true,,FGFR3 (FI) PLCB4
+FI,complex,-,1,,CEP250 (FI) CEP72,true,,CEP250 (FI) CEP72
+FI,complex; input,-,1,,FGFR4 (FI) GAB1,true,,FGFR4 (FI) GAB1
+FI,complex,-,1,,PDCD11 (FI) UTP14A,true,,PDCD11 (FI) UTP14A
+FI,predicted,-,0.97,,KIF21A (FI) KIF21B,true,,KIF21A (FI) KIF21B
+FI,complex; input,-,1,,AHI1 (FI) CEP290,true,,AHI1 (FI) CEP290
+FI,PPrel: activated by,<-,1,,TAB3 (FI) TRAF5,true,,TAB3 (FI) TRAF5
+FI,catalyzed by,<-,1,,CENPK (FI) ESPL1,true,,CENPK (FI) ESPL1
+FI,predicted,-,0.93,,KIF14 (FI) UBE2C,true,,KIF14 (FI) UBE2C
+FI,PPrel: inhibition; activate; catalyze; complex; input,-,1,,SIRT1 (FI) TP53,true,,SIRT1 (FI) TP53
+FI,predicted,-,0.93,,LYAR (FI) NOP58,true,,LYAR (FI) NOP58
+FI,predicted,-,0.93,,BRCA1 (FI) POLQ,true,,BRCA1 (FI) POLQ
+FI,predicted,-,0.97,,MAD2L1 (FI) TPX2,true,,MAD2L1 (FI) TPX2
+FI,complex; input,-,1,,AKAP9 (FI) RAB3IP,true,,AKAP9 (FI) RAB3IP
+FI,complex; input,-,1,,DBF4 (FI) MCM8,true,,DBF4 (FI) MCM8
+FI,input,-,1,,CDH1 (FI) CDHR1,true,,CDH1 (FI) CDHR1
+FI,activated by,<-,1,,AGT (FI) PPARA,true,,AGT (FI) PPARA
+FI,predicted,-,0.93,,BRIX1 (FI) DDX21,true,,BRIX1 (FI) DDX21
+FI,predicted,-,0.97,,BRCA1 (FI) CENPF,true,,BRCA1 (FI) CENPF
+FI,predicted,-,0.95,,BRCA1 (FI) CENPE,true,,BRCA1 (FI) CENPE
+FI,PPrel: activation,->,1,,EREG (FI) FGFR4,true,,EREG (FI) FGFR4
+FI,PPrel: activation,->,1,,GNG4 (FI) PRKAA1,true,,GNG4 (FI) PRKAA1
+FI,PPrel: activation,->,1,,EREG (FI) FGFR3,true,,EREG (FI) FGFR3
+FI,complex; input,-,1,,BUB1B (FI) NUF2,true,,BUB1B (FI) NUF2
+FI,complex; input,-,1,,CEP72 (FI) HMMR,true,,CEP72 (FI) HMMR
+FI,predicted,-,0.9,,AURKA (FI) DSN1,true,,AURKA (FI) DSN1
+FI,predicted,-,0.9,,PRR11 (FI) TPX2,true,,PRR11 (FI) TPX2
+FI,expression regulated by,<-,1,,BIN1 (FI) POU5F1,true,,BIN1 (FI) POU5F1
+FI,ECrel: compound,-,1,,PIK3C2A (FI) PIP5K1B,true,,PIK3C2A (FI) PIP5K1B
+FI,input,-,1,,CDH1 (FI) CDHR2,true,,CDH1 (FI) CDHR2
+FI,complex; input,-,1,,CEP72 (FI) TPX2,true,,CEP72 (FI) TPX2
+FI,catalyzed by,<-,1,,EIF4E (FI) PAN2,true,,EIF4E (FI) PAN2
+FI,predicted,-,0.91,,CFTR (FI) SLC4A7,true,,CFTR (FI) SLC4A7
+FI,activated by; complex; reaction,<-,1,,E2F5 (FI) TFDP2,true,,E2F5 (FI) TFDP2
+FI,predicted,-,0.96,,TOP2A (FI) TOP2B,true,,TOP2A (FI) TOP2B
+FI,predicted,-,0.92,,RBM39 (FI) SRPK1,true,,RBM39 (FI) SRPK1
+FI,activated by; complex; input,<-,1,,MPHOSPH10 (FI) UTP15,true,,MPHOSPH10 (FI) UTP15
+FI,expression regulates,->,1,,BCL11A (FI) ZNF823,true,,BCL11A (FI) ZNF823
+FI,reaction,-,1,,NCOA3 (FI) SMC3,true,,NCOA3 (FI) SMC3
+FI,predicted,-,0.98,,CDK1 (FI) TOP2A,true,,CDK1 (FI) TOP2A
+FI,complex; input,-,1,,BIN1 (FI) EREG,true,,BIN1 (FI) EREG
+FI,predicted,-,0.9,,BUB1B (FI) GINS1,true,,BUB1B (FI) GINS1
+FI,predicted,-,0.95,,NEIL3 (FI) POLQ,true,,NEIL3 (FI) POLQ
+FI,complex; input,-,1,,DYNC2LI1 (FI) KIF3B,true,,DYNC2LI1 (FI) KIF3B
+FI,complex,-,1,,CDK1 (FI) HAUS3,true,,CDK1 (FI) HAUS3
+FI,catalyze,->,1,,ATR (FI) CDC7,true,,ATR (FI) CDC7
+FI,predicted,-,0.9,,CEP55 (FI) NCAPG,true,,CEP55 (FI) NCAPG
+FI,predicted,-,0.9,,ZNF485 (FI) ZNF92,true,,ZNF485 (FI) ZNF92
+FI,catalyze,->,1,,ESPL1 (FI) KNTC1,true,,ESPL1 (FI) KNTC1
+FI,complex; input,-,1,,RPAP2 (FI) TAF5,true,,RPAP2 (FI) TAF5
+FI,catalyzed by,<-,1,,CENPF (FI) ESPL1,true,,CENPF (FI) ESPL1
+FI,complex,-,1,,MPHOSPH10 (FI) UTP20,true,,MPHOSPH10 (FI) UTP20
+FI,predicted,-,0.9,,CEP55 (FI) HMMR,true,,CEP55 (FI) HMMR
+FI,predicted,-,0.89,,AURKA (FI) TOP2A,true,,AURKA (FI) TOP2A
+FI,predicted,-,0.96,,GINS1 (FI) NCAPG2,true,,GINS1 (FI) NCAPG2
+FI,predicted,-,0.97,,CENPE (FI) NCAPG,true,,CENPE (FI) NCAPG
+FI,predicted,-,0.9,,ARHGAP11A (FI) KIF11,true,,ARHGAP11A (FI) KIF11
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF44,true,,ZNF280C (FI) ZNF44
+FI,predicted,-,0.96,,SPAG5 (FI) UBE2C,true,,SPAG5 (FI) UBE2C
+FI,predicted,-,0.9,,ARHGAP11A (FI) KIF14,true,,ARHGAP11A (FI) KIF14
+FI,predicted,-,0.9,,ARHGAP11A (FI) KIF15,true,,ARHGAP11A (FI) KIF15
+FI,predicted,-,0.94,,FANCD2 (FI) TOP2A,true,,FANCD2 (FI) TOP2A
+FI,PPrel: activation; catalyze; catalyzed by; complex; input,<->,1,,PLCG1 (FI) VAV3,true,,PLCG1 (FI) VAV3
+FI,predicted,-,0.91,,AHCTF1 (FI) RIF1,true,,AHCTF1 (FI) RIF1
+FI,predicted,-,0.95,,CDC25C (FI) CENPE,true,,CDC25C (FI) CENPE
+FI,predicted,-,0.96,,CDC25C (FI) CENPF,true,,CDC25C (FI) CENPF
+FI,complex; input,-,1,,AREG (FI) PLCG1,true,,AREG (FI) PLCG1
+FI,predicted,-,0.9,,HELLS (FI) RBL1,true,,HELLS (FI) RBL1
+FI,PPrel: activation,->,1,,GNG4 (FI) PIK3CB,true,,GNG4 (FI) PIK3CB
+FI,catalyzed by,<-,1,,GPC4 (FI) HS2ST1,true,,GPC4 (FI) HS2ST1
+FI,complex,-,1,,CDK1 (FI) IQCB1,true,,CDK1 (FI) IQCB1
+FI,complex; input,-,1,,AURKA (FI) BRCA1,true,,AURKA (FI) BRCA1
+FI,complex; input,-,1,,FNBP1L (FI) TGOLN2,true,,FNBP1L (FI) TGOLN2
+FI,complex; input,-,1,,CFTR (FI) DNAJC6,true,,CFTR (FI) DNAJC6
+FI,complex; input,-,1,,CHD7 (FI) PPARG,true,,CHD7 (FI) PPARG
+FI,inhibited by,|-,1,,GNG4 (FI) GPSM2,true,,GNG4 (FI) GPSM2
+FI,predicted,-,0.9,,AURKA (FI) GINS1,true,,AURKA (FI) GINS1
+FI,predicted,-,0.93,,KIF15 (FI) SPAG5,true,,KIF15 (FI) SPAG5
+FI,complex; input,-,1,,GTF2F2 (FI) RNPC3,true,,GTF2F2 (FI) RNPC3
+FI,predicted,-,0.92,,KIF20B (FI) NCAPG2,true,,KIF20B (FI) NCAPG2
+FI,complex; input,-,1,,EIF2S2 (FI) EIF4E,true,,EIF2S2 (FI) EIF4E
+FI,predicted,-,0.91,,PDCD11 (FI) RPF2,true,,PDCD11 (FI) RPF2
+FI,predicted,-,0.9,,CCNA2 (FI) CKAP2L,true,,CCNA2 (FI) CKAP2L
+FI,complex; input,-,1,,CEP250 (FI) TPX2,true,,CEP250 (FI) TPX2
+FI,catalyze; complex; input,->,1,,ATR (FI) SMC3,true,,ATR (FI) SMC3
+FI,complex,-,1,,NOP58 (FI) UTP20,true,,NOP58 (FI) UTP20
+FI,complex; input,-,1,,BUB1B (FI) CENPK,true,,BUB1B (FI) CENPK
+FI,reaction,-,1,,CEBPA (FI) HNF4A,true,,CEBPA (FI) HNF4A
+FI,PPrel: activated by,<-,1,,DUOX2 (FI) DUOXA2,true,,DUOX2 (FI) DUOXA2
+FI,activate; inhibited by,|->,1,,MYBL2 (FI) RBL1,true,,MYBL2 (FI) RBL1
+FI,complex; input,-,1,,BUB1B (FI) CENPE,true,,BUB1B (FI) CENPE
+FI,complex; input,-,1,,BUB1B (FI) CENPF,true,,BUB1B (FI) CENPF
+FI,PPrel: activation; PPrel: binding/association,->,1,,CALML4 (FI) NOS2,true,,CALML4 (FI) NOS2
+FI,complex; input,-,1,,DNAJC6 (FI) TGOLN2,true,,DNAJC6 (FI) TGOLN2
+FI,predicted,-,0.98,,NUF2 (FI) SPAG5,true,,NUF2 (FI) SPAG5
+FI,complex; input,-,1,,DNAJC6 (FI) SLC2A8,true,,DNAJC6 (FI) SLC2A8
+FI,predicted,-,0.97,,CCNA2 (FI) TPX2,true,,CCNA2 (FI) TPX2
+FI,complex; input,-,1,,BRCA2 (FI) MSH5,true,,BRCA2 (FI) MSH5
+FI,complex; input,-,1,,AHI1 (FI) CEP250,true,,AHI1 (FI) CEP250
+FI,complex,-,1,,CEP152 (FI) PLK4,true,,CEP152 (FI) PLK4
+FI,PPrel: inhibited by,|-,1,,FOXO3 (FI) USP7,true,,FOXO3 (FI) USP7
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF367,true,,ZNF280C (FI) ZNF367
+FI,predicted,-,0.94,,KNTC1 (FI) SPAG5,true,,KNTC1 (FI) SPAG5
+FI,PPrel: binding/association,-,1,,KIF5B (FI) TUBAL3,true,,KIF5B (FI) TUBAL3
+FI,complex; input,-,1,,CDK1 (FI) RAB3IP,true,,CDK1 (FI) RAB3IP
+FI,predicted,-,0.9,,DEPDC1B (FI) PLK4,true,,DEPDC1B (FI) PLK4
+FI,predicted,-,0.91,,FANCD2 (FI) FOXO3,true,,FANCD2 (FI) FOXO3
+FI,complex,-,1,,UTP20 (FI) WDR36,true,,UTP20 (FI) WDR36
+FI,activated by; complex; input,<-,1,,NOP58 (FI) UTP15,true,,NOP58 (FI) UTP15
+FI,predicted,-,0.95,,EIF2S2 (FI) EIF5B,true,,EIF2S2 (FI) EIF5B
+FI,catalyzed by,<-,1,,EREG (FI) PTPN3,true,,EREG (FI) PTPN3
+FI,expression regulated by,<-,1,,ACOX1 (FI) HNF4A,true,,ACOX1 (FI) HNF4A
+FI,predicted,-,0.89,,CDC7 (FI) NCAPG,true,,CDC7 (FI) NCAPG
+FI,predicted,-,0.9,,ZNF431 (FI) ZNF692,true,,ZNF431 (FI) ZNF692
+FI,complex; input,-,1,,KNTC1 (FI) NUF2,true,,KNTC1 (FI) NUF2
+FI,predicted,-,0.96,,SKA3 (FI) TPX2,true,,SKA3 (FI) TPX2
+FI,predicted,-,0.9,,KIF11 (FI) SMC4,true,,KIF11 (FI) SMC4
+FI,complex; input,-,1,,AHCTF1 (FI) PDS5A,true,,AHCTF1 (FI) PDS5A
+FI,predicted,-,0.9,,DEPDC1 (FI) NCAPG,true,,DEPDC1 (FI) NCAPG
+FI,predicted,-,0.95,,CCNA2 (FI) SPAG5,true,,CCNA2 (FI) SPAG5
+FI,activate,->,1,,CASP6 (FI) EIF4E,true,,CASP6 (FI) EIF4E
+FI,complex; input,-,1,,DNAJC6 (FI) FNBP1L,true,,DNAJC6 (FI) FNBP1L
+FI,catalyze,->,1,,CDK1 (FI) KNTC1,true,,CDK1 (FI) KNTC1
+FI,predicted,-,0.89,,GINS1 (FI) SPAG5,true,,GINS1 (FI) SPAG5
+FI,predicted,-,0.92,,NUAK2 (FI) PRKAA1,true,,NUAK2 (FI) PRKAA1
+FI,complex; input,-,1,,FNBP1L (FI) SLC2A8,true,,FNBP1L (FI) SLC2A8
+FI,predicted,-,0.93,,PTPN3 (FI) PTPRD,true,,PTPN3 (FI) PTPRD
+FI,predicted,-,0.89,,HELLS (FI) KIF15,true,,HELLS (FI) KIF15
+FI,complex; input,-,1,,CEP63 (FI) TPX2,true,,CEP63 (FI) TPX2
+FI,PPrel: activation,->,1,,ITGA2 (FI) PIK3CB,true,,ITGA2 (FI) PIK3CB
+FI,predicted,-,0.93,,DTL (FI) KIF11,true,,DTL (FI) KIF11
+FI,predicted,-,0.97,,HELLS (FI) KIF14,true,,HELLS (FI) KIF14
+FI,GErel: expression by; PPrel: activation,<->,1,,AXIN2 (FI) TCF7,true,,AXIN2 (FI) TCF7
+FI,catalyze,->,1,,CDK1 (FI) LBR,true,,CDK1 (FI) LBR
+FI,predicted,-,0.97,,DTL (FI) KIF14,true,,DTL (FI) KIF14
+FI,predicted,-,0.92,,DTL (FI) KIF15,true,,DTL (FI) KIF15
+FI,activated by; catalyzed by,<-,1,,BRCA2 (FI) CHEK1,true,,BRCA2 (FI) CHEK1
+FI,complex; input,-,1,,CEP72 (FI) RAB3IP,true,,CEP72 (FI) RAB3IP
+FI,predicted,-,0.91,,RAD18 (FI) TOP2A,true,,RAD18 (FI) TOP2A
+FI,predicted,-,0.91,,ESF1 (FI) WDR36,true,,ESF1 (FI) WDR36
+FI,predicted,-,0.94,,HELLS (FI) KIF11,true,,HELLS (FI) KIF11
+FI,predicted,-,0.92,,ZNF664 (FI) ZNF692,true,,ZNF664 (FI) ZNF692
+FI,PPrel: indirect effect,-,1,,ANK3 (FI) ROCK2,true,,ANK3 (FI) ROCK2
+FI,predicted,-,0.9,,ZNF441 (FI) ZNF780B,true,,ZNF441 (FI) ZNF780B
+FI,predicted,-,0.93,,ZNF445 (FI) ZNF485,true,,ZNF445 (FI) ZNF485
+FI,predicted,-,0.9,,CKAP2L (FI) TPX2,true,,CKAP2L (FI) TPX2
+FI,complex; input,-,1,,FNBP1L (FI) TFRC,true,,FNBP1L (FI) TFRC
+FI,complex; input,-,1,,CEP290 (FI) HMMR,true,,CEP290 (FI) HMMR
+FI,predicted,-,0.92,,GPD1 (FI) GPD1L,true,,GPD1 (FI) GPD1L
+FI,predicted,-,0.95,,KIF15 (FI) TOP2A,true,,KIF15 (FI) TOP2A
+FI,predicted,-,0.9,,BRD7 (FI) TOP1,true,,BRD7 (FI) TOP1
+FI,complex,-,1,,CCAR1 (FI) CSTF3,true,,CCAR1 (FI) CSTF3
+FI,activated by,<-,1,,FANCD2 (FI) RAD50,true,,FANCD2 (FI) RAD50
+FI,predicted,-,0.89,,ESF1 (FI) PDCD11,true,,ESF1 (FI) PDCD11
+FI,predicted,-,0.89,,ZNF253 (FI) ZNF91,true,,ZNF253 (FI) ZNF91
+FI,predicted,-,0.98,,CENPF (FI) POLQ,true,,CENPF (FI) POLQ
+FI,complex; input,-,1,,BRCA1 (FI) DNA2,true,,BRCA1 (FI) DNA2
+FI,catalyze,->,1,,CNOT1 (FI) EIF4E,true,,CNOT1 (FI) EIF4E
+FI,predicted,-,0.9,,DBF4 (FI) DTL,true,,DBF4 (FI) DTL
+FI,predicted,-,0.92,,DTL (FI) MCM8,true,,DTL (FI) MCM8
+FI,complex; input,-,1,,PIK3C2A (FI) TFRC,true,,PIK3C2A (FI) TFRC
+FI,PPrel: activation; complex; input,->,1,,FGFR3 (FI) GAB1,true,,FGFR3 (FI) GAB1
+FI,predicted,-,0.9,,ZNF253 (FI) ZNF92,true,,ZNF253 (FI) ZNF92
+FI,predicted,-,0.92,,CDK1 (FI) DBF4,true,,CDK1 (FI) DBF4
+FI,PPrel: activated by; complex; input,<-,1,,BRCA2 (FI) FANCD2,true,,BRCA2 (FI) FANCD2
+FI,predicted,-,0.9,,NOL11 (FI) SRFBP1,true,,NOL11 (FI) SRFBP1
+FI,predicted,-,0.91,,ATAD5 (FI) CHEK1,true,,ATAD5 (FI) CHEK1
+FI,predicted,-,0.9,,ATAD2 (FI) KIF14,true,,ATAD2 (FI) KIF14
+FI,predicted,-,0.92,,E2F7 (FI) PLK4,true,,E2F7 (FI) PLK4
+FI,complex; input; predicted,-,1,,KIF15 (FI) TPX2,true,,KIF15 (FI) TPX2
+FI,activate; complex; input,->,1,,HEATR1 (FI) MPHOSPH10,true,,HEATR1 (FI) MPHOSPH10
+FI,predicted,-,0.89,,ZKSCAN1 (FI) ZNF780B,true,,ZKSCAN1 (FI) ZNF780B
+FI,predicted,-,0.92,,BLM (FI) USP1,true,,BLM (FI) USP1
+FI,PPrel: ubiquitinated,-,1,,FGFR3 (FI) NEDD4,true,,FGFR3 (FI) NEDD4
+FI,complex,-,1,,AURKA (FI) PLK4,true,,AURKA (FI) PLK4
+FI,reaction,-,1,,NCOA6 (FI) PPARGC1B,true,,NCOA6 (FI) PPARGC1B
+FI,"PPrel: activated, indirect effect",<-,1,,BIN1 (FI) PIK3CB,true,,BIN1 (FI) PIK3CB
+FI,predicted,-,0.89,,ABCB10 (FI) SLC25A40,false,,ABCB10 (FI) SLC25A40
+FI,predicted,-,0.89,,LCORL (FI) ZNF644,true,,LCORL (FI) ZNF644
+FI,complex,-,1,,MPHOSPH10 (FI) UTP14A,true,,MPHOSPH10 (FI) UTP14A
+FI,predicted,-,0.93,,KIF14 (FI) POLQ,true,,KIF14 (FI) POLQ
+FI,PPrel: activation,->,1,,ERBB3 (FI) GAB1,true,,ERBB3 (FI) GAB1
+FI,complex; input,-,1,,BRIP1 (FI) RAD50,true,,BRIP1 (FI) RAD50
+FI,complex; input,-,1,,DYNC2LI1 (FI) WDR35,true,,DYNC2LI1 (FI) WDR35
+FI,predicted,-,0.92,,CENPF (FI) RBL1,true,,CENPF (FI) RBL1
+FI,predicted,-,0.91,,CENPK (FI) DEPDC1B,true,,CENPK (FI) DEPDC1B
+FI,catalyzed by,<-,1,,BRIP1 (FI) GEN1,true,,BRIP1 (FI) GEN1
+FI,expression regulated by,<-,1,,CDX2 (FI) SUZ12,true,,CDX2 (FI) SUZ12
+FI,catalyze; catalyzed by; complex; input,<->,1,,BUB1B (FI) MAD2L1,true,,BUB1B (FI) MAD2L1
+FI,predicted,-,0.93,,FANCD2 (FI) TMPO,true,,FANCD2 (FI) TMPO
+FI,predicted,-,0.93,,ATR (FI) PRKDC,true,,ATR (FI) PRKDC
+FI,complex; input,-,1,,IFT88 (FI) KIF3B,true,,IFT88 (FI) KIF3B
+FI,activated by,<-,1,,ATR (FI) CCNA2,true,,ATR (FI) CCNA2
+FI,complex; input,-,1,,HMMR (FI) TPX2,true,,HMMR (FI) TPX2
+FI,complex; input,-,1,,AHCTF1 (FI) BUB1B,true,,AHCTF1 (FI) BUB1B
+FI,complex; input,-,1,,CENPK (FI) PDS5A,true,,CENPK (FI) PDS5A
+FI,predicted,-,0.94,,AURKA (FI) SKA3,true,,AURKA (FI) SKA3
+FI,predicted,-,0.95,,BRCA1 (FI) DTL,true,,BRCA1 (FI) DTL
+FI,predicted,-,0.9,,CDC7 (FI) DTL,true,,CDC7 (FI) DTL
+FI,complex; input,-,1,,DTL (FI) RFC1,true,,DTL (FI) RFC1
+FI,predicted,-,0.91,,BLM (FI) CDC25C,true,,BLM (FI) CDC25C
+FI,activate; complex; input,->,1,,HEATR1 (FI) WDR36,true,,HEATR1 (FI) WDR36
+FI,predicted,-,0.97,,AURKA (FI) SPAG5,true,,AURKA (FI) SPAG5
+FI,PPrel: activation; complex; input,->,1,,FGFR3 (FI) PIK3CB,true,,FGFR3 (FI) PIK3CB
+FI,predicted,-,0.96,,BLM (FI) CDC25A,true,,BLM (FI) CDC25A
+FI,predicted,-,0.92,,BRIP1 (FI) FANCA,true,,BRIP1 (FI) FANCA
+FI,predicted,-,0.9,,CCNA2 (FI) MKI67,true,,CCNA2 (FI) MKI67
+FI,activated by; catalyze; complex; input,<->,1,,CHEK2 (FI) RAD50,true,,CHEK2 (FI) RAD50
+FI,predicted,-,0.93,,CHEK1 (FI) CHEK2,true,,CHEK1 (FI) CHEK2
+FI,predicted,-,0.94,,DTL (FI) FAM111B,true,,DTL (FI) FAM111B
+FI,predicted,-,0.9,,ZNF443 (FI) ZNF700,true,,ZNF443 (FI) ZNF700
+FI,predicted,-,0.9,,ESPL1 (FI) POLQ,true,,ESPL1 (FI) POLQ
+FI,predicted,-,0.98,,CCNA2 (FI) MAD2L1,true,,CCNA2 (FI) MAD2L1
+FI,predicted,-,0.96,,CDK1 (FI) HELLS,true,,CDK1 (FI) HELLS
+FI,PPrel: activated by; PPrel: binding/association; activated by; complex; input,<-,1,,APAF1 (FI) CYCS,true,,APAF1 (FI) CYCS
+FI,input,-,1,,NCOA3 (FI) SUZ12,true,,NCOA3 (FI) SUZ12
+FI,PPrel: ubiquitinated,-,1,,FGFR3 (FI) ITCH,true,,FGFR3 (FI) ITCH
+FI,complex; input,-,1,,CFTR (FI) PIK3C2A,true,,CFTR (FI) PIK3C2A
+FI,predicted,-,0.91,,BLM (FI) DTL,true,,BLM (FI) DTL
+FI,predicted,-,0.96,,PDS5A (FI) RIF1,true,,PDS5A (FI) RIF1
+FI,predicted,-,0.92,,ARHGAP11A (FI) RRM2,true,,ARHGAP11A (FI) RRM2
+FI,catalyze,->,1,,CDK1 (FI) DSN1,true,,CDK1 (FI) DSN1
+FI,catalyzed by; complex; input,<-,1,,INTS2 (FI) TAF5,true,,INTS2 (FI) TAF5
+FI,PPrel: inhibited by; activate; inhibited by,|->,1,,E2F2 (FI) RBL1,true,,E2F2 (FI) RBL1
+FI,complex; input,-,1,,CD2AP (FI) PIK3CB,true,,CD2AP (FI) PIK3CB
+FI,predicted,-,0.91,,PRKDC (FI) TOP2A,true,,PRKDC (FI) TOP2A
+FI,expression regulated by,<-,1,,TFRC (FI) TP53,true,,TFRC (FI) TP53
+FI,complex,-,1,,CEP63 (FI) IQCB1,true,,CEP63 (FI) IQCB1
+FI,predicted,-,0.97,,CENPF (FI) DEPDC1,true,,CENPF (FI) DEPDC1
+FI,complex; input,-,1,,CENPK (FI) NUF2,true,,CENPK (FI) NUF2
+FI,complex; input,-,1,,CDC7 (FI) MCM8,true,,CDC7 (FI) MCM8
+FI,predicted,-,0.93,,FANCD2 (FI) RAD18,true,,FANCD2 (FI) RAD18
+FI,predicted,-,0.94,,CDK1 (FI) KIF20B,true,,CDK1 (FI) KIF20B
+FI,predicted,-,0.95,,BRIX1 (FI) NOLC1,true,,BRIX1 (FI) NOLC1
+FI,predicted,-,0.92,,CDK1 (FI) SIRT1,true,,CDK1 (FI) SIRT1
+FI,GErel: expression,->,1,,FOXO3 (FI) PLK4,true,,FOXO3 (FI) PLK4
+FI,predicted,-,0.92,,ARHGAP11A (FI) DEPDC1,true,,ARHGAP11A (FI) DEPDC1
+FI,complex,-,1,,CEP63 (FI) HAUS3,true,,CEP63 (FI) HAUS3
+FI,complex; input,-,1,,BRD7 (FI) TP53,true,,BRD7 (FI) TP53
+FI,predicted,-,0.92,,BRIX1 (FI) UTP15,true,,BRIX1 (FI) UTP15
+FI,activate; complex; input,->,1,,NOL11 (FI) UTP14A,true,,NOL11 (FI) UTP14A
+FI,predicted,-,0.89,,CCNA2 (FI) GINS1,true,,CCNA2 (FI) GINS1
+FI,predicted,-,0.97,,BUB1B (FI) CDC25A,true,,BUB1B (FI) CDC25A
+FI,predicted,-,0.97,,BUB1B (FI) CDC25C,true,,BUB1B (FI) CDC25C
+FI,inhibite,-|,1,,BRCA2 (FI) POLQ,true,,BRCA2 (FI) POLQ
+FI,expression regulated by,<-,1,,SATB2 (FI) SUZ12,true,,SATB2 (FI) SUZ12
+FI,complex,-,1,,DDX52 (FI) UTP14A,true,,DDX52 (FI) UTP14A
+FI,predicted,-,0.89,,PANK1 (FI) PANK3,false,,PANK1 (FI) PANK3
+FI,catalyzed by; complex; input,<-,1,,INTS8 (FI) RPAP2,true,,INTS8 (FI) RPAP2
+FI,complex; input,-,1,,OFD1 (FI) TPX2,true,,OFD1 (FI) TPX2
+FI,predicted,-,0.92,,CENPE (FI) DEPDC1B,true,,CENPE (FI) DEPDC1B
+FI,expression regulated by,<-,1,,TOP2A (FI) TP53,true,,TOP2A (FI) TP53
+FI,predicted,-,0.98,,CENPE (FI) TPX2,true,,CENPE (FI) TPX2
+FI,complex; input,-,1,,CEP250 (FI) HMMR,true,,CEP250 (FI) HMMR
+FI,complex,-,1,,MPHOSPH10 (FI) WDR36,true,,MPHOSPH10 (FI) WDR36
+FI,predicted,-,0.97,,CCNA2 (FI) CENPF,true,,CCNA2 (FI) CENPF
+FI,predicted,-,0.98,,CCNA2 (FI) CENPE,true,,CCNA2 (FI) CENPE
+FI,predicted,-,0.9,,ZNF692 (FI) ZNF92,true,,ZNF692 (FI) ZNF92
+FI,activate,->,1,,CASP1 (FI) EIF4E,true,,CASP1 (FI) EIF4E
+FI,predicted,-,0.96,,KIF14 (FI) KIF15,true,,KIF14 (FI) KIF15
+FI,predicted,-,0.91,,KIF11 (FI) KNTC1,true,,KIF11 (FI) KNTC1
+FI,catalyzed by; input,<-,1,,MRPL42 (FI) MTIF2,false,,MRPL42 (FI) MTIF2
+FI,complex,-,1,,HAUS3 (FI) OFD1,true,,HAUS3 (FI) OFD1
+FI,predicted,-,0.97,,MAD2L1 (FI) SPAG5,true,,MAD2L1 (FI) SPAG5
+FI,complex,-,1,,AKAP9 (FI) CEP152,true,,AKAP9 (FI) CEP152
+FI,expression regulates,->,1,,CEBPA (FI) ITGA2,true,,CEBPA (FI) ITGA2
+FI,catalyze; catalyzed by; input,<->,1,,RLIM (FI) SKP2,true,,RLIM (FI) SKP2
+FI,catalyze,->,1,,CDK1 (FI) NCAPG,true,,CDK1 (FI) NCAPG
+FI,catalyzed by; input,<-,1,,CCAR1 (FI) LUC7L3,true,,CCAR1 (FI) LUC7L3
+FI,predicted,-,0.91,,CCNA2 (FI) RBL1,true,,CCNA2 (FI) RBL1
+FI,predicted,-,0.9,,AURKA (FI) RRM2,true,,AURKA (FI) RRM2
+FI,predicted,-,0.91,,CHEK2 (FI) SMC3,true,,CHEK2 (FI) SMC3
+FI,predicted,-,0.97,,BLM (FI) RFC1,true,,BLM (FI) RFC1
+FI,expression regulated by,<-,1,,CASP1 (FI) TP53,true,,CASP1 (FI) TP53
+FI,predicted,-,0.9,,ARHGAP11A (FI) BLM,true,,ARHGAP11A (FI) BLM
+FI,predicted,-,0.9,,CKAP2L (FI) KIF20B,true,,CKAP2L (FI) KIF20B
+FI,predicted,-,0.94,,ASPM (FI) SPAG5,true,,ASPM (FI) SPAG5
+FI,predicted,-,0.9,,ZNF217 (FI) ZNF431,true,,ZNF217 (FI) ZNF431
+FI,complex; input,-,1,,CEP152 (FI) RAB3IP,true,,CEP152 (FI) RAB3IP
+FI,complex; input,-,1,,KIF2A (FI) PDS5A,true,,KIF2A (FI) PDS5A
+FI,expression regulated by,<-,1,,HNF4A (FI) HNF4G,true,,HNF4A (FI) HNF4G
+FI,predicted,-,0.92,,BLM (FI) CDK1,true,,BLM (FI) CDK1
+FI,catalyzed by; complex; input; reaction,<-,1,,NCOA3 (FI) NCOA6,true,,NCOA3 (FI) NCOA6
+FI,predicted,-,0.94,,KIF15 (FI) MKI67,true,,KIF15 (FI) MKI67
+FI,complex; input,-,1,,CCL20 (FI) GNG4,true,,CCL20 (FI) GNG4
+FI,predicted,-,0.89,,CDC7 (FI) CDK1,true,,CDC7 (FI) CDK1
+FI,PPrel: ubiquitination; activate; complex; input,->,1,,FANCA (FI) FANCD2,true,,FANCA (FI) FANCD2
+FI,predicted,-,0.95,,CENPE (FI) KIF20B,true,,CENPE (FI) KIF20B
+FI,complex; input,-,1,,CEP152 (FI) HMMR,true,,CEP152 (FI) HMMR
+FI,predicted,-,0.91,,BCL11A (FI) ZNF217,true,,BCL11A (FI) ZNF217
+FI,complex,-,1,,DDX52 (FI) MPHOSPH10,true,,DDX52 (FI) MPHOSPH10
+FI,predicted,-,0.93,,DBF4 (FI) DNA2,true,,DBF4 (FI) DNA2
+FI,predicted,-,0.9,,ZNF441 (FI) ZNF799,true,,ZNF441 (FI) ZNF799
+FI,PPrel: binding/association; complex; input,-,1,,BRCA1 (FI) BRIP1,true,,BRCA1 (FI) BRIP1
+FI,predicted,-,0.9,,DTL (FI) MAD2L1,true,,DTL (FI) MAD2L1
+FI,activated by,<-,1,,EIF4E (FI) NUP155,true,,EIF4E (FI) NUP155
+FI,PPrel: activated by; complex; input,<-,1,,ERBB3 (FI) EREG,true,,ERBB3 (FI) EREG
+FI,activated by; inhibite,<-|,1,,MECOM (FI) PPARG,true,,MECOM (FI) PPARG
+FI,activated by; inhibite,<-|,1,,MECOM (FI) TP53,true,,MECOM (FI) TP53
+FI,predicted,-,0.9,,CCNA2 (FI) NEIL3,true,,CCNA2 (FI) NEIL3
+FI,predicted,-,0.93,,CEP63 (FI) SASS6,true,,CEP63 (FI) SASS6
+FI,complex; input,-,1,,NCOA3 (FI) NR5A2,true,,NCOA3 (FI) NR5A2
+FI,complex,-,1,,AURKA (FI) HAUS3,true,,AURKA (FI) HAUS3
+FI,predicted,-,0.96,,CDC25A (FI) SPAG5,true,,CDC25A (FI) SPAG5
+FI,predicted,-,0.91,,DTL (FI) USP1,true,,DTL (FI) USP1
+FI,predicted,-,0.93,,ZNF485 (FI) ZNF664,true,,ZNF485 (FI) ZNF664
+FI,complex; input,-,1,,BUB1B (FI) SMC3,true,,BUB1B (FI) SMC3
+FI,predicted,-,0.89,,E2F7 (FI) RBL1,true,,E2F7 (FI) RBL1
+FI,"PPrel: inhibited by, phosphorylated by",|-,1,,FOXO3 (FI) SGK2,true,,FOXO3 (FI) SGK2
+FI,catalyzed by,<-,1,,CENPE (FI) ESPL1,true,,CENPE (FI) ESPL1
+FI,predicted,-,0.93,,KIF14 (FI) SKA3,true,,KIF14 (FI) SKA3
+FI,expression regulates,->,1,,HNF4A (FI) TDP2,true,,HNF4A (FI) TDP2
+FI,predicted,-,0.94,,CHEK1 (FI) TPX2,true,,CHEK1 (FI) TPX2
+FI,predicted,-,0.9,,DNA2 (FI) RAD54B,true,,DNA2 (FI) RAD54B
+FI,complex,-,1,,MPHOSPH10 (FI) NOP58,true,,MPHOSPH10 (FI) NOP58
+FI,predicted,-,0.89,,KIF20B (FI) SMC4,true,,KIF20B (FI) SMC4
+FI,reaction,-,1,,IHH (FI) SHH,true,,IHH (FI) SHH
+FI,predicted,-,0.93,,AURKA (FI) NCAPG2,true,,AURKA (FI) NCAPG2
+FI,complex,-,1,,RALGAPA2 (FI) RALGAPB,false,,RALGAPA2 (FI) RALGAPB
+FI,reaction,-,1,,E2F2 (FI) TP53,true,,E2F2 (FI) TP53
+FI,complex; input,-,1,,DSN1 (FI) PDS5A,true,,DSN1 (FI) PDS5A
+FI,expression regulated by,<-,1,,NOS2 (FI) TP53,true,,NOS2 (FI) TP53
+FI,complex,-,1,,CASK (FI) PLS1,false,,CASK (FI) PLS1
+FI,predicted,-,0.9,,POLQ (FI) RAD54B,true,,POLQ (FI) RAD54B
+FI,PPrel; complex; input,-,1,,BRCA1 (FI) BRCA2,true,,BRCA1 (FI) BRCA2
+FI,"PPrel: inhibited by, phosphorylated by; activated by; catalyzed by",-,1,,CDC25C (FI) CHEK1,true,,CDC25C (FI) CHEK1
+FI,predicted,-,0.94,,SPAG5 (FI) TOP2A,true,,SPAG5 (FI) TOP2A
+FI,predicted,-,0.89,,KIF11 (FI) NCAPG,true,,KIF11 (FI) NCAPG
+FI,predicted,-,0.9,,HELLS (FI) KIF20B,true,,HELLS (FI) KIF20B
+FI,"PPrel: inhibited by, phosphorylated by; activated by; catalyzed by",-,1,,CDC25C (FI) CHEK2,true,,CDC25C (FI) CHEK2
+FI,complex,-,1,,OGT (FI) PHF20,true,,OGT (FI) PHF20
+FI,catalyze; complex; input,->,1,,GTF2F2 (FI) INTS8,true,,GTF2F2 (FI) INTS8
+FI,complex; input,-,1,,BLM (FI) FANCF,true,,BLM (FI) FANCF
+FI,"PPrel: activation, phosphorylation; complex; input",->,1,,PRKDC (FI) TP53,true,,PRKDC (FI) TP53
+FI,ECrel: compound,-,1,,PI4K2B (FI) PLCE1,true,,PI4K2B (FI) PLCE1
+FI,predicted,-,0.94,,NEK3 (FI) PDIK1L,false,,NEK3 (FI) PDIK1L
+FI,predicted,-,0.9,,PUS7L (FI) TRUB1,false,,PUS7L (FI) TRUB1
+FI,predicted,-,0.95,,CHEK1 (FI) DTL,true,,CHEK1 (FI) DTL
+FI,expression regulates,->,1,,HNF4A (FI) ZNF823,true,,HNF4A (FI) ZNF823
+FI,predicted,-,0.91,,FANCD2 (FI) USP7,true,,FANCD2 (FI) USP7
+FI,predicted,-,0.9,,BRCA1 (FI) RFC1,true,,BRCA1 (FI) RFC1
+FI,predicted,-,0.92,,BUB1B (FI) DEPDC1,true,,BUB1B (FI) DEPDC1
+FI,catalyze; complex; input,->,1,,BLM (FI) DNA2,true,,BLM (FI) DNA2
+FI,predicted,-,0.93,,DEPDC1 (FI) PLK4,true,,DEPDC1 (FI) PLK4
+FI,predicted,-,0.94,,SKA3 (FI) SPAG5,true,,SKA3 (FI) SPAG5
+FI,"PPrel: activated by, phosphorylation",<-,1,,PFKFB2 (FI) PRKAA1,true,,PFKFB2 (FI) PRKAA1
+FI,expression regulates,->,1,,HNF4A (FI) SLC40A1,true,,HNF4A (FI) SLC40A1
+FI,complex,-,1,,DDX21 (FI) GNL3,true,,DDX21 (FI) GNL3
+FI,predicted,-,0.98,,CCNA2 (FI) NCAPG,true,,CCNA2 (FI) NCAPG
+FI,predicted,-,0.98,,CEP152 (FI) SASS6,true,,CEP152 (FI) SASS6
+FI,predicted,-,0.9,,TAF4 (FI) ZNF692,true,,TAF4 (FI) ZNF692
+FI,complex; input,-,1,,CEP290 (FI) TPX2,true,,CEP290 (FI) TPX2
+FI,predicted,-,0.97,,BRIP1 (FI) FANCD2,true,,BRIP1 (FI) FANCD2
+FI,catalyzed by,<-,1,,TP53 (FI) TP53RK,true,,TP53 (FI) TP53RK
+FI,activate; catalyze; complex; input,->,1,,TAB3 (FI) UBE2V1,true,,TAB3 (FI) UBE2V1
+FI,complex; input,-,1,,DDX21 (FI) TAF1D,true,,DDX21 (FI) TAF1D
+FI,predicted,-,0.9,,ATR (FI) TOP2A,true,,ATR (FI) TOP2A
+FI,predicted,-,0.9,,ZNF493 (FI) ZNF782,true,,ZNF493 (FI) ZNF782
+FI,complex; input,-,1,,BLM (FI) FANCA,true,,BLM (FI) FANCA
+FI,complex; input,-,1,,KNTC1 (FI) PDS5A,true,,KNTC1 (FI) PDS5A
+FI,predicted,-,0.89,,ZFP62 (FI) ZNF485,true,,ZFP62 (FI) ZNF485
+FI,predicted,-,0.9,,BLM (FI) KIF15,true,,BLM (FI) KIF15
+FI,catalyze; complex; input,->,1,,GTF2F2 (FI) INTS2,true,,GTF2F2 (FI) INTS2
+FI,complex,-,1,,CDK1 (FI) CEP290,true,,CDK1 (FI) CEP290
+FI,PPrel: phosphorylation; activate; complex; input,->,1,,ATR (FI) BRCA1,true,,ATR (FI) BRCA1
+FI,predicted,-,0.96,,CDC25C (FI) NUF2,true,,CDC25C (FI) NUF2
+FI,activated by; catalyzed by; inhibited by,-,1,,FANCD2 (FI) USP1,true,,FANCD2 (FI) USP1
+FI,complex,-,1,,CEP152 (FI) CEP250,true,,CEP152 (FI) CEP250
+FI,complex; input,-,1,,BUB1B (FI) DSN1,true,,BUB1B (FI) DSN1
+FI,complex; input,-,1,,FANCA (FI) FANCF,true,,FANCA (FI) FANCF
+FI,predicted,-,0.93,,CDC25A (FI) TPX2,true,,CDC25A (FI) TPX2
+FI,activate; input,->,1,,ATR (FI) BRCA2,true,,ATR (FI) BRCA2
+FI,predicted,-,0.94,,CHEK1 (FI) PRKDC,true,,CHEK1 (FI) PRKDC
+FI,catalyze,->,1,,ATR (FI) MCM8,true,,ATR (FI) MCM8
+FI,predicted,-,0.89,,KIF20B (FI) SKA3,true,,KIF20B (FI) SKA3
+FI,predicted,-,0.95,,TUBD1 (FI) TUBE1,false,,TUBD1 (FI) TUBE1
+FI,predicted,-,0.97,,ATAD2 (FI) TOP2A,true,,ATAD2 (FI) TOP2A
+FI,complex; input,-,1,,CHEK1 (FI) DNA2,true,,CHEK1 (FI) DNA2
+FI,predicted,-,0.96,,CENPE (FI) KIF14,true,,CENPE (FI) KIF14
+FI,predicted,-,0.96,,CENPE (FI) KIF11,true,,CENPE (FI) KIF11
+FI,PPrel: activation; PPrel: dissociation; complex; input,->,1,,IHH (FI) PTCH1,true,,IHH (FI) PTCH1
+FI,predicted,-,0.93,,EEA1 (FI) STX16,true,,EEA1 (FI) STX16
+FI,predicted,-,0.91,,CBX5 (FI) ZNF518A,true,,CBX5 (FI) ZNF518A
+FI,complex,-,1,,TP53 (FI) USP24,true,,TP53 (FI) USP24
+FI,predicted,-,0.98,,CENPE (FI) KIF15,true,,CENPE (FI) KIF15
+FI,predicted,-,0.9,,CENPE (FI) RRM2,true,,CENPE (FI) RRM2
+FI,complex; input,-,1,,AREG (FI) FNBP1L,true,,AREG (FI) FNBP1L
+FI,complex; input,-,1,,ATR (FI) BRIP1,true,,ATR (FI) BRIP1
+FI,catalyze,->,1,,CDK1 (FI) NUF2,true,,CDK1 (FI) NUF2
+FI,"PPrel: activation; PPrel: activation, binding/association; complex; input",->,1,,CCL20 (FI) CCR6,true,,CCL20 (FI) CCR6
+FI,predicted,-,0.94,,KIF14 (FI) MAD2L1,true,,KIF14 (FI) MAD2L1
+FI,predicted,-,0.96,,KIF14 (FI) NUF2,true,,KIF14 (FI) NUF2
+FI,predicted,-,0.92,,RAD50 (FI) SMARCAD1,true,,RAD50 (FI) SMARCAD1
+FI,predicted,-,0.91,,ZNF124 (FI) ZNF440,true,,ZNF124 (FI) ZNF440
+FI,predicted,-,0.92,,KIF15 (FI) KIF20B,true,,KIF15 (FI) KIF20B
+FI,predicted,-,0.97,,DEPDC1 (FI) DEPDC1B,true,,DEPDC1 (FI) DEPDC1B
+FI,predicted,-,0.91,,HNF4G (FI) NR5A2,true,,HNF4G (FI) NR5A2
+FI,predicted,-,0.9,,SLC19A2 (FI) SLC19A3,false,,SLC19A2 (FI) SLC19A3
+FI,complex; input,-,1,,CENPE (FI) KIF2A,true,,CENPE (FI) KIF2A
+FI,predicted,-,0.89,,ARHGAP11B (FI) ASPM,true,,ARHGAP11B (FI) ASPM
+FI,complex; input,-,1,,CCAR1 (FI) DDX46,true,,CCAR1 (FI) DDX46
+FI,predicted,-,0.95,,CDC25C (FI) SKA3,true,,CDC25C (FI) SKA3
+FI,predicted,-,0.9,,ZNF799 (FI) ZNF823,true,,ZNF799 (FI) ZNF823
+FI,"PPrel: inhibited, indirect effect",|-,1,,FOXO3 (FI) PIK3CB,true,,FOXO3 (FI) PIK3CB
+FI,ECrel: compound,-,1,,PI4K2B (FI) PIP5K1B,true,,PI4K2B (FI) PIP5K1B
+FI,activate; inhibited by,|->,1,,E2F2 (FI) E2F7,true,,E2F2 (FI) E2F7
+FI,predicted,-,0.96,,PDS5A (FI) RFC1,true,,PDS5A (FI) RFC1
+FI,predicted,-,0.96,,E2F2 (FI) E2F5,true,,E2F2 (FI) E2F5
+FI,activated by; complex; input,<-,1,,DDX52 (FI) NOL11,true,,DDX52 (FI) NOL11
+FI,predicted,-,0.9,,ZNF33A (FI) ZNF721,true,,ZNF33A (FI) ZNF721
+FI,complex,-,1,,CDK1 (FI) CEP250,true,,CDK1 (FI) CEP250
+FI,activated by; complex; input,<-,1,,MPHOSPH10 (FI) NOL11,true,,MPHOSPH10 (FI) NOL11
+FI,complex,-,1,,CEP250 (FI) IQCB1,true,,CEP250 (FI) IQCB1
+FI,PPrel: activation; complex; input,->,1,,FGFR4 (FI) PIK3CB,true,,FGFR4 (FI) PIK3CB
+FI,GErel: expression by,<-,1,,ACOX1 (FI) PPARA,true,,ACOX1 (FI) PPARA
+FI,complex; input,-,1,,BIN1 (FI) TFRC,true,,BIN1 (FI) TFRC
+FI,predicted,-,0.96,,NUF2 (FI) TPX2,true,,NUF2 (FI) TPX2
+FI,complex; input,-,1,,CDK1 (FI) HMMR,true,,CDK1 (FI) HMMR
+FI,predicted,-,0.91,,BUB1B (FI) NEIL3,true,,BUB1B (FI) NEIL3
+FI,predicted,-,0.94,,BLM (FI) CHEK2,true,,BLM (FI) CHEK2
+FI,activated by,<-,1,,BRCA1 (FI) MND1,true,,BRCA1 (FI) MND1
+FI,complex; input,-,1,,BLM (FI) CHEK1,true,,BLM (FI) CHEK1
+FI,predicted,-,0.9,,ZNF441 (FI) ZNF823,true,,ZNF441 (FI) ZNF823
+FI,activate,->,1,,RAD50 (FI) SMC3,true,,RAD50 (FI) SMC3
+FI,complex,-,1,,CEP72 (FI) PLK4,true,,CEP72 (FI) PLK4
+FI,expression regulates,->,1,,POU5F1 (FI) ZMYND8,true,,POU5F1 (FI) ZMYND8
+FI,complex; input,-,1,,GTF2F2 (FI) RBM39,true,,GTF2F2 (FI) RBM39
+FI,predicted,-,0.94,,CDK1 (FI) CEP55,true,,CDK1 (FI) CEP55
+FI,predicted,-,0.93,,CEBPA (FI) RBL1,true,,CEBPA (FI) RBL1
+FI,predicted,-,0.91,,HNF4A (FI) PPARGC1B,true,,HNF4A (FI) PPARGC1B
+FI,complex,-,1,,AURKA (FI) OFD1,true,,AURKA (FI) OFD1
+FI,predicted,-,0.93,,KIF11 (FI) NUF2,true,,KIF11 (FI) NUF2
+FI,predicted,-,0.91,,DEPDC1 (FI) NUF2,true,,DEPDC1 (FI) NUF2
+FI,expression regulated by,<-,1,,ACOX1 (FI) PPARG,true,,ACOX1 (FI) PPARG
+FI,predicted,-,0.95,,DNAJC2 (FI) NAA15,true,,DNAJC2 (FI) NAA15
+FI,complex,-,1,,TAF4 (FI) TAF5,true,,TAF4 (FI) TAF5
+FI,expression regulated by,<-,1,,CDK1 (FI) MYB,true,,CDK1 (FI) MYB
+FI,ECrel: compound,-,1,,PI4K2B (FI) PLCB4,true,,PI4K2B (FI) PLCB4
+FI,predicted,-,0.97,,DTL (FI) POLQ,true,,DTL (FI) POLQ
+FI,predicted,-,0.9,,NEIL3 (FI) TOP2A,true,,NEIL3 (FI) TOP2A
+FI,predicted,-,0.9,,ZKSCAN1 (FI) ZNF692,true,,ZKSCAN1 (FI) ZNF692
+FI,predicted,-,0.94,,PRKDC (FI) TOP1,true,,PRKDC (FI) TOP1
+FI,predicted,-,0.92,,CEP55 (FI) NEIL3,true,,CEP55 (FI) NEIL3
+FI,predicted,-,0.9,,LCOR (FI) ZNF644,true,,LCOR (FI) ZNF644
+FI,predicted,-,0.91,,BRCA1 (FI) USP1,true,,BRCA1 (FI) USP1
+FI,catalyze,->,1,,GLCE (FI) GPC4,true,,GLCE (FI) GPC4
+FI,predicted,-,0.93,,CENPF (FI) HELLS,true,,CENPF (FI) HELLS
+FI,complex; input,-,1,,OFD1 (FI) RAB3IP,true,,OFD1 (FI) RAB3IP
+FI,predicted,-,0.9,,CDC25C (FI) TOP2A,true,,CDC25C (FI) TOP2A
+FI,predicted,-,0.92,,KNTC1 (FI) NCAPG2,true,,KNTC1 (FI) NCAPG2
+FI,predicted,-,0.94,,BUB1B (FI) KIF20B,true,,BUB1B (FI) KIF20B
+FI,complex; input,-,1,,HAUS3 (FI) HMMR,true,,HAUS3 (FI) HMMR
+FI,complex; input,-,1,,CENPF (FI) PDS5A,true,,CENPF (FI) PDS5A
+FI,predicted,-,0.89,,KIF20B (FI) NUF2,true,,KIF20B (FI) NUF2
+FI,complex,-,1,,CEP152 (FI) CEP290,true,,CEP152 (FI) CEP290
+FI,complex,-,1,,CDK1 (FI) CEP63,true,,CDK1 (FI) CEP63
+FI,predicted,-,0.95,,CENPE (FI) UBE2C,true,,CENPE (FI) UBE2C
+FI,predicted,-,0.91,,NAA16 (FI) NAA25,true,,NAA16 (FI) NAA25
+FI,predicted,-,0.9,,BRCA1 (FI) MCM8,true,,BRCA1 (FI) MCM8
+FI,predicted,-,0.99,,AURKA (FI) NCAPG,true,,AURKA (FI) NCAPG
+FI,predicted,-,0.94,,CDC25A (FI) MKI67,true,,CDC25A (FI) MKI67
+FI,complex,-,1,,AKAP9 (FI) IQCB1,true,,AKAP9 (FI) IQCB1
+FI,"PPrel: activated by; PPrel: activated by, phosphorylation",<-,1,,FOXO3 (FI) PRKAA1,true,,FOXO3 (FI) PRKAA1
+FI,complex; input,-,1,,ATR (FI) DNA2,true,,ATR (FI) DNA2
+FI,complex; input,-,1,,HEATR1 (FI) NOL11,true,,HEATR1 (FI) NOL11
+FI,predicted,-,0.89,,CKAP2L (FI) NEIL3,true,,CKAP2L (FI) NEIL3
+FI,predicted,-,0.89,,ZNF445 (FI) ZNF770,true,,ZNF445 (FI) ZNF770
+FI,predicted,-,0.96,,KIF11 (FI) SKA3,true,,KIF11 (FI) SKA3
+FI,predicted,-,0.92,,ARHGAP11A (FI) ARHGAP11B,true,,ARHGAP11A (FI) ARHGAP11B
+FI,predicted,-,0.92,,NR1I2 (FI) NR5A2,true,,NR1I2 (FI) NR5A2
+FI,predicted,-,0.9,,ZNF780B (FI) ZNF91,true,,ZNF780B (FI) ZNF91
+FI,GErel: expression by; catalyzed by,<-,1,,APAF1 (FI) TP53,true,,APAF1 (FI) TP53
+FI,predicted,-,0.96,,FANCA (FI) KNTC1,true,,FANCA (FI) KNTC1
+FI,complex; input,-,1,,HEATR1 (FI) UTP15,true,,HEATR1 (FI) UTP15
+FI,predicted,-,0.95,,CDC25C (FI) MKI67,true,,CDC25C (FI) MKI67
+FI,complex,-,1,,CEP72 (FI) HAUS3,true,,CEP72 (FI) HAUS3
+FI,activated by; inhibite,<-|,1,,POU5F1 (FI) TCF7,true,,POU5F1 (FI) TCF7
+FI,complex; input,-,1,,AHI1 (FI) RAB3IP,true,,AHI1 (FI) RAB3IP
+FI,predicted,-,0.91,,DEPDC1 (FI) SKA3,true,,DEPDC1 (FI) SKA3
+FI,predicted,-,0.95,,AURKA (FI) CENPF,true,,AURKA (FI) CENPF
+FI,complex,-,1,,AKAP9 (FI) HAUS3,true,,AKAP9 (FI) HAUS3
+FI,predicted,-,0.97,,AURKA (FI) CENPE,true,,AURKA (FI) CENPE
+FI,predicted,-,0.92,,ZNF692 (FI) ZNF823,true,,ZNF692 (FI) ZNF823
+FI,predicted,-,0.93,,CKAP2L (FI) POLQ,true,,CKAP2L (FI) POLQ
+FI,predicted,-,0.96,,BRCA1 (FI) CCNA2,true,,BRCA1 (FI) CCNA2
+FI,expression regulated by,<-,1,,EPHX2 (FI) HNF4A,true,,EPHX2 (FI) HNF4A
+FI,predicted,-,0.92,,HMMR (FI) NUF2,true,,HMMR (FI) NUF2
+FI,complex; input,-,1,,ATR (FI) RAD50,true,,ATR (FI) RAD50
+FI,complex,-,1,,CDK1 (FI) CEP72,true,,CDK1 (FI) CEP72
+FI,complex,-,1,,CEP250 (FI) HAUS3,true,,CEP250 (FI) HAUS3
+FI,complex,-,1,,IQCB1 (FI) OFD1,true,,IQCB1 (FI) OFD1
+FI,predicted,-,0.94,,RFC1 (FI) TOP1,true,,RFC1 (FI) TOP1
+FI,predicted,-,0.94,,HELLS (FI) SPAG5,true,,HELLS (FI) SPAG5
+FI,expression regulates,->,1,,CEBPA (FI) NOS2,true,,CEBPA (FI) NOS2
+FI,predicted,-,0.93,,ATAD5 (FI) MKI67,true,,ATAD5 (FI) MKI67
+FI,activate; complex; input,->,1,,HEATR1 (FI) UTP20,true,,HEATR1 (FI) UTP20
+FI,predicted,-,0.91,,CHEK1 (FI) HELLS,true,,CHEK1 (FI) HELLS
+FI,expression regulates,->,1,,CEBPA (FI) GUCY2C,true,,CEBPA (FI) GUCY2C
+FI,complex,-,1,,UTP14A (FI) WDR36,true,,UTP14A (FI) WDR36
+FI,complex; input,-,1,,BRIP1 (FI) CHEK1,true,,BRIP1 (FI) CHEK1
+FI,activate; complex; input,->,1,,HEATR1 (FI) PDCD11,true,,HEATR1 (FI) PDCD11
+FI,catalyzed by,<-,1,,BRIP1 (FI) RTEL1,true,,BRIP1 (FI) RTEL1
+FI,predicted,-,0.92,,DTL (FI) GINS1,true,,DTL (FI) GINS1
+FI,predicted,-,0.93,,DEPDC1 (FI) KIF11,true,,DEPDC1 (FI) KIF11
+FI,predicted,-,0.92,,CDC7 (FI) TPX2,true,,CDC7 (FI) TPX2
+FI,PPrel: activated by,<-,1,,MAP2K6 (FI) TRAF5,true,,MAP2K6 (FI) TRAF5
+FI,predicted,-,0.93,,CKAP2L (FI) NCAPG2,true,,CKAP2L (FI) NCAPG2
+FI,predicted,-,0.9,,DEPDC1 (FI) KIF15,true,,DEPDC1 (FI) KIF15
+FI,complex; input,-,1,,PLCG1 (FI) TRIM24,true,,PLCG1 (FI) TRIM24
+FI,predicted,-,0.93,,DEPDC1 (FI) KIF14,true,,DEPDC1 (FI) KIF14
+FI,catalyzed by,<-,1,,BRCA2 (FI) GEN1,true,,BRCA2 (FI) GEN1
+FI,predicted,-,0.91,,ESPL1 (FI) NCAPG2,true,,ESPL1 (FI) NCAPG2
+FI,complex,-,1,,MDM4 (FI) USP7,true,,MDM4 (FI) USP7
+FI,predicted,-,0.94,,BRCA1 (FI) CDK1,true,,BRCA1 (FI) CDK1
+FI,complex,-,1,,AKAP9 (FI) PLK4,true,,AKAP9 (FI) PLK4
+FI,complex; input,-,1,,IFT74 (FI) WDR35,true,,IFT74 (FI) WDR35
+FI,complex; input,-,1,,CEP152 (FI) TPX2,true,,CEP152 (FI) TPX2
+FI,complex; input,-,1,,CEP290 (FI) RAB3IP,true,,CEP290 (FI) RAB3IP
+FI,predicted,-,0.91,,ZNF431 (FI) ZNF92,true,,ZNF431 (FI) ZNF92
+FI,predicted,-,0.94,,LCOR (FI) ZNF217,true,,LCOR (FI) ZNF217
+FI,PPrel: activation,->,1,,AREG (FI) FGFR3,true,,AREG (FI) FGFR3
+FI,PPrel: activation,->,1,,AREG (FI) FGFR4,true,,AREG (FI) FGFR4
+FI,predicted,-,0.89,,HMMR (FI) SKA3,true,,HMMR (FI) SKA3
+FI,ECrel: compound,-,1,,IPMK (FI) PLCE1,true,,IPMK (FI) PLCE1
+FI,expression regulates,->,1,,CEBPA (FI) CFTR,true,,CEBPA (FI) CFTR
+FI,complex; input,-,1,,CENPE (FI) PDS5A,true,,CENPE (FI) PDS5A
+FI,catalyze,->,1,,CDK1 (FI) NUP155,true,,CDK1 (FI) NUP155
+FI,complex,-,1,,CSTF3 (FI) GTF2F2,true,,CSTF3 (FI) GTF2F2
+FI,predicted,-,0.91,,KIF14 (FI) NCAPG,true,,KIF14 (FI) NCAPG
+FI,complex; input,-,1,,DCLRE1A (FI) FANCD2,true,,DCLRE1A (FI) FANCD2
+FI,predicted,-,0.9,,NAA15 (FI) PRKDC,true,,NAA15 (FI) PRKDC
+FI,complex; input,-,1,,AHCTF1 (FI) CENPE,true,,AHCTF1 (FI) CENPE
+FI,expression regulates,->,1,,BRCA1 (FI) SKA3,true,,BRCA1 (FI) SKA3
+FI,predicted,-,0.93,,CENPF (FI) DTL,true,,CENPF (FI) DTL
+FI,complex; input,-,1,,AHCTF1 (FI) CENPF,true,,AHCTF1 (FI) CENPF
+FI,input,-,1,,BIN1 (FI) PIK3C2A,true,,BIN1 (FI) PIK3C2A
+FI,predicted,-,0.91,,CENPF (FI) UBE2C,true,,CENPF (FI) UBE2C
+FI,predicted,-,0.9,,PRKDC (FI) RIF1,true,,PRKDC (FI) RIF1
+FI,predicted,-,0.93,,HMMR (FI) KIF11,true,,HMMR (FI) KIF11
+FI,complex; input,-,1,,RAD18 (FI) SHPRH,true,,RAD18 (FI) SHPRH
+FI,expression regulates,->,1,,BRCA1 (FI) DCAF16,true,,BRCA1 (FI) DCAF16
+FI,complex; input,-,1,,CENPE (FI) NUF2,true,,CENPE (FI) NUF2
+FI,reaction,-,1,,PPARG (FI) TP53,true,,PPARG (FI) TP53
+FI,expression regulates,->,1,,SUZ12 (FI) TBX3,true,,SUZ12 (FI) TBX3
+FI,predicted,-,0.96,,RPF2 (FI) UTP14A,true,,RPF2 (FI) UTP14A
+FI,predicted,-,0.95,,FASTKD1 (FI) FASTKD3,false,,FASTKD1 (FI) FASTKD3
+FI,predicted,-,0.9,,BRCA1 (FI) KIF11,true,,BRCA1 (FI) KIF11
+FI,predicted,-,0.91,,ZNF253 (FI) ZNF737,true,,ZNF253 (FI) ZNF737
+FI,complex,-,1,,CCR6 (FI) GNG4,true,,CCR6 (FI) GNG4
+FI,predicted,-,0.91,,DNA2 (FI) POLQ,true,,DNA2 (FI) POLQ
+FI,predicted,-,0.9,,NCAPG (FI) PDS5A,true,,NCAPG (FI) PDS5A
+FI,complex; input,-,1,,CENPE (FI) MAD2L1,true,,CENPE (FI) MAD2L1
+FI,ECrel: compound; PPrel: compound,-,1,,PIK3CB (FI) VAV3,true,,PIK3CB (FI) VAV3
+FI,predicted,-,0.98,,CDK1 (FI) RRM2,true,,CDK1 (FI) RRM2
+FI,PPrel: phosphorylated by; activated by,<-,1,,PIP5K1B (FI) ROCK2,true,,PIP5K1B (FI) ROCK2
+FI,predicted,-,0.93,,ZNF620 (FI) ZNF846,false,,ZNF620 (FI) ZNF846
+FI,"PPrel: activated by, phosphorylation",<-,1,,GAB1 (FI) ROCK2,true,,GAB1 (FI) ROCK2
+FI,activate; catalyze,->,1,,AURKA (FI) TP53,true,,AURKA (FI) TP53
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF700,true,,ZNF280C (FI) ZNF700
+FI,predicted,-,0.9,,CKAP2L (FI) DTL,true,,CKAP2L (FI) DTL
+FI,complex; input,-,1,,EREG (FI) FNBP1L,true,,EREG (FI) FNBP1L
+FI,predicted,-,0.92,,USP24 (FI) USP45,true,,USP24 (FI) USP45
+FI,PCrel: binding/association,-,1,,PPP2R1B (FI) SMG1,true,,PPP2R1B (FI) SMG1
+FI,expression regulated by,<-,1,,BRCA1 (FI) HNF4G,true,,BRCA1 (FI) HNF4G
+FI,predicted,-,0.92,,ZBTB24 (FI) ZKSCAN1,true,,ZBTB24 (FI) ZKSCAN1
+FI,predicted,-,0.95,,BRCA1 (FI) KIF20B,true,,BRCA1 (FI) KIF20B
+FI,predicted,-,0.91,,NCAPG (FI) POLQ,true,,NCAPG (FI) POLQ
+FI,activate; complex; input,->,1,,NOL11 (FI) PDCD11,true,,NOL11 (FI) PDCD11
+FI,expression regulated by,<-,1,,BRCA1 (FI) HNF4A,true,,BRCA1 (FI) HNF4A
+FI,predicted,-,0.91,,BCL11A (FI) ZBTB24,true,,BCL11A (FI) ZBTB24
+FI,predicted,-,0.93,,ITCH (FI) USP12,true,,ITCH (FI) USP12
+FI,predicted,-,0.93,,MED13 (FI) TAF4,true,,MED13 (FI) TAF4
+FI,complex; input,-,1,,CENPF (FI) KIF2A,true,,CENPF (FI) KIF2A
+FI,predicted,-,0.93,,KIF15 (FI) PLK4,true,,KIF15 (FI) PLK4
+FI,complex; input,-,1,,NR5A2 (FI) ZNF217,true,,NR5A2 (FI) ZNF217
+FI,complex; input,-,1,,MYB (FI) TP53,true,,MYB (FI) TP53
+FI,predicted,-,0.92,,DTL (FI) RAD18,true,,DTL (FI) RAD18
+FI,complex,-,1,,SMC5 (FI) SMC6,true,,SMC5 (FI) SMC6
+FI,predicted,-,0.9,,ZNF493 (FI) ZNF780B,true,,ZNF493 (FI) ZNF780B
+FI,complex; input,-,1,,KIF2A (FI) MAD2L1,true,,KIF2A (FI) MAD2L1
+FI,predicted,-,0.94,,RNF43 (FI) ZNRF3,false,,RNF43 (FI) ZNRF3
+FI,predicted,-,0.92,,KIF15 (FI) NUF2,true,,KIF15 (FI) NUF2
+FI,activated by; complex; input,<-,1,,DDX52 (FI) UTP15,true,,DDX52 (FI) UTP15
+FI,predicted,-,0.9,,DTL (FI) RBL1,true,,DTL (FI) RBL1
+FI,complex,-,1,,DDX52 (FI) UTP20,true,,DDX52 (FI) UTP20
+FI,predicted,-,0.97,,RAD50 (FI) RFC1,true,,RAD50 (FI) RFC1
+FI,"PPrel: activated by, phosphorylation; catalyzed by",<-,1,,PRKAA1 (FI) STRADB,true,,PRKAA1 (FI) STRADB
+FI,predicted,-,0.9,,CENPE (FI) MYBL2,true,,CENPE (FI) MYBL2
+FI,catalyze; catalyzed by; complex; input,<->,1,,CDK1 (FI) MAD2L1,true,,CDK1 (FI) MAD2L1
+FI,predicted,-,0.95,,USP1 (FI) USP12,true,,USP1 (FI) USP12
+FI,complex; input,-,1,,CEP63 (FI) RAB3IP,true,,CEP63 (FI) RAB3IP
+FI,predicted,-,0.97,,CENPE (FI) CEP55,true,,CENPE (FI) CEP55
+FI,activate,->,1,,WNK4 (FI) WWP1,true,,WNK4 (FI) WWP1
+FI,complex; input,-,1,,AHI1 (FI) OFD1,true,,AHI1 (FI) OFD1
+FI,predicted,-,0.92,,KIF15 (FI) NCAPG2,true,,KIF15 (FI) NCAPG2
+FI,"PPrel: activated, indirect effect",<-,1,,PIK3CB (FI) TRAF5,true,,PIK3CB (FI) TRAF5
+FI,predicted,-,0.89,,CKAP2L (FI) DEPDC1B,true,,CKAP2L (FI) DEPDC1B
+FI,complex; input,-,1,,PIK3C2A (FI) SLC2A8,true,,PIK3C2A (FI) SLC2A8
+FI,predicted,-,0.97,,KIF15 (FI) SKA3,true,,KIF15 (FI) SKA3
+FI,predicted,-,0.91,,BRIP1 (FI) USP1,true,,BRIP1 (FI) USP1
+FI,complex,-,1,,MTF2 (FI) SUZ12,true,,MTF2 (FI) SUZ12
+FI,predicted,-,0.91,,KIF20B (FI) MAD2L1,true,,KIF20B (FI) MAD2L1
+FI,complex,-,1,,CCNA2 (FI) USP37,true,,CCNA2 (FI) USP37
+FI,predicted,-,0.93,,NFAT5 (FI) SHPRH,true,,NFAT5 (FI) SHPRH
+FI,complex; input,-,1,,HMMR (FI) PLK4,true,,HMMR (FI) PLK4
+FI,predicted,-,0.98,,CENPF (FI) KIF11,true,,CENPF (FI) KIF11
+FI,predicted,-,0.93,,ZNF443 (FI) ZNF799,true,,ZNF443 (FI) ZNF799
+FI,catalyzed by; inhibited by,-,1,,FANCA (FI) USP1,true,,FANCA (FI) USP1
+FI,predicted,-,0.98,,CENPF (FI) KIF15,true,,CENPF (FI) KIF15
+FI,predicted,-,0.99,,CENPF (FI) KIF14,true,,CENPF (FI) KIF14
+FI,activated by; inhibite,<-|,1,,SIRT1 (FI) TFDP2,true,,SIRT1 (FI) TFDP2
+FI,activated by; complex; input,<-,1,,DDX52 (FI) HEATR1,true,,DDX52 (FI) HEATR1
+FI,complex; input,-,1,,AHI1 (FI) AKAP9,true,,AHI1 (FI) AKAP9
+FI,predicted,-,0.94,,CDC25A (FI) NCAPG,true,,CDC25A (FI) NCAPG
+FI,PPrel: activation; complex; input,->,1,,AREG (FI) ERBB3,true,,AREG (FI) ERBB3
+FI,predicted,-,0.94,,POLQ (FI) TOP2A,true,,POLQ (FI) TOP2A
+FI,ECrel: compound,-,1,,IPMK (FI) PLCB4,true,,IPMK (FI) PLCB4
+FI,predicted,-,0.96,,SRPK1 (FI) TOP1,true,,SRPK1 (FI) TOP1
+FI,predicted,-,0.91,,BRIX1 (FI) NOP58,true,,BRIX1 (FI) NOP58
+FI,PPrel: activation,->,1,,FGFR4 (FI) PLCB4,true,,FGFR4 (FI) PLCB4
+FI,predicted,-,0.96,,CDK1 (FI) SKA3,true,,CDK1 (FI) SKA3
+FI,predicted,-,0.91,,DSN1 (FI) NCAPG2,true,,DSN1 (FI) NCAPG2
+FI,complex; input,-,1,,CENPK (FI) KIF2A,true,,CENPK (FI) KIF2A
+FI,predicted,-,0.92,,ZNF44 (FI) ZNF692,true,,ZNF44 (FI) ZNF692
+FI,predicted,-,0.91,,CEP55 (FI) PLK4,true,,CEP55 (FI) PLK4
+FI,predicted,-,0.94,,NCAPG (FI) UBE2C,true,,NCAPG (FI) UBE2C
+FI,expression regulated by,<-,1,,ANKS4B (FI) HNF4A,true,,ANKS4B (FI) HNF4A
+FI,PPrel: ubiquitinated,-,1,,FGFR3 (FI) WWP1,true,,FGFR3 (FI) WWP1
+FI,predicted,-,0.91,,CDK1 (FI) FANCA,true,,CDK1 (FI) FANCA
+FI,PPrel: ubiquitinated,-,1,,FGFR4 (FI) ITCH,true,,FGFR4 (FI) ITCH
+FI,predicted,-,0.96,,NUF2 (FI) TOP2A,true,,NUF2 (FI) TOP2A
+FI,predicted,-,0.9,,ASPM (FI) CDC25C,true,,ASPM (FI) CDC25C
+FI,complex; input,-,1,,KIF3B (FI) WDR35,true,,KIF3B (FI) WDR35
+FI,catalyze; catalyzed by; complex; input,<->,1,,MAD2L1 (FI) UBE2C,true,,MAD2L1 (FI) UBE2C
+FI,ECrel: compound,-,1,,MTMR8 (FI) PIK3C2A,true,,MTMR8 (FI) PIK3C2A
+FI,expression regulates,->,1,,HNF4G (FI) ID1,true,,HNF4G (FI) ID1
+FI,predicted,-,0.96,,BLM (FI) POLQ,true,,BLM (FI) POLQ
+FI,predicted,-,0.97,,SPAG5 (FI) TPX2,true,,SPAG5 (FI) TPX2
+FI,predicted,-,0.9,,USP1 (FI) USP37,true,,USP1 (FI) USP37
+FI,predicted,-,0.93,,DDX21 (FI) NOP58,true,,DDX21 (FI) NOP58
+FI,predicted,-,0.9,,CENPE (FI) DTL,true,,CENPE (FI) DTL
+FI,predicted,-,0.93,,ZNF44 (FI) ZNF441,true,,ZNF44 (FI) ZNF441
+FI,complex; input,-,1,,BUB1B (FI) KNTC1,true,,BUB1B (FI) KNTC1
+FI,"PPrel: activation, phosphorylation; activate; catalyze",->,1,,CHEK2 (FI) TP53,true,,CHEK2 (FI) TP53
+FI,complex,-,1,,CDK1 (FI) PLK4,true,,CDK1 (FI) PLK4
+FI,predicted,-,0.92,,DSN1 (FI) SPAG5,true,,DSN1 (FI) SPAG5
+FI,predicted,-,0.91,,ZNF44 (FI) ZNF443,true,,ZNF44 (FI) ZNF443
+FI,predicted,-,0.91,,ZNF445 (FI) ZNF721,true,,ZNF445 (FI) ZNF721
+FI,predicted,-,0.89,,DEPDC1 (FI) HMMR,true,,DEPDC1 (FI) HMMR
+FI,complex; input,-,1,,CENPE (FI) SMC3,true,,CENPE (FI) SMC3
+FI,predicted,-,0.89,,CENPE (FI) SMC4,true,,CENPE (FI) SMC4
+FI,input,-,1,,CDHR2 (FI) FAT1,true,,CDHR2 (FI) FAT1
+FI,predicted,-,0.92,,DBF4 (FI) RRM2,true,,DBF4 (FI) RRM2
+FI,predicted,-,0.89,,HELLS (FI) SMARCAD1,true,,HELLS (FI) SMARCAD1
+FI,predicted,-,0.91,,KIF15 (FI) NCAPG,true,,KIF15 (FI) NCAPG
+FI,predicted,-,0.94,,CENPK (FI) KIF11,true,,CENPK (FI) KIF11
+FI,inhibited by,|-,1,,GUCY2C (FI) PDZD3,true,,GUCY2C (FI) PDZD3
+FI,predicted,-,0.9,,USP1 (FI) USP24,true,,USP1 (FI) USP24
+FI,predicted,-,0.92,,CDK1 (FI) ESPL1,true,,CDK1 (FI) ESPL1
+FI,predicted,-,0.89,,MED13 (FI) ZNF644,true,,MED13 (FI) ZNF644
+FI,complex; input,-,1,,HAUS3 (FI) TPX2,true,,HAUS3 (FI) TPX2
+FI,predicted,-,0.97,,NOLC1 (FI) TCOF1,true,,NOLC1 (FI) TCOF1
+FI,complex,-,1,,CEP63 (FI) OFD1,true,,CEP63 (FI) OFD1
+FI,catalyze,->,1,,CDK1 (FI) SMC4,true,,CDK1 (FI) SMC4
+FI,catalyze,->,1,,CDK1 (FI) SMC3,true,,CDK1 (FI) SMC3
+FI,complex,-,1,,AKAP9 (FI) CDK1,true,,AKAP9 (FI) CDK1
+FI,complex,-,1,,UTP14A (FI) UTP20,true,,UTP14A (FI) UTP20
+FI,ECrel: compound,-,1,,IPMK (FI) PLCG1,true,,IPMK (FI) PLCG1
+FI,complex; input,-,1,,AKAP9 (FI) HMMR,true,,AKAP9 (FI) HMMR
+FI,PPrel: activation; complex; input,->,1,,FGFR4 (FI) PLCG1,true,,FGFR4 (FI) PLCG1
+FI,complex,-,1,,OFD1 (FI) PLK4,true,,OFD1 (FI) PLK4
+FI,activate; catalyze; complex; input,->,1,,BRCA1 (FI) SMC3,true,,BRCA1 (FI) SMC3
+FI,complex,-,1,,AURKA (FI) CEP152,true,,AURKA (FI) CEP152
+FI,predicted,-,0.98,,KIF11 (FI) MAD2L1,true,,KIF11 (FI) MAD2L1
+FI,predicted,-,0.91,,CHEK1 (FI) DEPDC1,true,,CHEK1 (FI) DEPDC1
+FI,predicted,-,0.94,,SLC26A2 (FI) SLC26A3,false,,SLC26A2 (FI) SLC26A3
+FI,predicted,-,0.92,,KIF20B (FI) NCAPG,true,,KIF20B (FI) NCAPG
+FI,predicted,-,0.91,,DTL (FI) SPAG5,true,,DTL (FI) SPAG5
+FI,complex,-,1,,CEP63 (FI) CEP72,true,,CEP63 (FI) CEP72
+FI,predicted,-,0.92,,BUB1B (FI) DTL,true,,BUB1B (FI) DTL
+FI,predicted,-,0.9,,DEPDC1B (FI) KIF11,true,,DEPDC1B (FI) KIF11
+FI,predicted,-,0.9,,GINS1 (FI) UBE2C,true,,GINS1 (FI) UBE2C
+FI,predicted,-,0.89,,PLK4 (FI) SKA3,true,,PLK4 (FI) SKA3
+FI,predicted,-,0.92,,MCM8 (FI) RBL1,true,,MCM8 (FI) RBL1
+FI,ECrel: compound,-,1,,PI4K2B (FI) PLCG1,true,,PI4K2B (FI) PLCG1
+FI,predicted,-,0.95,,PLK4 (FI) SASS6,true,,PLK4 (FI) SASS6
+FI,predicted,-,0.92,,HMMR (FI) RRM2,true,,HMMR (FI) RRM2
+FI,predicted,-,0.93,,ZNF44 (FI) ZNF664,true,,ZNF44 (FI) ZNF664
+FI,catalyze,->,1,,TAF5 (FI) TP53,true,,TAF5 (FI) TP53
+FI,complex; input,-,1,,GOLGA4 (FI) STX16,true,,GOLGA4 (FI) STX16
+FI,PPrel: activation; complex; input,->,1,,FGFR3 (FI) PLCG1,true,,FGFR3 (FI) PLCG1
+FI,complex; input,-,1,,AHCTF1 (FI) DSN1,true,,AHCTF1 (FI) DSN1
+FI,predicted,-,0.94,,CENPE (FI) SKA3,true,,CENPE (FI) SKA3
+FI,predicted,-,0.9,,GAB1 (FI) VAV3,true,,GAB1 (FI) VAV3
+FI,activated by; complex; input,<-,1,,UTP14A (FI) UTP15,true,,UTP14A (FI) UTP15
+FI,predicted,-,0.89,,AURKA (FI) CKAP2L,true,,AURKA (FI) CKAP2L
+FI,predicted,-,0.94,,ATAD2 (FI) E2F7,true,,ATAD2 (FI) E2F7
+FI,expression regulated by; reaction,<-,1,,NCOA6 (FI) PPARG,true,,NCOA6 (FI) PPARG
+FI,predicted,-,0.9,,ATAD2 (FI) E2F2,true,,ATAD2 (FI) E2F2
+FI,predicted,-,0.97,,KIF14 (FI) TPX2,true,,KIF14 (FI) TPX2
+FI,predicted,-,0.93,,BLM (FI) FANCD2,true,,BLM (FI) FANCD2
+FI,predicted,-,0.9,,LYAR (FI) SRPK1,true,,LYAR (FI) SRPK1
+FI,complex; input,-,1,,NCOA6 (FI) PPARA,true,,NCOA6 (FI) PPARA
+FI,complex; input,-,1,,CSTF3 (FI) THOC2,true,,CSTF3 (FI) THOC2
+FI,expression regulates,->,1,,CEBPA (FI) CEL,true,,CEBPA (FI) CEL
+FI,predicted,-,0.98,,NAA15 (FI) NAA16,true,,NAA15 (FI) NAA16
+FI,PPrel: inhibition; catalyze; catalyzed by; complex; inhibit; input,<-,1,,MDM4 (FI) TP53,true,,MDM4 (FI) TP53
+FI,predicted,-,0.9,,CDC7 (FI) NCAPG2,true,,CDC7 (FI) NCAPG2
+FI,predicted,-,0.89,,NOP58 (FI) RSL1D1,true,,NOP58 (FI) RSL1D1
+FI,catalyze,->,1,,ACE2 (FI) AGT,true,,ACE2 (FI) AGT
+FI,PPrel: activation,->,1,,GNG4 (FI) PLCG1,true,,GNG4 (FI) PLCG1
+FI,complex,-,1,,CSTF3 (FI) DDX46,true,,CSTF3 (FI) DDX46
+FI,predicted,-,0.94,,ARHGAP11A (FI) TPX2,true,,ARHGAP11A (FI) TPX2
+FI,predicted,-,0.92,,SASS6 (FI) SPAG5,true,,SASS6 (FI) SPAG5
+FI,catalyze,->,1,,CHEK2 (FI) MDM4,true,,CHEK2 (FI) MDM4
+FI,complex; input,-,1,,KIF2A (FI) KNTC1,true,,KIF2A (FI) KNTC1
+FI,complex,-,1,,AURKA (FI) CEP290,true,,AURKA (FI) CEP290
+FI,predicted,-,0.95,,CDK1 (FI) CHEK1,true,,CDK1 (FI) CHEK1
+FI,predicted,-,0.97,,DTL (FI) TOP2A,true,,DTL (FI) TOP2A
+FI,predicted,-,0.91,,PHF20 (FI) PHF20L1,true,,PHF20 (FI) PHF20L1
+FI,complex; input,-,1,,EREG (FI) PLCG1,true,,EREG (FI) PLCG1
+FI,catalyze; complex; input,->,1,,GTF2F2 (FI) PPIG,true,,GTF2F2 (FI) PPIG
+FI,GErel: expression by; expression regulated by,<-,1,,ACOX2 (FI) PPARA,true,,ACOX2 (FI) PPARA
+FI,complex,-,1,,NOP58 (FI) PDCD11,true,,NOP58 (FI) PDCD11
+FI,complex; input,-,1,,TFDP2 (FI) TP53,true,,TFDP2 (FI) TP53
+FI,predicted,-,0.9,,DEPDC1 (FI) KIF20B,true,,DEPDC1 (FI) KIF20B
+FI,predicted,-,0.89,,ARHGAP11A (FI) NCAPG2,true,,ARHGAP11A (FI) NCAPG2
+FI,predicted,-,0.92,,HELLS (FI) SMC3,true,,HELLS (FI) SMC3
+FI,predicted,-,0.92,,HSPD1 (FI) NOS2,true,,HSPD1 (FI) NOS2
+FI,predicted,-,0.9,,PLK4 (FI) STK38L,true,,PLK4 (FI) STK38L
+FI,predicted,-,0.89,,CENPF (FI) MKI67,true,,CENPF (FI) MKI67
+FI,predicted,-,0.92,,AURKA (FI) CHEK1,true,,AURKA (FI) CHEK1
+FI,predicted,-,0.93,,CDC25A (FI) SKA3,true,,CDC25A (FI) SKA3
+FI,complex; input,-,1,,IFT88 (FI) UBE2V1,true,,IFT88 (FI) UBE2V1
+FI,complex; input,-,1,,AHI1 (FI) CEP152,true,,AHI1 (FI) CEP152
+FI,complex; input,-,1,,MED13 (FI) NCOA3,true,,MED13 (FI) NCOA3
+FI,reaction,-,1,,MED13 (FI) NCOA6,true,,MED13 (FI) NCOA6
+FI,predicted,-,0.93,,DSN1 (FI) TPX2,true,,DSN1 (FI) TPX2
+FI,predicted,-,0.9,,ZNF587 (FI) ZNF774,false,,ZNF587 (FI) ZNF774
+FI,predicted,-,0.94,,ESPL1 (FI) KIF11,true,,ESPL1 (FI) KIF11
+FI,ECrel: compound,-,1,,PIK3C2A (FI) PLCB4,true,,PIK3C2A (FI) PLCB4
+FI,predicted,-,0.9,,BUB1B (FI) CEP55,true,,BUB1B (FI) CEP55
+FI,"PPrel: inhibition, phosphorylation; activate",-,1,,CCNA2 (FI) E2F2,true,,CCNA2 (FI) E2F2
+FI,predicted,-,0.9,,GEN1 (FI) SMC6,true,,GEN1 (FI) SMC6
+FI,predicted,-,0.95,,BRIP1 (FI) ZNF367,true,,BRIP1 (FI) ZNF367
+FI,predicted,-,0.94,,HELLS (FI) NCAPG,true,,HELLS (FI) NCAPG
+FI,predicted,-,0.91,,ATAD5 (FI) DTL,true,,ATAD5 (FI) DTL
+FI,ECrel: compound,-,1,,MTMR8 (FI) PLCG1,true,,MTMR8 (FI) PLCG1
+FI,predicted,-,0.91,,AURKA (FI) ESPL1,true,,AURKA (FI) ESPL1
+FI,predicted,-,0.98,,NCAPG (FI) NCAPG2,true,,NCAPG (FI) NCAPG2
+FI,predicted,-,0.91,,EXOC6 (FI) STX3,true,,EXOC6 (FI) STX3
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF443,true,,ZNF280C (FI) ZNF443
+FI,predicted,-,0.95,,KIF20B (FI) TPX2,true,,KIF20B (FI) TPX2
+FI,catalyze; complex; input,->,1,,BLM (FI) RAD50,true,,BLM (FI) RAD50
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF441,true,,ZNF280C (FI) ZNF441
+FI,complex; input,-,1,,LRP6 (FI) ZNRF3,false,,LRP6 (FI) ZNRF3
+FI,complex; input,-,1,,CENPF (FI) DSN1,true,,CENPF (FI) DSN1
+FI,predicted,-,0.93,,SUZ12 (FI) ZNF217,true,,SUZ12 (FI) ZNF217
+FI,catalyze,->,1,,GEN1 (FI) RAD50,true,,GEN1 (FI) RAD50
+FI,complex; input,-,1,,AREG (FI) BIN1,true,,AREG (FI) BIN1
+FI,predicted,-,0.98,,CCNA2 (FI) CDC25C,true,,CCNA2 (FI) CDC25C
+FI,complex,-,1,,CEP290 (FI) CEP72,true,,CEP290 (FI) CEP72
+FI,"PPrel: inhibited by, dephosphorylation",|-,1,,CACNA1D (FI) PPP2R1B,true,,CACNA1D (FI) PPP2R1B
+FI,predicted,-,0.98,,CCNA2 (FI) CDC25A,true,,CCNA2 (FI) CDC25A
+FI,"PPrel: compound, activated",<-,1,,CALML4 (FI) PLCG1,true,,CALML4 (FI) PLCG1
+FI,ECrel: compound,-,1,,PIK3CB (FI) PLCE1,true,,PIK3CB (FI) PLCE1
+FI,catalyzed by,<-,1,,BRCA1 (FI) GEN1,true,,BRCA1 (FI) GEN1
+FI,complex; inhibite; input,-|,1,,PHF20 (FI) TP53,true,,PHF20 (FI) TP53
+FI,catalyze,->,1,,TAF4 (FI) TP53,true,,TAF4 (FI) TP53
+FI,complex; input,-,1,,ETV4 (FI) NCOA3,true,,ETV4 (FI) NCOA3
+FI,predicted,-,0.89,,CCDC18 (FI) SASS6,true,,CCDC18 (FI) SASS6
+FI,reaction,-,1,,NCOA3 (FI) PPARA,true,,NCOA3 (FI) PPARA
+FI,predicted,-,0.97,,CDC25C (FI) TPX2,true,,CDC25C (FI) TPX2
+FI,predicted,-,0.95,,CSE1L (FI) NUP155,true,,CSE1L (FI) NUP155
+FI,predicted,-,0.9,,HELLS (FI) SKA3,true,,HELLS (FI) SKA3
+FI,predicted,-,0.91,,BCL11A (FI) SIRT1,true,,BCL11A (FI) SIRT1
+FI,predicted,-,0.9,,ATAD2 (FI) CENPE,true,,ATAD2 (FI) CENPE
+FI,complex; input,-,1,,POLQ (FI) RAD50,true,,POLQ (FI) RAD50
+FI,predicted,-,0.9,,ATAD2 (FI) CENPF,true,,ATAD2 (FI) CENPF
+FI,complex; input,-,1,,NCOA3 (FI) PPARG,true,,NCOA3 (FI) PPARG
+FI,predicted,-,0.95,,CENPK (FI) NCAPG2,true,,CENPK (FI) NCAPG2
+FI,complex,-,1,,CEP290 (FI) CEP63,true,,CEP290 (FI) CEP63
+FI,predicted,-,0.97,,MAD2L1 (FI) NCAPG,true,,MAD2L1 (FI) NCAPG
+FI,predicted,-,0.91,,AURKA (FI) KIF20B,true,,AURKA (FI) KIF20B
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF692,true,,ZNF280C (FI) ZNF692
+FI,complex; input,-,1,,BRIP1 (FI) DNA2,true,,BRIP1 (FI) DNA2
+FI,complex; input,-,1,,AHI1 (FI) CDK1,true,,AHI1 (FI) CDK1
+FI,activate; complex; input,->,1,,ATR (FI) FANCD2,true,,ATR (FI) FANCD2
+FI,complex; input,-,1,,BUB1B (FI) PDS5A,true,,BUB1B (FI) PDS5A
+FI,predicted,-,0.89,,DGAT2 (FI) FITM2,false,,DGAT2 (FI) FITM2
+FI,input,-,1,,CDH1 (FI) CDH17,true,,CDH1 (FI) CDH17
+FI,predicted,-,0.92,,POLQ (FI) SPAG5,true,,POLQ (FI) SPAG5
+FI,predicted,-,0.89,,CENPE (FI) PRR11,true,,CENPE (FI) PRR11
+FI,catalyzed by,<-,1,,DNA2 (FI) GEN1,true,,DNA2 (FI) GEN1
+FI,predicted,-,0.92,,CDK1 (FI) KIF15,true,,CDK1 (FI) KIF15
+FI,predicted,-,0.96,,TRIM24 (FI) TRIM33,true,,TRIM24 (FI) TRIM33
+FI,predicted,-,0.96,,CDK1 (FI) KIF14,true,,CDK1 (FI) KIF14
+FI,predicted,-,0.9,,ATAD5 (FI) RFC1,true,,ATAD5 (FI) RFC1
+FI,predicted,-,0.99,,CDK1 (FI) KIF11,true,,CDK1 (FI) KIF11
+FI,ECrel: compound,-,1,,MTMR8 (FI) PLCE1,true,,MTMR8 (FI) PLCE1
+FI,predicted,-,0.91,,CKAP2L (FI) NCAPG,true,,CKAP2L (FI) NCAPG
+FI,predicted,-,0.92,,CEP55 (FI) DEPDC1,true,,CEP55 (FI) DEPDC1
+FI,catalyze,->,1,,NUP155 (FI) XPOT,true,,NUP155 (FI) XPOT
+FI,predicted,-,0.96,,CENPF (FI) TOP2A,true,,CENPF (FI) TOP2A
+FI,predicted,-,0.92,,BRIX1 (FI) RSL1D1,true,,BRIX1 (FI) RSL1D1
+FI,predicted,-,0.89,,PDS5A (FI) SMC4,true,,PDS5A (FI) SMC4
+FI,complex; input,-,1,,PDS5A (FI) SMC3,true,,PDS5A (FI) SMC3
+FI,predicted,-,0.96,,NCAPG2 (FI) SPAG5,true,,NCAPG2 (FI) SPAG5
+FI,"ECrel: compound; PPrel: activation, binding/association; complex; input",->,1,,PIK3CB (FI) PLCG1,true,,PIK3CB (FI) PLCG1
+FI,predicted,-,0.9,,ABCE1 (FI) LTV1,false,,ABCE1 (FI) LTV1
+FI,predicted,-,0.92,,DTL (FI) MKI67,true,,DTL (FI) MKI67
+FI,catalyze; catalyzed by; complex; input,<->,1,,BUB1B (FI) UBE2C,true,,BUB1B (FI) UBE2C
+FI,PPrel: inhibited by,|-,1,,CACNA1D (FI) GNG4,true,,CACNA1D (FI) GNG4
+FI,catalyze; complex; input,->,1,,GTF2F2 (FI) TAF4,true,,GTF2F2 (FI) TAF4
+FI,predicted,-,0.93,,CKAP2L (FI) DEPDC1,true,,CKAP2L (FI) DEPDC1
+FI,predicted,-,0.91,,ARAP2 (FI) ARHGAP11A,true,,ARAP2 (FI) ARHGAP11A
+FI,complex; input,-,1,,SKP2 (FI) UBE2C,true,,SKP2 (FI) UBE2C
+FI,predicted,-,0.92,,CCNA2 (FI) CHEK1,true,,CCNA2 (FI) CHEK1
+FI,ECrel: compound,-,1,,PIK3C2A (FI) PLCG1,true,,PIK3C2A (FI) PLCG1
+FI,predicted,-,0.96,,HELLS (FI) KNTC1,true,,HELLS (FI) KNTC1
+FI,predicted,-,0.95,,CHEK1 (FI) GINS1,true,,CHEK1 (FI) GINS1
+FI,complex,-,1,,DDX52 (FI) PDCD11,true,,DDX52 (FI) PDCD11
+FI,predicted,-,0.92,,RAD18 (FI) SMC6,true,,RAD18 (FI) SMC6
+FI,predicted,-,0.92,,KIF14 (FI) KNTC1,true,,KIF14 (FI) KNTC1
+FI,predicted,-,0.96,,NCAPG2 (FI) TPX2,true,,NCAPG2 (FI) TPX2
+FI,predicted,-,0.97,,NUF2 (FI) SKA3,true,,NUF2 (FI) SKA3
+FI,predicted,-,0.94,,CDC25C (FI) MAD2L1,true,,CDC25C (FI) MAD2L1
+FI,complex; inhibit; input,-|,1,,BRCA2 (FI) RAD50,true,,BRCA2 (FI) RAD50
+FI,activate,->,1,,CCNA2 (FI) TP53,true,,CCNA2 (FI) TP53
+FI,predicted,-,0.95,,CDK1 (FI) DEPDC1B,true,,CDK1 (FI) DEPDC1B
+FI,complex,-,1,,CEP152 (FI) OFD1,true,,CEP152 (FI) OFD1
+FI,predicted,-,0.94,,ESF1 (FI) UTP14A,true,,ESF1 (FI) UTP14A
+FI,PPrel: inhibited by,|-,1,,PPARG (FI) SIRT1,true,,PPARG (FI) SIRT1
+FI,activate; complex; input,->,1,,NOL11 (FI) WDR36,true,,NOL11 (FI) WDR36
+FI,predicted,-,0.96,,BRIX1 (FI) PDCD11,true,,BRIX1 (FI) PDCD11
+FI,predicted,-,0.98,,AURKA (FI) KIF11,true,,AURKA (FI) KIF11
+FI,inhibite,-|,1,,SKP2 (FI) TP53,true,,SKP2 (FI) TP53
+FI,catalyze,->,1,,CDK1 (FI) KIF2A,true,,CDK1 (FI) KIF2A
+FI,catalyze,->,1,,RAD50 (FI) TP53,true,,RAD50 (FI) TP53
+FI,predicted,-,0.96,,AURKA (FI) KIF15,true,,AURKA (FI) KIF15
+FI,"PPrel: activation, phosphorylation; catalyze",->,1,,CHEK1 (FI) WEE1,true,,CHEK1 (FI) WEE1
+FI,predicted,-,0.94,,AURKA (FI) KIF14,true,,AURKA (FI) KIF14
+FI,complex; input,-,1,,BIN1 (FI) SLC2A8,true,,BIN1 (FI) SLC2A8
+FI,predicted,-,0.98,,CEP55 (FI) KIF14,true,,CEP55 (FI) KIF14
+FI,PPrel: ubiquitinated; activated by; complex; input,<-,1,,FANCD2 (FI) FANCF,true,,FANCD2 (FI) FANCF
+FI,complex; input,-,1,,BIN1 (FI) DNAJC6,true,,BIN1 (FI) DNAJC6
+FI,predicted,-,0.92,,CHEK2 (FI) SIRT1,true,,CHEK2 (FI) SIRT1
+FI,predicted,-,0.93,,E2F7 (FI) ZNF367,true,,E2F7 (FI) ZNF367
+FI,activated by; inhibite,<-|,1,,E2F7 (FI) TFDP2,true,,E2F7 (FI) TFDP2
+FI,activate,->,1,,BRCA1 (FI) FANCF,true,,BRCA1 (FI) FANCF
+FI,expression regulates,->,1,,HNF4G (FI) MTF2,true,,HNF4G (FI) MTF2
+FI,catalyze,->,1,,ESPL1 (FI) KIF2A,true,,ESPL1 (FI) KIF2A
+FI,predicted,-,0.9,,DEPDC1 (FI) TOP2A,true,,DEPDC1 (FI) TOP2A
+FI,predicted,-,0.95,,BLM (FI) RAD18,true,,BLM (FI) RAD18
+FI,complex; input,-,1,,LUC7L3 (FI) RBM39,true,,LUC7L3 (FI) RBM39
+FI,input,-,1,,CDH17 (FI) FAT1,true,,CDH17 (FI) FAT1
+FI,PPrel: dissociation; PPrel: inhibited by; complex; reaction,|-,1,,E2F5 (FI) RBL1,true,,E2F5 (FI) RBL1
+FI,predicted,-,0.89,,DTL (FI) HELLS,true,,DTL (FI) HELLS
+FI,predicted,-,0.9,,BRIX1 (FI) RPF2,true,,BRIX1 (FI) RPF2
+FI,PPrel: activation,->,1,,ERBB3 (FI) PIK3CB,true,,ERBB3 (FI) PIK3CB
+FI,predicted,-,0.98,,NOLC1 (FI) NOP58,true,,NOLC1 (FI) NOP58
+FI,activate,->,1,,BRCA1 (FI) FANCA,true,,BRCA1 (FI) FANCA
+FI,predicted,-,0.93,,CEP55 (FI) KIF11,true,,CEP55 (FI) KIF11
+FI,"PPrel: activated, ubiquitination",<-,1,,TRAF5 (FI) UBE2V1,true,,TRAF5 (FI) UBE2V1
+FI,ECrel: compound,-,1,,PIK3C2A (FI) PLCE1,true,,PIK3C2A (FI) PLCE1
+FI,predicted,-,0.93,,CENPE (FI) DEPDC1,true,,CENPE (FI) DEPDC1
+FI,predicted,-,0.9,,DTL (FI) E2F7,true,,DTL (FI) E2F7
+FI,catalyze; complex; input,->,1,,GTF2F2 (FI) TAF5,true,,GTF2F2 (FI) TAF5
+FI,complex; input,-,1,,AKAP9 (FI) TPX2,true,,AKAP9 (FI) TPX2
+FI,complex; input,-,1,,STX16 (FI) VPS54,true,,STX16 (FI) VPS54
+FI,complex; input,-,1,,AHCTF1 (FI) NUP155,true,,AHCTF1 (FI) NUP155
+FI,complex; input,-,1,,AHCTF1 (FI) CENPK,true,,AHCTF1 (FI) CENPK
+FI,predicted,-,0.9,,ZNF44 (FI) ZNF823,true,,ZNF44 (FI) ZNF823
+FI,predicted,-,0.91,,BRCA2 (FI) CCNA2,true,,BRCA2 (FI) CCNA2
+FI,predicted,-,0.94,,CENPE (FI) HELLS,true,,CENPE (FI) HELLS
+FI,complex; input,-,1,,DCLRE1A (FI) FANCF,true,,DCLRE1A (FI) FANCF
+FI,catalyze,->,1,,CDK1 (FI) NCAPG2,true,,CDK1 (FI) NCAPG2
+FI,predicted,-,0.92,,MDM4 (FI) PRKAA1,true,,MDM4 (FI) PRKAA1
+FI,complex; input,-,1,,DCLRE1A (FI) FANCA,true,,DCLRE1A (FI) FANCA
+FI,complex; input,-,1,,IQCB1 (FI) RAB3IP,true,,IQCB1 (FI) RAB3IP
+FI,complex; input,-,1,,KNTC1 (FI) MAD2L1,true,,KNTC1 (FI) MAD2L1
+FI,predicted,-,0.91,,HELLS (FI) NCAPG2,true,,HELLS (FI) NCAPG2
+FI,complex,-,1,,ACVR2B (FI) TDGF1,false,,ACVR2B (FI) TDGF1
+FI,catalyzed by,<-,1,,AHCTF1 (FI) CDK1,true,,AHCTF1 (FI) CDK1
+FI,predicted,-,0.91,,FANCD2 (FI) POLQ,true,,FANCD2 (FI) POLQ
+FI,complex; input,-,1,,BIN1 (FI) CFTR,true,,BIN1 (FI) CFTR
+FI,expression regulates,->,1,,HNF4A (FI) ID1,true,,HNF4A (FI) ID1
+FI,complex,-,1,,AKAP9 (FI) CEP290,true,,AKAP9 (FI) CEP290
+FI,complex; input,-,1,,DNAJC6 (FI) TFRC,true,,DNAJC6 (FI) TFRC
+FI,predicted,-,0.92,,CEBPZ (FI) PDCD11,true,,CEBPZ (FI) PDCD11
+FI,predicted,-,0.91,,BRCA1 (FI) FIGNL1,true,,BRCA1 (FI) FIGNL1
+FI,predicted,-,0.91,,E2F7 (FI) TOP2A,true,,E2F7 (FI) TOP2A
+FI,complex; input,-,1,,EREG (FI) GAB1,true,,EREG (FI) GAB1
+FI,predicted,-,0.9,,CEP55 (FI) ESPL1,true,,CEP55 (FI) ESPL1
+FI,predicted,-,0.92,,CCNA2 (FI) KIF15,true,,CCNA2 (FI) KIF15
+FI,complex,-,1,,CEP72 (FI) IQCB1,true,,CEP72 (FI) IQCB1
+FI,predicted,-,0.97,,CCNA2 (FI) KIF14,true,,CCNA2 (FI) KIF14
+FI,predicted,-,0.91,,PPARG (FI) PPARGC1B,true,,PPARG (FI) PPARGC1B
+FI,catalyzed by,<-,1,,SMC3 (FI) SMC5,true,,SMC3 (FI) SMC5
+FI,catalyzed by,<-,1,,SMC3 (FI) SMC6,true,,SMC3 (FI) SMC6
+FI,complex; input,-,1,,AHI1 (FI) CEP72,true,,AHI1 (FI) CEP72
+FI,activate; inhibited by; reaction,|->,1,,CEBPA (FI) PPARG,true,,CEBPA (FI) PPARG
+FI,ECrel: compound,-,1,,MTMR8 (FI) PLCB4,true,,MTMR8 (FI) PLCB4
+FI,"PPrel: activation; PPrel: activation, dephosphorylation; catalyze",->,1,,CDC25A (FI) CDK1,true,,CDC25A (FI) CDK1
+FI,predicted,-,0.89,,ADNP (FI) TAF4,true,,ADNP (FI) TAF4
+FI,complex; input,-,1,,AHCTF1 (FI) NUF2,true,,AHCTF1 (FI) NUF2
+FI,inhibited by,|-,1,,MDM4 (FI) PHF20,true,,MDM4 (FI) PHF20
+FI,complex; input,-,1,,CENPK (FI) MAD2L1,true,,CENPK (FI) MAD2L1
+FI,"PPrel: inhibition, glycosylation",-|,1,,OGT (FI) PIK3CB,true,,OGT (FI) PIK3CB
+FI,predicted,-,0.91,,GINS1 (FI) KIF15,true,,GINS1 (FI) KIF15
+FI,predicted,-,0.89,,ZNF431 (FI) ZNF714,true,,ZNF431 (FI) ZNF714
+FI,predicted,-,0.96,,BUB1B (FI) SPAG5,true,,BUB1B (FI) SPAG5
+FI,predicted,-,0.97,,CENPF (FI) NCAPG2,true,,CENPF (FI) NCAPG2
+FI,predicted,-,0.97,,CCNA2 (FI) KIF11,true,,CCNA2 (FI) KIF11
+FI,PPrel: ubiquitinated,-,1,,FGFR4 (FI) NEDD4,true,,FGFR4 (FI) NEDD4
+FI,predicted,-,0.98,,CDK1 (FI) DTL,true,,CDK1 (FI) DTL
+FI,complex,-,1,,CEP250 (FI) OFD1,true,,CEP250 (FI) OFD1
+FI,predicted,-,0.9,,NEIL3 (FI) SKA3,true,,NEIL3 (FI) SKA3
+FI,"PPrel: inhibited by, phosphorylated by",|-,1,,CFTR (FI) PRKAA1,true,,CFTR (FI) PRKAA1
+FI,predicted,-,0.95,,MYBL2 (FI) SKA3,true,,MYBL2 (FI) SKA3
+FI,predicted,-,0.9,,BLM (FI) RIF1,true,,BLM (FI) RIF1
+FI,complex; input,-,1,,BRCA1 (FI) NF1,true,,BRCA1 (FI) NF1
+FI,PPrel: inhibition; catalyze,-,1,,ESPL1 (FI) SMC3,true,,ESPL1 (FI) SMC3
+FI,predicted,-,0.92,,ZNF441 (FI) ZNF692,true,,ZNF441 (FI) ZNF692
+FI,catalyze; complex; input,->,1,,BLM (FI) BRCA1,true,,BLM (FI) BRCA1
+FI,predicted,-,0.93,,CDC7 (FI) HELLS,true,,CDC7 (FI) HELLS
+FI,catalyze; complex; input,->,1,,BLM (FI) BRCA2,true,,BLM (FI) BRCA2
+FI,complex; input,-,1,,BDP1 (FI) CRCP,true,,BDP1 (FI) CRCP
+FI,predicted,-,0.97,,CDC25C (FI) SPAG5,true,,CDC25C (FI) SPAG5
+FI,catalyzed by; complex; input,<-,1,,INTS2 (FI) RPAP2,true,,INTS2 (FI) RPAP2
+FI,complex; input,-,1,,BIN1 (FI) TGOLN2,true,,BIN1 (FI) TGOLN2
+FI,predicted,-,0.89,,BRD7 (FI) RFC1,true,,BRD7 (FI) RFC1
+FI,expression regulated by,<-,1,,AGT (FI) HNF4A,true,,AGT (FI) HNF4A
+FI,predicted,-,0.91,,ZKSCAN1 (FI) ZNF664,true,,ZKSCAN1 (FI) ZNF664
+FI,ECrel: compound,-,1,,MTMR8 (FI) PI4K2B,true,,MTMR8 (FI) PI4K2B
+FI,activate; complex; input,->,1,,HEATR1 (FI) NOP58,true,,HEATR1 (FI) NOP58
+FI,complex; input,-,1,,BRCA1 (FI) RAD50,true,,BRCA1 (FI) RAD50
+FI,catalyze,->,1,,SIRT1 (FI) TAF1D,true,,SIRT1 (FI) TAF1D
+FI,"PPrel: activated by, phosphorylation; PPrel: activation, dephosphorylation; catalyze",<->,1,,CDC25C (FI) CDK1,true,,CDC25C (FI) CDK1
+FI,complex; input,-,1,,CDK1 (FI) MCM8,true,,CDK1 (FI) MCM8
+FI,complex; input,-,1,,AREG (FI) PIK3C2A,true,,AREG (FI) PIK3C2A
+FI,complex,-,1,,CEP72 (FI) OFD1,true,,CEP72 (FI) OFD1
+FI,predicted,-,0.89,,ARHGAP11A (FI) TOP2A,true,,ARHGAP11A (FI) TOP2A
+FI,predicted,-,0.97,,RPF2 (FI) RSL1D1,true,,RPF2 (FI) RSL1D1
+FI,complex; input,-,1,,RAD18 (FI) RFC1,true,,RAD18 (FI) RFC1
+FI,PPrel: activation; PPrel: binding/association; complex; input,->,1,,GAB1 (FI) PIK3CB,true,,GAB1 (FI) PIK3CB
+FI,predicted,-,0.91,,CEP55 (FI) CHEK1,true,,CEP55 (FI) CHEK1
+FI,complex; input,-,1,,BLM (FI) MSH5,true,,BLM (FI) MSH5
+FI,predicted,-,0.94,,BRCA1 (FI) SPAG5,true,,BRCA1 (FI) SPAG5
+FI,predicted,-,0.96,,KIF11 (FI) KIF15,true,,KIF11 (FI) KIF15
+FI,predicted,-,0.91,,MCM8 (FI) TP53,true,,MCM8 (FI) TP53
+FI,catalyzed by,<-,1,,AREG (FI) PTPN3,true,,AREG (FI) PTPN3
+FI,predicted,-,0.89,,BRCA1 (FI) E2F7,true,,BRCA1 (FI) E2F7
+FI,catalyze,->,1,,DNA2 (FI) TP53,true,,DNA2 (FI) TP53
+FI,catalyzed by,<-,1,,BUB1B (FI) ESPL1,true,,BUB1B (FI) ESPL1
+FI,predicted,-,0.89,,ARHGAP11A (FI) CENPE,true,,ARHGAP11A (FI) CENPE
+FI,complex; input,-,1,,AHCTF1 (FI) MAD2L1,true,,AHCTF1 (FI) MAD2L1
+FI,predicted,-,0.93,,ARHGAP11A (FI) CENPF,true,,ARHGAP11A (FI) CENPF
+FI,complex; input,-,1,,AHCTF1 (FI) KNTC1,true,,AHCTF1 (FI) KNTC1
+FI,predicted,-,0.94,,KIF11 (FI) POLQ,true,,KIF11 (FI) POLQ
+FI,complex; input,-,1,,AHI1 (FI) CEP63,true,,AHI1 (FI) CEP63
+FI,complex; input,-,1,,NUF2 (FI) SMC3,true,,NUF2 (FI) SMC3
+FI,predicted,-,0.9,,BRD7 (FI) DDX21,true,,BRD7 (FI) DDX21
+FI,"PPrel: inhibited by, phosphorylated by; activated by; catalyzed by",-,1,,CDC25A (FI) CHEK1,true,,CDC25A (FI) CHEK1
+FI,"PPrel: inhibited by, phosphorylated by; activated by; catalyzed by",-,1,,CDC25A (FI) CHEK2,true,,CDC25A (FI) CHEK2
+FI,predicted,-,0.97,,CENPF (FI) SPAG5,true,,CENPF (FI) SPAG5
+FI,predicted,-,0.9,,DEPDC1B (FI) UBE2C,true,,DEPDC1B (FI) UBE2C
+FI,predicted,-,0.95,,ATAD2 (FI) BLM,true,,ATAD2 (FI) BLM
+FI,"PPrel: activated by, phosphorylation",<-,1,,FOXO3 (FI) STK4,true,,FOXO3 (FI) STK4
+FI,GErel: expression by,<-,1,,CDH17 (FI) CDX2,true,,CDH17 (FI) CDX2
+FI,predicted,-,0.93,,CDC25C (FI) HMMR,true,,CDC25C (FI) HMMR
+FI,complex; input,-,1,,CENPF (FI) SMC3,true,,CENPF (FI) SMC3
+FI,ECrel: compound,-,1,,DGAT2 (FI) MOGAT3,false,,DGAT2 (FI) MOGAT3
+FI,predicted,-,0.96,,BUB1B (FI) CHEK1,true,,BUB1B (FI) CHEK1
+FI,predicted,-,0.91,,ARHGAP11A (FI) POLQ,true,,ARHGAP11A (FI) POLQ
+FI,predicted,-,0.93,,NCAPG2 (FI) TOP2A,true,,NCAPG2 (FI) TOP2A
+FI,predicted,-,0.9,,BUB1B (FI) POLQ,true,,BUB1B (FI) POLQ
+FI,complex,-,1,,CEP152 (FI) IQCB1,true,,CEP152 (FI) IQCB1
+FI,activate; input,->,1,,NUP155 (FI) THOC2,true,,NUP155 (FI) THOC2
+FI,complex,-,1,,AKAP9 (FI) CEP250,true,,AKAP9 (FI) CEP250
+FI,input,-,1,,CDHR1 (FI) FAT1,true,,CDHR1 (FI) FAT1
+FI,complex,-,1,,HAUS3 (FI) PLK4,true,,HAUS3 (FI) PLK4
+FI,predicted,-,0.92,,PPARA (FI) SIRT1,true,,PPARA (FI) SIRT1
+FI,predicted,-,0.92,,ZNF443 (FI) ZNF823,true,,ZNF443 (FI) ZNF823
+FI,predicted,-,0.93,,ZNF441 (FI) ZNF664,true,,ZNF441 (FI) ZNF664
+FI,predicted,-,0.94,,HELLS (FI) MKI67,true,,HELLS (FI) MKI67
+FI,PPrel: activation,->,1,,GNG4 (FI) PLCB4,true,,GNG4 (FI) PLCB4
+FI,complex,-,1,,CDC7 (FI) DBF4,true,,CDC7 (FI) DBF4
+FI,predicted,-,0.92,,NCAPG (FI) NEIL3,true,,NCAPG (FI) NEIL3
+FI,predicted,-,0.93,,ARHGAP11A (FI) SPAG5,true,,ARHGAP11A (FI) SPAG5
+FI,PPrel: compound,-,1,,CACNA1D (FI) CALML4,true,,CACNA1D (FI) CALML4
+FI,predicted,-,0.91,,FANCD2 (FI) TPX2,true,,FANCD2 (FI) TPX2
+FI,predicted,-,0.93,,ASPM (FI) FANCD2,true,,ASPM (FI) FANCD2
+FI,complex,-,1,,SGK2 (FI) WWP1,true,,SGK2 (FI) WWP1
+FI,predicted,-,0.93,,USP12 (FI) USP37,true,,USP12 (FI) USP37
+FI,predicted,-,0.9,,BLM (FI) RAD54B,true,,BLM (FI) RAD54B
+FI,catalyze; input,->,1,,NCOA6 (FI) SUZ12,true,,NCOA6 (FI) SUZ12
+FI,complex; input,-,1,,EXOC6 (FI) RAB3IP,true,,EXOC6 (FI) RAB3IP
+FI,complex; input,-,1,,CDK1 (FI) TPX2,true,,CDK1 (FI) TPX2
+FI,PPrel: binding/association,-,1,,MARVELD2 (FI) TUBAL3,true,,MARVELD2 (FI) TUBAL3
+FI,predicted,-,0.96,,NCAPG (FI) TPX2,true,,NCAPG (FI) TPX2
+FI,complex; input,-,1,,PLK4 (FI) TPX2,true,,PLK4 (FI) TPX2
+FI,predicted,-,0.9,,DTL (FI) NCAPG2,true,,DTL (FI) NCAPG2
+FI,complex; input,-,1,,AHCTF1 (FI) SMC3,true,,AHCTF1 (FI) SMC3
+FI,predicted,-,0.95,,CLCN3 (FI) CLCN5,false,,CLCN3 (FI) CLCN5
+FI,complex; input,-,1,,BRCA1 (FI) CHEK1,true,,BRCA1 (FI) CHEK1
+FI,predicted,-,0.9,,DEPDC1B (FI) DTL,true,,DEPDC1B (FI) DTL
+FI,activate; catalyzed by; complex; input,<->,1,,BRCA1 (FI) CHEK2,true,,BRCA1 (FI) CHEK2
+FI,reaction,-,1,,PPARA (FI) PPARG,true,,PPARA (FI) PPARG
+FI,predicted,-,0.97,,CENPE (FI) SPAG5,true,,CENPE (FI) SPAG5
+FI,predicted,-,0.96,,ZNF195 (FI) ZNF44,true,,ZNF195 (FI) ZNF44
+FI,GErel: expression; reaction,->,1,,E2F2 (FI) MYBL2,true,,E2F2 (FI) MYBL2
+FI,predicted,-,0.91,,IMMP2L (FI) OMA1,false,,IMMP2L (FI) OMA1
+FI,predicted,-,0.9,,CENPF (FI) PLK4,true,,CENPF (FI) PLK4
+FI,predicted,-,0.9,,CDCA7 (FI) HELLS,true,,CDCA7 (FI) HELLS
+FI,complex; input,-,1,,DNA2 (FI) RAD50,true,,DNA2 (FI) RAD50
+FI,predicted,-,0.93,,BRIX1 (FI) LYAR,true,,BRIX1 (FI) LYAR
+FI,activate,->,1,,BRCA1 (FI) FANCD2,true,,BRCA1 (FI) FANCD2
+FI,complex,-,1,,CEP290 (FI) OFD1,true,,CEP290 (FI) OFD1
+FI,catalyze; complex; input,->,1,,BRCA1 (FI) TP53,true,,BRCA1 (FI) TP53
+FI,predicted,-,0.9,,KIF14 (FI) SMC4,true,,KIF14 (FI) SMC4
+FI,predicted,-,0.89,,BUB1B (FI) CKAP2L,true,,BUB1B (FI) CKAP2L
+FI,complex; input,-,1,,IFT74 (FI) IFT88,true,,IFT74 (FI) IFT88
+FI,predicted,-,0.92,,KIF14 (FI) SMC3,true,,KIF14 (FI) SMC3
+FI,complex; input,-,1,,CEP250 (FI) RAB3IP,true,,CEP250 (FI) RAB3IP
+FI,complex,-,1,,CEP152 (FI) HAUS3,true,,CEP152 (FI) HAUS3
+FI,predicted,-,0.91,,TP53 (FI) TRIM24,true,,TP53 (FI) TRIM24
+FI,activated by,<-,1,,CRCP (FI) NFIA,true,,CRCP (FI) NFIA
+FI,complex; input,-,1,,ATR (FI) BLM,true,,ATR (FI) BLM
+FI,complex; input,-,1,,NOL11 (FI) UTP15,true,,NOL11 (FI) UTP15
+FI,predicted,-,0.94,,HELLS (FI) NUF2,true,,HELLS (FI) NUF2
+FI,predicted,-,0.92,,BRCA1 (FI) RAD18,true,,BRCA1 (FI) RAD18
+FI,complex; input,-,1,,CHEK1 (FI) RAD50,true,,CHEK1 (FI) RAD50
+FI,predicted,-,0.9,,ZNF441 (FI) ZNF443,true,,ZNF441 (FI) ZNF443
+FI,PPrel: binding/association; complex; input,-,1,,BRCA2 (FI) BRIP1,true,,BRCA2 (FI) BRIP1
+FI,predicted,-,0.96,,NOLC1 (FI) PDCD11,true,,NOLC1 (FI) PDCD11
+FI,catalyze,->,1,,CDK1 (FI) PDS5A,true,,CDK1 (FI) PDS5A
+FI,ECrel: compound,-,1,,PIK3CB (FI) PLCB4,true,,PIK3CB (FI) PLCB4
+FI,PPrel: compound,-,1,,CALML4 (FI) PLCB4,true,,CALML4 (FI) PLCB4
+FI,activate; inhibited by,|->,1,,MYBL2 (FI) TFDP2,true,,MYBL2 (FI) TFDP2
+FI,catalyze,->,1,,NUP155 (FI) TOP2A,true,,NUP155 (FI) TOP2A
+FI,predicted,-,0.91,,PLCB4 (FI) PLCH1,true,,PLCB4 (FI) PLCH1
+FI,PPrel: ubiquitinated,-,1,,FGFR4 (FI) WWP1,true,,FGFR4 (FI) WWP1
+FI,complex; input,-,1,,DSN1 (FI) KNTC1,true,,DSN1 (FI) KNTC1
+FI,predicted,-,0.89,,KIF14 (FI) PLK4,true,,KIF14 (FI) PLK4
+FI,complex; input,-,1,,CENPE (FI) DSN1,true,,CENPE (FI) DSN1
+FI,expression regulated by; inhibited by; reaction,-,1,,CEBPA (FI) MYB,true,,CEBPA (FI) MYB
+FI,predicted,-,0.91,,RAD50 (FI) SIRT1,true,,RAD50 (FI) SIRT1
+FI,predicted,-,0.92,,ATAD2 (FI) TAF4,true,,ATAD2 (FI) TAF4
+FI,predicted,-,0.9,,BRCA1 (FI) PRKDC,true,,BRCA1 (FI) PRKDC
+FI,predicted,-,0.94,,BLM (FI) CCNA2,true,,BLM (FI) CCNA2
+FI,input,-,1,,CDH17 (FI) CDHR1,true,,CDH17 (FI) CDHR1
+FI,input,-,1,,CDH17 (FI) CDHR2,true,,CDH17 (FI) CDHR2
+FI,activate; complex; input,->,1,,NOL11 (FI) UTP20,true,,NOL11 (FI) UTP20
+FI,predicted,-,0.91,,CDK1 (FI) DNA2,true,,CDK1 (FI) DNA2
+FI,predicted,-,0.96,,MAD2L1 (FI) NCAPG2,true,,MAD2L1 (FI) NCAPG2
+FI,predicted,-,0.92,,ZNF692 (FI) ZNF799,true,,ZNF692 (FI) ZNF799
+FI,complex,-,1,,DDX52 (FI) NOP58,true,,DDX52 (FI) NOP58
+FI,expression regulates,->,1,,HNF4G (FI) MYB,true,,HNF4G (FI) MYB
+FI,complex; input,-,1,,NCOA3 (FI) ZNF217,true,,NCOA3 (FI) ZNF217
+FI,expression regulates,->,1,,BRCA1 (FI) CEACAM1,true,,BRCA1 (FI) CEACAM1
+FI,predicted,-,0.9,,DCLRE1A (FI) EME2,true,,DCLRE1A (FI) EME2
+FI,catalyze; catalyzed by; complex; input,<->,1,,CDK1 (FI) UBE2C,true,,CDK1 (FI) UBE2C
+FI,"PPrel: compound, activated",<-,1,,PLA2G4F (FI) PLCG1,true,,PLA2G4F (FI) PLCG1
+FI,ECrel: compound,-,1,,PIP5K1B (FI) PLCB4,true,,PIP5K1B (FI) PLCB4
+FI,"PPrel: activation, phosphorylation",->,1,,CCNA2 (FI) MYBL2,true,,CCNA2 (FI) MYBL2
+FI,GErel: expression by,<-,1,,ACSL5 (FI) PPARG,true,,ACSL5 (FI) PPARG
+FI,GErel: expression by,<-,1,,ACSL5 (FI) PPARA,true,,ACSL5 (FI) PPARA
+FI,predicted,-,0.89,,CCNA2 (FI) RRM2,true,,CCNA2 (FI) RRM2
+FI,predicted,-,0.91,,KIF11 (FI) NOLC1,true,,KIF11 (FI) NOLC1
+FI,predicted,-,0.91,,PPARG (FI) USP7,true,,PPARG (FI) USP7
+FI,complex; input,-,1,,AREG (FI) GAB1,true,,AREG (FI) GAB1
+FI,predicted,-,0.94,,ADNP (FI) ZNF644,true,,ADNP (FI) ZNF644
+FI,predicted,-,0.95,,LCOR (FI) SUZ12,true,,LCOR (FI) SUZ12
+FI,predicted,-,0.92,,ZNF195 (FI) ZNF692,true,,ZNF195 (FI) ZNF692
+FI,predicted,-,0.91,,NFIA (FI) SATB2,true,,NFIA (FI) SATB2
+FI,predicted,-,0.94,,BUB1B (FI) TPX2,true,,BUB1B (FI) TPX2
+FI,predicted,-,0.91,,ZNF445 (FI) ZNF780B,true,,ZNF445 (FI) ZNF780B
+FI,predicted,-,0.92,,DEPDC1B (FI) NCAPG,true,,DEPDC1B (FI) NCAPG
+FI,complex; input,-,1,,CENPF (FI) NUF2,true,,CENPF (FI) NUF2
+FI,complex; input,-,1,,MAD2L1 (FI) SMC3,true,,MAD2L1 (FI) SMC3
+FI,complex; input,-,1,,DSN1 (FI) SMC3,true,,DSN1 (FI) SMC3
+FI,predicted,-,0.9,,MAD2L1 (FI) SMC4,true,,MAD2L1 (FI) SMC4
+FI,predicted,-,0.92,,CCNA2 (FI) CEP55,true,,CCNA2 (FI) CEP55
+FI,expression regulates,->,1,,BCL11A (FI) ID1,true,,BCL11A (FI) ID1
+FI,catalyzed by,<-,1,,MAP2K6 (FI) UBE2V1,true,,MAP2K6 (FI) UBE2V1
+FI,predicted,-,0.93,,BRCA1 (FI) TOP2A,true,,BRCA1 (FI) TOP2A
+FI,input,-,1,,CDHR1 (FI) CDHR2,true,,CDHR1 (FI) CDHR2
+FI,predicted,-,0.89,,ACOX1 (FI) HSD17B4,true,,ACOX1 (FI) HSD17B4
+FI,complex; input,-,1,,IFT74 (FI) KIF3B,true,,IFT74 (FI) KIF3B
+FI,predicted,-,0.94,,ESPL1 (FI) SPAG5,true,,ESPL1 (FI) SPAG5
+FI,complex,-,1,,AKAP9 (FI) AURKA,true,,AKAP9 (FI) AURKA
+FI,predicted,-,0.89,,CHEK1 (FI) DEPDC1B,true,,CHEK1 (FI) DEPDC1B
+FI,catalyzed by,<-,1,,AHCTF1 (FI) ESPL1,true,,AHCTF1 (FI) ESPL1
+FI,"PPrel: activated by, phosphorylation",<-,1,,PPP1R3D (FI) RPS6KA3,true,,PPP1R3D (FI) RPS6KA3
+FI,complex,-,1,,CEP152 (FI) CEP72,true,,CEP152 (FI) CEP72
+FI,catalyze,->,1,,BLM (FI) TP53,true,,BLM (FI) TP53
+FI,predicted,-,0.92,,ZNF692 (FI) ZNF737,true,,ZNF692 (FI) ZNF737
+FI,complex,-,1,,AKAP9 (FI) OFD1,true,,AKAP9 (FI) OFD1
+FI,predicted,-,0.91,,GINS1 (FI) NCAPG,true,,GINS1 (FI) NCAPG
+FI,predicted,-,0.91,,CNOT1 (FI) NANOS1,true,,CNOT1 (FI) NANOS1
+FI,predicted,-,0.92,,ZNF253 (FI) ZNF692,true,,ZNF253 (FI) ZNF692
+FI,predicted,-,0.92,,NF1 (FI) SUZ12,true,,NF1 (FI) SUZ12
+FI,complex; input,-,1,,KIF2A (FI) SMC3,true,,KIF2A (FI) SMC3
+FI,predicted,-,0.91,,MYBL2 (FI) SPAG5,true,,MYBL2 (FI) SPAG5
+FI,predicted,-,0.94,,ATAD2 (FI) BRCA1,true,,ATAD2 (FI) BRCA1
+FI,predicted,-,0.94,,CENPF (FI) SKA3,true,,CENPF (FI) SKA3
+FI,predicted,-,0.91,,KNTC1 (FI) NCAPG,true,,KNTC1 (FI) NCAPG
+FI,"PPrel: activation, phosphorylation; activate; catalyze; expression regulated by",<->,1,,CHEK1 (FI) TP53,true,,CHEK1 (FI) TP53
+FI,complex,-,1,,CDK1 (FI) CEP152,true,,CDK1 (FI) CEP152
+FI,predicted,-,0.89,,NOLC1 (FI) UTP20,true,,NOLC1 (FI) UTP20
+FI,complex; input,-,1,,RFC1 (FI) USP1,true,,RFC1 (FI) USP1
+FI,predicted,-,0.91,,DTL (FI) NCAPG,true,,DTL (FI) NCAPG
+FI,ECrel: compound,-,1,,PIK3CB (FI) PIP5K1B,true,,PIK3CB (FI) PIP5K1B
+FI,catalyzed by,<-,1,,BLM (FI) RTEL1,true,,BLM (FI) RTEL1
+FI,predicted,-,0.91,,ARID3A (FI) NFIA,true,,ARID3A (FI) NFIA
+FI,predicted,-,0.94,,BRCA1 (FI) SUZ12,true,,BRCA1 (FI) SUZ12
+FI,predicted,-,0.94,,CCNA2 (FI) NCAPG2,true,,CCNA2 (FI) NCAPG2
+FI,reaction,-,1,,IFT88 (FI) OFD1,true,,IFT88 (FI) OFD1
+FI,"PPrel: activated by, phosphorylation; catalyzed by",<-,1,,MAP2K6 (FI) TAB3,true,,MAP2K6 (FI) TAB3
+FI,complex; input,-,1,,RFC1 (FI) USP7,true,,RFC1 (FI) USP7
+FI,predicted,-,0.91,,DEPDC1 (FI) DTL,true,,DEPDC1 (FI) DTL
+FI,predicted,-,0.91,,CDC25A (FI) UBE2C,true,,CDC25A (FI) UBE2C
+FI,complex; input,-,1,,NUF2 (FI) PDS5A,true,,NUF2 (FI) PDS5A
+FI,complex,-,1,,CEP152 (FI) CEP63,true,,CEP152 (FI) CEP63
+FI,activate; complex; input,->,1,,NOL11 (FI) NOP58,true,,NOL11 (FI) NOP58
+FI,catalyze,->,1,,ATR (FI) DBF4,true,,ATR (FI) DBF4
+FI,predicted,-,0.95,,ITCH (FI) WWP1,true,,ITCH (FI) WWP1
+FI,predicted,-,0.91,,CENPE (FI) POLQ,true,,CENPE (FI) POLQ
+FI,predicted,-,0.96,,MAD2L1 (FI) SKA3,true,,MAD2L1 (FI) SKA3
+FI,predicted,-,0.95,,DSN1 (FI) SKA3,true,,DSN1 (FI) SKA3
+FI,catalyzed by; input,<-,1,,DDX46 (FI) LUC7L3,true,,DDX46 (FI) LUC7L3
+FI,predicted,-,0.95,,RGPD3 (FI) RGPD4,false,,RGPD3 (FI) RGPD4
+FI,activate; inhibited by,|->,1,,CEBPZ (FI) TP53,true,,CEBPZ (FI) TP53
+FI,predicted,-,0.95,,KIF11 (FI) KIF20B,true,,KIF11 (FI) KIF20B
+FI,expression regulates,->,1,,HNF4A (FI) MYB,true,,HNF4A (FI) MYB
+FI,predicted,-,0.9,,DEPDC1 (FI) UBE2C,true,,DEPDC1 (FI) UBE2C
+FI,predicted,-,0.95,,NOLC1 (FI) UTP15,true,,NOLC1 (FI) UTP15
+FI,predicted,-,0.91,,LRPPRC (FI) PNPT1,true,,LRPPRC (FI) PNPT1
+FI,complex; input,-,1,,GTF2F2 (FI) LUC7L3,true,,GTF2F2 (FI) LUC7L3
+FI,activate; inhibited by; reaction,|->,1,,CEBPA (FI) MED13,true,,CEBPA (FI) MED13
+FI,predicted,-,0.89,,CHD1 (FI) MED13,true,,CHD1 (FI) MED13
+FI,activated by,<-,1,,CYCS (FI) LRPPRC,true,,CYCS (FI) LRPPRC
+FI,complex; input,-,1,,CENPF (FI) MAD2L1,true,,CENPF (FI) MAD2L1
+FI,predicted,-,0.91,,CHEK2 (FI) WEE1,true,,CHEK2 (FI) WEE1
+FI,complex,-,1,,CDK1 (FI) OFD1,true,,CDK1 (FI) OFD1
+FI,expression regulated by,<-,1,,AREG (FI) BRCA1,true,,AREG (FI) BRCA1
+FI,complex,-,1,,AURKA (FI) CEP72,true,,AURKA (FI) CEP72
+FI,expression regulates,->,1,,BCLAF1 (FI) CEACAM5,true,,BCLAF1 (FI) CEACAM5
+FI,predicted,-,0.9,,AURKA (FI) CDC7,true,,AURKA (FI) CDC7
+FI,activate; complex; input,->,1,,HEATR1 (FI) UTP14A,true,,HEATR1 (FI) UTP14A
+FI,predicted,-,0.97,,NUF2 (FI) UBE2C,true,,NUF2 (FI) UBE2C
+FI,complex; input,-,1,,DYNC2LI1 (FI) IFT88,true,,DYNC2LI1 (FI) IFT88
+FI,predicted,-,0.9,,ZNF253 (FI) ZNF780B,true,,ZNF253 (FI) ZNF780B
+FI,predicted,-,0.97,,CDC25A (FI) DTL,true,,CDC25A (FI) DTL
+FI,predicted,-,0.97,,HELLS (FI) TPX2,true,,HELLS (FI) TPX2
+FI,PPrel: activation,->,1,,MAGI3 (FI) RAPGEF2,false,,MAGI3 (FI) RAPGEF2
+FI,complex; input,-,1,,DSN1 (FI) KIF2A,true,,DSN1 (FI) KIF2A
+FI,predicted,-,0.91,,PLK4 (FI) SPAG5,true,,PLK4 (FI) SPAG5
+FI,predicted,-,0.98,,LYAR (FI) NOLC1,true,,LYAR (FI) NOLC1
+FI,complex; input,-,1,,AURKA (FI) HMMR,true,,AURKA (FI) HMMR
+FI,complex; input,-,1,,KIF2A (FI) NUF2,true,,KIF2A (FI) NUF2
+FI,complex; input,-,1,,EREG (FI) PIK3C2A,true,,EREG (FI) PIK3C2A
+FI,predicted,-,0.89,,MAD2L1 (FI) NEIL3,true,,MAD2L1 (FI) NEIL3
+FI,predicted,-,0.9,,CCNA2 (FI) PLK4,true,,CCNA2 (FI) PLK4
+FI,complex; input,-,1,,MAD2L1 (FI) NUF2,true,,MAD2L1 (FI) NUF2
+FI,complex,-,1,,AURKA (FI) CDK1,true,,AURKA (FI) CDK1
+FI,predicted,-,0.91,,DSN1 (FI) NCAPG,true,,DSN1 (FI) NCAPG
+FI,predicted,-,0.97,,AURKA (FI) MYBL2,true,,AURKA (FI) MYBL2
+FI,complex; input,-,1,,AHCTF1 (FI) KIF2A,true,,AHCTF1 (FI) KIF2A
+FI,complex,-,1,,AURKA (FI) CEP63,true,,AURKA (FI) CEP63
+FI,predicted,-,0.9,,ZNF441 (FI) ZNF700,true,,ZNF441 (FI) ZNF700
+FI,complex; input,-,1,,DYNC2LI1 (FI) IFT74,true,,DYNC2LI1 (FI) IFT74
+FI,predicted,-,0.9,,RBM39 (FI) RNPC3,true,,RBM39 (FI) RNPC3
+FI,complex,-,1,,CFTR (FI) UBE2V1,true,,CFTR (FI) UBE2V1
+FI,predicted,-,0.94,,DDX21 (FI) PDCD11,true,,DDX21 (FI) PDCD11
+FI,predicted,-,0.89,,ZFP62 (FI) ZNF780B,true,,ZFP62 (FI) ZNF780B
+FI,complex; input,-,1,,CENPF (FI) CENPK,true,,CENPF (FI) CENPK
+FI,PPrel: activated by; activated by; catalyzed by; complex,<-,1,,TP53 (FI) USP7,true,,TP53 (FI) USP7
+FI,catalyze,->,1,,ESPL1 (FI) MAD2L1,true,,ESPL1 (FI) MAD2L1
+FI,predicted,-,0.94,,BLM (FI) GINS1,true,,BLM (FI) GINS1
+FI,predicted,-,0.92,,AURKA (FI) CEP55,true,,AURKA (FI) CEP55
+FI,predicted,-,0.96,,ARFGEF1 (FI) ARFGEF2,false,,ARFGEF1 (FI) ARFGEF2
+FI,complex,-,1,,IQCB1 (FI) PLK4,true,,IQCB1 (FI) PLK4
+FI,catalyze,->,1,,ESPL1 (FI) NUF2,true,,ESPL1 (FI) NUF2
+FI,predicted,-,0.93,,DDX21 (FI) SRPK1,true,,DDX21 (FI) SRPK1
+FI,predicted,-,0.97,,KIF14 (FI) NCAPG2,true,,KIF14 (FI) NCAPG2
+FI,predicted,-,0.96,,DTL (FI) RRM2,true,,DTL (FI) RRM2
+FI,predicted,-,0.94,,HELLS (FI) MCM8,true,,HELLS (FI) MCM8
+FI,predicted,-,0.91,,ATAD2 (FI) NCOA3,true,,ATAD2 (FI) NCOA3
+FI,complex; input,-,1,,LRP6 (FI) RNF43,false,,LRP6 (FI) RNF43
+FI,GErel: expression,->,1,,E2F5 (FI) MYBL2,true,,E2F5 (FI) MYBL2
+FI,predicted,-,0.92,,CKAP2L (FI) KIF14,true,,CKAP2L (FI) KIF14
+FI,predicted,-,0.91,,CKAP2L (FI) KIF11,true,,CKAP2L (FI) KIF11
+FI,predicted,-,0.9,,DSN1 (FI) KIF11,true,,DSN1 (FI) KIF11
+FI,activated by; inhibit,<-|,1,,POU5F1 (FI) TRIM33,true,,POU5F1 (FI) TRIM33
+FI,predicted,-,0.91,,CKAP2L (FI) KIF15,true,,CKAP2L (FI) KIF15
+FI,PPrel: activation,->,1,,ERBB3 (FI) PLCG1,true,,ERBB3 (FI) PLCG1
+FI,predicted,-,0.97,,CDC25C (FI) KIF11,true,,CDC25C (FI) KIF11
+FI,predicted,-,0.92,,CHEK1 (FI) PRKAA1,true,,CHEK1 (FI) PRKAA1
+FI,"PPrel: activation, phosphorylation; catalyze",->,1,,ATR (FI) CHEK2,true,,ATR (FI) CHEK2
+FI,predicted,-,0.97,,CENPF (FI) KIF20B,true,,CENPF (FI) KIF20B
+FI,"PPrel: activation, phosphorylation; catalyze; complex; input",->,1,,ATR (FI) CHEK1,true,,ATR (FI) CHEK1
+FI,predicted,-,0.94,,CENPK (FI) SPAG5,true,,CENPK (FI) SPAG5
+FI,predicted,-,0.91,,BCL11A (FI) SUZ12,true,,BCL11A (FI) SUZ12
+FI,reaction,-,1,,MED13 (FI) PPARA,true,,MED13 (FI) PPARA
+FI,complex; input,-,1,,MED13 (FI) PPARG,true,,MED13 (FI) PPARG
+FI,predicted,-,0.92,,ZNF33A (FI) ZNF664,true,,ZNF33A (FI) ZNF664
+FI,predicted,-,0.89,,ARHGAP11A (FI) CEP55,true,,ARHGAP11A (FI) CEP55
+FI,predicted,-,0.96,,ASPM (FI) KIF14,true,,ASPM (FI) KIF14
+FI,predicted,-,0.95,,SKA3 (FI) TOP2A,true,,SKA3 (FI) TOP2A
+FI,predicted,-,0.95,,CENPF (FI) NCAPG,true,,CENPF (FI) NCAPG
+FI,predicted,-,0.97,,AURKA (FI) MAD2L1,true,,AURKA (FI) MAD2L1
+FI,predicted,-,0.98,,AURKA (FI) NUF2,true,,AURKA (FI) NUF2
+FI,complex; input,-,1,,GOLGA4 (FI) VPS54,true,,GOLGA4 (FI) VPS54
+FI,predicted,-,0.9,,NCAPG2 (FI) PLK4,true,,NCAPG2 (FI) PLK4
+FI,PPrel: activated by; PPrel: dissociation; PPrel: inhibited by; activated by; complex; input; reaction,-,1,,PTCH1 (FI) SHH,true,,PTCH1 (FI) SHH
+FI,input,-,1,,BRCA1 (FI) RIF1,true,,BRCA1 (FI) RIF1
+FI,expression regulates,->,1,,HNF4A (FI) MTF2,true,,HNF4A (FI) MTF2
+FI,"PPrel: inhibited by, dephosphorylation",|-,1,,CALML4 (FI) PPP1R3D,true,,CALML4 (FI) PPP1R3D
+FI,complex,-,1,,HAUS3 (FI) IQCB1,true,,HAUS3 (FI) IQCB1
+FI,complex; input,-,1,,DSN1 (FI) MAD2L1,true,,DSN1 (FI) MAD2L1
+FI,predicted,-,0.89,,KIF11 (FI) MYBL2,true,,KIF11 (FI) MYBL2
+FI,ECrel: compound,-,1,,PI4K2B (FI) PIK3C2A,true,,PI4K2B (FI) PIK3C2A
+FI,"PPrel: activation, phosphorylation; activate; catalyze",->,1,,ATR (FI) TP53,true,,ATR (FI) TP53
+FI,complex; input,-,1,,GTF2F2 (FI) RPAP2,true,,GTF2F2 (FI) RPAP2
+FI,PPrel: dissociation; activated by; complex; inhibit; input; reaction,<-|,1,,RBL1 (FI) TFDP2,true,,RBL1 (FI) TFDP2
+FI,complex; input,-,1,,NCAPG2 (FI) SMC4,true,,NCAPG2 (FI) SMC4
+FI,predicted,-,0.89,,CDC7 (FI) DSN1,true,,CDC7 (FI) DSN1
+FI,predicted,-,0.93,,ZNF485 (FI) ZNF493,true,,ZNF485 (FI) ZNF493
+FI,catalyze; complex; input,->,1,,BLM (FI) BRIP1,true,,BLM (FI) BRIP1
+FI,predicted,-,0.92,,ZNF692 (FI) ZNF700,true,,ZNF692 (FI) ZNF700
+FI,predicted,-,0.92,,FGFR3 (FI) FGFR4,true,,FGFR3 (FI) FGFR4
+FI,predicted,-,0.92,,HMMR (FI) NCAPG,true,,HMMR (FI) NCAPG
+FI,predicted,-,0.9,,NOL8 (FI) UTP14A,true,,NOL8 (FI) UTP14A
+FI,PPrel: binding/association,-,1,,DYNC2LI1 (FI) TUBAL3,true,,DYNC2LI1 (FI) TUBAL3
+FI,predicted,-,0.91,,KIF15 (FI) MAD2L1,true,,KIF15 (FI) MAD2L1
+FI,predicted,-,0.93,,DEPDC1B (FI) TPX2,true,,DEPDC1B (FI) TPX2
+FI,predicted,-,0.89,,DNA2 (FI) MCM8,true,,DNA2 (FI) MCM8
+FI,predicted,-,0.9,,ASPM (FI) BRCA2,true,,ASPM (FI) BRCA2
+FI,expression regulates,->,1,,BCLAF1 (FI) CBX5,true,,BCLAF1 (FI) CBX5
+FI,predicted,-,0.96,,CENPE (FI) NCAPG2,true,,CENPE (FI) NCAPG2
+FI,catalyzed by; complex; input,<-,1,,DDX46 (FI) GTF2F2,true,,DDX46 (FI) GTF2F2
+FI,activate; complex; input,->,1,,UTP15 (FI) WDR36,true,,UTP15 (FI) WDR36
+FI,predicted,-,0.92,,CENPE (FI) NEIL3,true,,CENPE (FI) NEIL3
+FI,predicted,-,0.9,,CDC25C (FI) WEE1,true,,CDC25C (FI) WEE1
+FI,predicted,-,0.96,,BUB1B (FI) HELLS,true,,BUB1B (FI) HELLS
+FI,predicted,-,0.97,,KIF14 (FI) SPAG5,true,,KIF14 (FI) SPAG5
+FI,predicted,-,0.92,,ZNF692 (FI) ZNF714,true,,ZNF692 (FI) ZNF714
+FI,activate,->,1,,CASP6 (FI) TOP1,true,,CASP6 (FI) TOP1
+FI,predicted,-,0.92,,KIF11 (FI) UBE2C,true,,KIF11 (FI) UBE2C
+FI,complex,-,1,,CEP250 (FI) PLK4,true,,CEP250 (FI) PLK4
+FI,predicted,-,0.9,,ARHGAP11A (FI) CDC7,true,,ARHGAP11A (FI) CDC7
+FI,predicted,-,0.9,,LYAR (FI) RSL1D1,true,,LYAR (FI) RSL1D1
+FI,predicted,-,0.93,,CHEK1 (FI) DBF4,true,,CHEK1 (FI) DBF4
+FI,predicted,-,0.91,,CDC25A (FI) KIF14,true,,CDC25A (FI) KIF14
+FI,predicted,-,0.92,,CDC25A (FI) KIF15,true,,CDC25A (FI) KIF15
+FI,predicted,-,0.92,,AHCTF1 (FI) KIF14,true,,AHCTF1 (FI) KIF14
+FI,predicted,-,0.91,,DDX21 (FI) RSL1D1,true,,DDX21 (FI) RSL1D1
+FI,complex,-,1,,MPHOSPH10 (FI) PDCD11,true,,MPHOSPH10 (FI) PDCD11
+FI,complex; input,-,1,,ACE2 (FI) GPC4,true,,ACE2 (FI) GPC4
+FI,predicted,-,0.97,,CDC25A (FI) KIF11,true,,CDC25A (FI) KIF11
+FI,predicted,-,0.89,,CCNA2 (FI) CDC7,true,,CCNA2 (FI) CDC7
+FI,predicted,-,0.96,,CCNA2 (FI) SKA3,true,,CCNA2 (FI) SKA3
+FI,PPrel: activated by; PPrel: inhibited by; activate; catalyzed by; complex; inhibited by; input,->,1,,FOXO3 (FI) SIRT1,true,,FOXO3 (FI) SIRT1
+FI,predicted,-,0.97,,BLM (FI) TOP2A,true,,BLM (FI) TOP2A
+FI,predicted,-,0.91,,STX16 (FI) STX3,true,,STX16 (FI) STX3
+FI,complex; input,-,1,,CENPE (FI) CENPF,true,,CENPE (FI) CENPF
+FI,predicted,-,0.94,,CDC25C (FI) UBE2C,true,,CDC25C (FI) UBE2C
+FI,GErel: expression by,<-,1,,NKD1 (FI) TCF7,true,,NKD1 (FI) TCF7
+FI,predicted,-,0.9,,DEPDC1B (FI) NUF2,true,,DEPDC1B (FI) NUF2
+FI,complex; input,-,1,,CENPE (FI) CENPK,true,,CENPE (FI) CENPK
+FI,complex,-,1,,CEP63 (FI) PLK4,true,,CEP63 (FI) PLK4
+FI,predicted,-,0.95,,CKAP2L (FI) SKA3,true,,CKAP2L (FI) SKA3
+FI,predicted,-,0.9,,KIF14 (FI) NOLC1,true,,KIF14 (FI) NOLC1
+FI,activated by; inhibited by,-,1,,HMGA2 (FI) TP53,true,,HMGA2 (FI) TP53
+FI,predicted,-,0.94,,ESPL1 (FI) TPX2,true,,ESPL1 (FI) TPX2
+FI,predicted,-,0.94,,ATAD2 (FI) CCNA2,true,,ATAD2 (FI) CCNA2
+FI,complex; input,-,1,,DNAJC6 (FI) EREG,true,,DNAJC6 (FI) EREG
+FI,predicted,-,0.96,,BUB1B (FI) KIF11,true,,BUB1B (FI) KIF11
+FI,predicted,-,0.93,,CCNA2 (FI) HELLS,true,,CCNA2 (FI) HELLS
+FI,predicted,-,0.9,,DEPDC1B (FI) SPAG5,true,,DEPDC1B (FI) SPAG5
+FI,complex; input,-,1,,IFT88 (FI) WDR35,true,,IFT88 (FI) WDR35
+FI,expression regulated by,<-,1,,ACSM3 (FI) HNF4A,true,,ACSM3 (FI) HNF4A
+FI,catalyzed by,<-,1,,GTF2F2 (FI) METTL14,true,,GTF2F2 (FI) METTL14
+FI,expression regulates,->,1,,CEBPA (FI) TOP2A,true,,CEBPA (FI) TOP2A
+FI,complex; input,-,1,,AREG (FI) DNAJC6,true,,AREG (FI) DNAJC6
+FI,predicted,-,0.95,,TPX2 (FI) UBE2C,true,,TPX2 (FI) UBE2C
+FI,catalyzed by; complex; input,<-,1,,INTS8 (FI) TAF5,true,,INTS8 (FI) TAF5
+FI,complex; input,-,1,,AHI1 (FI) HAUS3,true,,AHI1 (FI) HAUS3
+FI,predicted,-,0.9,,ZNF518A (FI) ZNF780B,true,,ZNF518A (FI) ZNF780B
+FI,predicted,-,0.91,,DTL (FI) KIF20B,true,,DTL (FI) KIF20B
+FI,complex; input,-,1,,AHI1 (FI) PLK4,true,,AHI1 (FI) PLK4
+FI,predicted,-,0.95,,MYBL2 (FI) TPX2,true,,MYBL2 (FI) TPX2
+FI,predicted,-,0.91,,ASCL2 (FI) ZNF217,true,,ASCL2 (FI) ZNF217
+FI,activated by; inhibit,<-|,1,,CEBPA (FI) E2F2,true,,CEBPA (FI) E2F2
+FI,predicted,-,0.89,,PLK4 (FI) POLQ,true,,PLK4 (FI) POLQ
+FI,predicted,-,0.95,,ESF1 (FI) NOP58,true,,ESF1 (FI) NOP58
+FI,predicted,-,0.92,,CDK1 (FI) POLQ,true,,CDK1 (FI) POLQ
+FI,complex; input,-,1,,HMMR (FI) OFD1,true,,HMMR (FI) OFD1
+FI,predicted,-,0.93,,NEIL3 (FI) TPX2,true,,NEIL3 (FI) TPX2
+FI,predicted,-,0.9,,ZNF280C (FI) ZNF823,true,,ZNF280C (FI) ZNF823
+FI,catalyzed by,<-,1,,BRCA1 (FI) RTEL1,true,,BRCA1 (FI) RTEL1
+FI,catalyzed by,<-,1,,RAD50 (FI) RTEL1,true,,RAD50 (FI) RTEL1
+FI,"PPrel: inhibited by, phosphorylated by; activate; activated by; catalyzed by",->,1,,CDK1 (FI) WEE1,true,,CDK1 (FI) WEE1
+FI,complex; input,-,1,,CENPK (FI) KNTC1,true,,CENPK (FI) KNTC1
+FI,predicted,-,0.97,,CENPE (FI) TOP2A,true,,CENPE (FI) TOP2A
+FI,expression regulates,->,1,,BRCA1 (FI) ERBB3,true,,BRCA1 (FI) ERBB3
+FI,PPrel: phosphorylation; activate; complex; input,->,1,,ATR (FI) FANCA,true,,ATR (FI) FANCA
+FI,predicted,-,0.98,,BUB1B (FI) KIF14,true,,BUB1B (FI) KIF14
+FI,complex,-,1,,INTS2 (FI) INTS8,true,,INTS2 (FI) INTS8
+FI,predicted,-,0.93,,BUB1B (FI) KIF15,true,,BUB1B (FI) KIF15
+FI,activated by; catalyze; catalyzed by; complex; input,<->,1,,BUB1B (FI) CDK1,true,,BUB1B (FI) CDK1
+FI,predicted,-,0.97,,CCNA2 (FI) NUF2,true,,CCNA2 (FI) NUF2
+FI,predicted,-,0.92,,ZNF443 (FI) ZNF692,true,,ZNF443 (FI) ZNF692
+FI,predicted,-,0.89,,CHD1 (FI) ZNF644,true,,CHD1 (FI) ZNF644
+FI,predicted,-,0.96,,AURKA (FI) BUB1B,true,,AURKA (FI) BUB1B
+FI,activate; complex; input,->,1,,ATR (FI) FANCF,true,,ATR (FI) FANCF
+FI,"PPrel: activation, binding/association",->,1,,CCL28 (FI) CCR6,true,,CCL28 (FI) CCR6
+FI,predicted,-,0.92,,DDX21 (FI) TOP1,true,,DDX21 (FI) TOP1
+FI,activated by,<-,1,,SGK2 (FI) WNK4,true,,SGK2 (FI) WNK4
+FI,predicted,-,0.95,,CHEK1 (FI) TOP2A,true,,CHEK1 (FI) TOP2A
+FI,complex; input,-,1,,AURKA (FI) UBE2C,true,,AURKA (FI) UBE2C
+FI,complex,-,1,,AKAP9 (FI) CEP63,true,,AKAP9 (FI) CEP63
+FI,catalyze,->,1,,CDK1 (FI) CENPE,true,,CDK1 (FI) CENPE
+FI,predicted,-,0.97,,CCNA2 (FI) UBE2C,true,,CCNA2 (FI) UBE2C
+FI,predicted,-,0.92,,DDX21 (FI) TOP2A,true,,DDX21 (FI) TOP2A
+FI,complex,-,1,,NCAPG (FI) SMC4,true,,NCAPG (FI) SMC4
+FI,catalyzed by,<-,1,,BLM (FI) GEN1,true,,BLM (FI) GEN1
+FI,predicted,-,0.92,,CCNA2 (FI) KIF20B,true,,CCNA2 (FI) KIF20B
+FI,predicted,-,0.98,,BUB1B (FI) CCNA2,true,,BUB1B (FI) CCNA2
+FI,catalyzed by,<-,1,,BRCA2 (FI) RTEL1,true,,BRCA2 (FI) RTEL1
+FI,predicted,-,0.94,,DEPDC1 (FI) NEIL3,true,,DEPDC1 (FI) NEIL3
+FI,predicted,-,0.91,,DEPDC1 (FI) MAD2L1,true,,DEPDC1 (FI) MAD2L1
+FI,predicted,-,0.94,,HELLS (FI) MAD2L1,true,,HELLS (FI) MAD2L1
+FI,reaction,-,1,,CSE1L (FI) TP53,true,,CSE1L (FI) TP53
+FI,predicted,-,0.93,,CDC25C (FI) KIF14,true,,CDC25C (FI) KIF14
+FI,predicted,-,0.91,,CDC25C (FI) KIF15,true,,CDC25C (FI) KIF15
+FI,predicted,-,0.96,,KIF11 (FI) SPAG5,true,,KIF11 (FI) SPAG5
+FI,predicted,-,0.9,,FANCD2 (FI) KIF15,true,,FANCD2 (FI) KIF15
+FI,predicted,-,0.92,,NCAPG2 (FI) NUF2,true,,NCAPG2 (FI) NUF2
+FI,complex,-,1,,CEP250 (FI) CEP290,true,,CEP250 (FI) CEP290
+FI,predicted,-,0.93,,MPHOSPH10 (FI) RSL1D1,true,,MPHOSPH10 (FI) RSL1D1
+FI,predicted,-,0.91,,DTL (FI) FANCA,true,,DTL (FI) FANCA
+FI,complex; input,-,1,,CASK (FI) EPB41,false,,CASK (FI) EPB41
+FI,predicted,-,0.96,,BRD7 (FI) CHD7,true,,BRD7 (FI) CHD7
+FI,predicted,-,0.9,,BRD7 (FI) MKI67,true,,BRD7 (FI) MKI67
+FI,predicted,-,0.96,,KIF14 (FI) KIF20B,true,,KIF14 (FI) KIF20B
+FI,complex; input,-,1,,BUB1B (FI) KIF2A,true,,BUB1B (FI) KIF2A
+FI,complex; input,-,1,,AREG (FI) SEC16B,true,,AREG (FI) SEC16B
+FI,predicted,-,0.93,,AURKA (FI) CDC25C,true,,AURKA (FI) CDC25C
+FI,complex; input,-,1,,BIN1 (FI) FNBP1L,true,,BIN1 (FI) FNBP1L
+FI,predicted,-,0.94,,AURKA (FI) CDC25A,true,,AURKA (FI) CDC25A
+FI,GErel: repression,-|,1,,CDX2 (FI) SHH,true,,CDX2 (FI) SHH
+FI,complex,-,1,,AKAP9 (FI) CEP72,true,,AKAP9 (FI) CEP72
+FI,predicted,-,0.91,,PPP2R1B (FI) STRN,true,,PPP2R1B (FI) STRN
+FI,predicted,-,0.92,,CCNA2 (FI) DEPDC1B,true,,CCNA2 (FI) DEPDC1B
+FI,complex; input,-,1,,AURKA (FI) TPX2,true,,AURKA (FI) TPX2
+FI,expression regulated by,<-,1,,DDC (FI) POU5F1,true,,DDC (FI) POU5F1
+FI,predicted,-,0.92,,ZNF700 (FI) ZNF799,true,,ZNF700 (FI) ZNF799
+FI,expression regulates,->,1,,HNF4G (FI) SLC40A1,true,,HNF4G (FI) SLC40A1
+FI,complex; input,-,1,,KNTC1 (FI) SMC3,true,,KNTC1 (FI) SMC3
+FI,predicted,-,0.96,,AURKA (FI) CCNA2,true,,AURKA (FI) CCNA2
+FI,predicted,-,0.89,,AURKA (FI) BLM,true,,AURKA (FI) BLM
+FI,predicted,-,0.97,,KIF11 (FI) NCAPG2,true,,KIF11 (FI) NCAPG2
+FI,catalyze,->,1,,CDK1 (FI) CENPF,true,,CDK1 (FI) CENPF
+FI,activate,->,1,,APAF1 (FI) CASP6,true,,APAF1 (FI) CASP6
+FI,catalyzed by,<-,1,,DSN1 (FI) ESPL1,true,,DSN1 (FI) ESPL1
+FI,predicted,-,0.89,,CDC7 (FI) KIF14,true,,CDC7 (FI) KIF14
+FI,catalyze,->,1,,CDK1 (FI) CENPK,true,,CDK1 (FI) CENPK
+FI,predicted,-,0.91,,CDC7 (FI) KIF11,true,,CDC7 (FI) KIF11
+FI,predicted,-,0.9,,CDK1 (FI) GINS1,true,,CDK1 (FI) GINS1
+FI,predicted,-,0.94,,CDC25A (FI) CDC25C,true,,CDC25A (FI) CDC25C
+FI,activate; complex; input,->,1,,UTP15 (FI) UTP20,true,,UTP15 (FI) UTP20
+FI,predicted,-,0.92,,LRRCC1 (FI) SKA3,true,,LRRCC1 (FI) SKA3
+FI,activated by; complex; input,<-,1,,PDCD11 (FI) UTP15,true,,PDCD11 (FI) UTP15
+FI,predicted,-,0.97,,NCAPG (FI) SKA3,true,,NCAPG (FI) SKA3
+FI,predicted,-,0.94,,DDX52 (FI) RSL1D1,true,,DDX52 (FI) RSL1D1
+FI,activate; activated by; complex; inhibite; inhibited by; input,-,1,,E2F2 (FI) TFDP2,true,,E2F2 (FI) TFDP2
+FI,predicted,-,0.89,,CEBPZ (FI) DDX21,true,,CEBPZ (FI) DDX21
+FI,predicted,-,0.94,,POLQ (FI) TPX2,true,,POLQ (FI) TPX2
+FI,predicted,-,0.91,,ARHGAP11A (FI) CCNA2,true,,ARHGAP11A (FI) CCNA2
+FI,predicted,-,0.92,,KIF20B (FI) RBL1,true,,KIF20B (FI) RBL1
+FI,predicted,-,0.97,,CDK1 (FI) SPAG5,true,,CDK1 (FI) SPAG5
+FI,complex,-,1,,AURKA (FI) CEP250,true,,AURKA (FI) CEP250
+FI,inhibited by,|-,1,,CDH1 (FI) IQGAP2,true,,CDH1 (FI) IQGAP2
+FI,predicted,-,0.96,,BLM (FI) RRM2,true,,BLM (FI) RRM2
+FI,complex; input,-,1,,DSN1 (FI) NUF2,true,,DSN1 (FI) NUF2
+FI,predicted,-,0.92,,ZNF253 (FI) ZNF664,true,,ZNF253 (FI) ZNF664
+FI,predicted,-,0.9,,ZNF445 (FI) ZNF91,true,,ZNF445 (FI) ZNF91
+FI,complex,-,1,,PDCD11 (FI) UTP20,true,,PDCD11 (FI) UTP20
+FI,activated by,<-,1,,BRCA2 (FI) MND1,true,,BRCA2 (FI) MND1
+FI,inhibited by,|-,1,,DCLRE1A (FI) USP1,true,,DCLRE1A (FI) USP1
+FI,input,-,1,,CDH1 (FI) FAT1,true,,CDH1 (FI) FAT1
+FI,predicted,-,0.96,,CDC25A (FI) MAD2L1,true,,CDC25A (FI) MAD2L1
+FI,complex; input,-,1,,CFTR (FI) FNBP1L,true,,CFTR (FI) FNBP1L
+FI,ECrel: compound,-,1,,PIP5K1B (FI) PLCE1,true,,PIP5K1B (FI) PLCE1
+FI,catalyzed by; complex; input,<-,1,,DDX46 (FI) RBM39,true,,DDX46 (FI) RBM39
+FI,complex; input,-,1,,PIK3C2A (FI) TGOLN2,true,,PIK3C2A (FI) TGOLN2
+FI,predicted,-,0.9,,ZNF493 (FI) ZNF91,true,,ZNF493 (FI) ZNF91
+FI,predicted,-,0.94,,CENPF (FI) TPX2,true,,CENPF (FI) TPX2
+FI,predicted,-,0.99,,TOP1 (FI) TOP2A,true,,TOP1 (FI) TOP2A
+FI,predicted,-,0.9,,HSPD1 (FI) KIF14,true,,HSPD1 (FI) KIF14
+FI,complex; input,-,1,,RAD50 (FI) RIF1,true,,RAD50 (FI) RIF1
+FI,predicted,-,0.92,,NOLC1 (FI) WDR36,true,,NOLC1 (FI) WDR36
+FI,GErel: expression by,<-,1,,RRM2 (FI) TP53,true,,RRM2 (FI) TP53
+FI,catalyzed by,<-,1,,GARNL3 (FI) GNG4,true,,GARNL3 (FI) GNG4
+FI,predicted,-,0.91,,ATAD2 (FI) FANCD2,true,,ATAD2 (FI) FANCD2
+FI,predicted,-,0.93,,CCNA2 (FI) DTL,true,,CCNA2 (FI) DTL
+FI,predicted,-,0.92,,NCAPG (FI) PLK4,true,,NCAPG (FI) PLK4
+FI,predicted,-,0.97,,TOP1 (FI) TOP2B,true,,TOP1 (FI) TOP2B
+FI,predicted,-,0.91,,CDK1 (FI) GAS2L3,true,,CDK1 (FI) GAS2L3
+FI,predicted,-,0.92,,KIF15 (FI) POLQ,true,,KIF15 (FI) POLQ
+FI,predicted,-,0.91,,GINS1 (FI) RRM2,true,,GINS1 (FI) RRM2
+FI,predicted,-,0.92,,CKAP2L (FI) NUF2,true,,CKAP2L (FI) NUF2
+FI,predicted,-,0.92,,ATAD2 (FI) BUB1B,true,,ATAD2 (FI) BUB1B
+FI,predicted,-,0.91,,ATAD2 (FI) ZNF367,true,,ATAD2 (FI) ZNF367
+FI,predicted,-,0.91,,NCOA3 (FI) NR1I2,true,,NCOA3 (FI) NR1I2
+FI,predicted,-,0.91,,MYBL2 (FI) UBE2C,true,,MYBL2 (FI) UBE2C
+FI,predicted,-,0.95,,NCAPG (FI) NUF2,true,,NCAPG (FI) NUF2
+FI,catalyze,->,1,,ESPL1 (FI) PDS5A,true,,ESPL1 (FI) PDS5A
+FI,predicted,-,0.94,,ZNF44 (FI) ZNF799,true,,ZNF44 (FI) ZNF799
+FI,complex; input,-,1,,BRCA2 (FI) DNA2,true,,BRCA2 (FI) DNA2
+FI,predicted,-,0.96,,HNF4A (FI) SIRT1,true,,HNF4A (FI) SIRT1
+FI,complex; input,-,1,,DIDO1 (FI) SMC3,true,,DIDO1 (FI) SMC3
+FI,predicted,-,0.9,,ZNF253 (FI) ZNF441,true,,ZNF253 (FI) ZNF441
+FI,complex; input,-,1,,CENPE (FI) KNTC1,true,,CENPE (FI) KNTC1
+FI,predicted,-,0.93,,KIF14 (FI) TMPO,true,,KIF14 (FI) TMPO
+FI,predicted,-,0.89,,ZNF253 (FI) ZNF443,true,,ZNF253 (FI) ZNF443
+FI,complex,-,1,,CEP290 (FI) HAUS3,true,,CEP290 (FI) HAUS3
+FI,catalyzed by,<-,1,,DNA2 (FI) RTEL1,true,,DNA2 (FI) RTEL1
+FI,catalyzed by; inhibited by,-,1,,FANCF (FI) USP1,true,,FANCF (FI) USP1
+FI,complex; input,-,1,,AHI1 (FI) IQCB1,true,,AHI1 (FI) IQCB1
+FI,complex; input,-,1,,CENPK (FI) DSN1,true,,CENPK (FI) DSN1
+FI,predicted,-,0.94,,ZBTB24 (FI) ZNF692,true,,ZBTB24 (FI) ZNF692
+FI,ECrel: compound,-,1,,PIP5K1B (FI) PLCG1,true,,PIP5K1B (FI) PLCG1
+FI,expression regulated by,<-,1,,ETV4 (FI) HNF4G,true,,ETV4 (FI) HNF4G
+FI,complex; input,-,1,,CENPF (FI) KNTC1,true,,CENPF (FI) KNTC1
+FI,predicted,-,0.89,,DEPDC1 (FI) SPAG5,true,,DEPDC1 (FI) SPAG5
+FI,complex; input,-,1,,PLK4 (FI) RAB3IP,true,,PLK4 (FI) RAB3IP
+FI,expression regulated by,<-,1,,ETV4 (FI) HNF4A,true,,ETV4 (FI) HNF4A
+FI,predicted,-,0.94,,AURKA (FI) DTL,true,,AURKA (FI) DTL
+FI,predicted,-,0.93,,CHEK1 (FI) NCAPG2,true,,CHEK1 (FI) NCAPG2
+FI,predicted,-,0.97,,ASPM (FI) AURKA,true,,ASPM (FI) AURKA
+FI,predicted,-,0.91,,NCOA6 (FI) TAF4,true,,NCOA6 (FI) TAF4
+FI,activate; complex; input,->,1,,GAB1 (FI) PLCG1,true,,GAB1 (FI) PLCG1
+FI,complex,-,1,,CCNA2 (FI) CDK1,true,,CCNA2 (FI) CDK1
+FI,predicted,-,0.92,,SMC3 (FI) USP37,true,,SMC3 (FI) USP37
+FI,complex; input,-,1,,HAUS3 (FI) RAB3IP,true,,HAUS3 (FI) RAB3IP
+FI,predicted,-,0.89,,ZNF253 (FI) ZNF431,true,,ZNF253 (FI) ZNF431
+FI,predicted,-,0.95,,ATAD2 (FI) MYBL2,true,,ATAD2 (FI) MYBL2
+FI,complex,-,1,,CEP290 (FI) IQCB1,true,,CEP290 (FI) IQCB1
+FI,predicted,-,0.91,,ZNF737 (FI) ZNF780B,true,,ZNF737 (FI) ZNF780B
+FI,expression regulated by,<-,1,,GNG4 (FI) HNF4A,true,,GNG4 (FI) HNF4A

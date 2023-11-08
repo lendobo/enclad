@@ -7,7 +7,6 @@ from scipy.special import comb, erf
 from scipy.stats import norm
 
 from old_piGGM import QJSweeper
-print('k')
 
 
 def estimate_lambda_np(edge_counts_all, Q, lambda_range):
@@ -123,14 +122,14 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
 
     ######## POSTERIOR DISTRIBUTION ######################################################################
     # Vectorized computation of post_mu and post_var
-    post_mu = (mus * tau_tr**2 + psis * variances) / (variances + tau_tr**2)
+    post_mus = (mus * tau_tr**2 + psis * variances) / (variances + tau_tr**2)
     post_var = (variances * tau_tr**2) / (variances + tau_tr**2)
 
     # Since the normal distribution parameters are arrays...
     # Compute the CDF values directly using the formula for the normal distribution CDF
     epsilon = 1e-5
-    z_scores_plus = (count_mat + epsilon - post_mu[None, :]) / np.sqrt(post_var)[None, :]
-    z_scores_minus = (count_mat - epsilon - post_mu[None, :]) / np.sqrt(post_var)[None, :]
+    z_scores_plus = (count_mat + epsilon - post_mus[None, :]) / np.sqrt(post_var)[None, :]
+    z_scores_minus = (count_mat - epsilon - post_mus[None, :]) / np.sqrt(post_var)[None, :]
     
     # Compute CDF values using the error function
     # By subtracting 2 values of the CDF, the 1s cancel 
@@ -145,8 +144,15 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     # Scoring function
     scores = np.sum(thetas * (1 - g_mat), axis=1)
 
+    # # print(scores)
+    # print(tau_tr)
+    # print(np.sum(p_k_vec) / len(p_k_vec))
+
+
     # Find the lambda_j that maximizes the score
     lambda_wp = lambda_range[np.argmax(scores)]
+
+    # print(lambda_wp)
     
     return lambda_wp, tau_tr, mus
 
@@ -160,9 +166,16 @@ n = 500             # number of samples
 b = int(0.75 * n)   # size of sub-samples
 Q = 300             # number of sub-samples
 
-l_lo = 0.041025641025641026
-l_hi = 0.15384615384615385
-lambda_range = np.linspace(l_lo, l_hi, 40)
+lowerbound = 0.01
+upperbound = 0.4
+l_lo = 3     # Set it at knee-point index -1 
+l_hi = 15    # set at knee-point index 
+
+
+lambda_range = np.linspace(lowerbound, upperbound, 40)
+select_lambda_range = lambda_range[l_lo:l_hi]
+
+select_edge_counts_all = edge_counts_all[:, :, l_lo:l_hi]
 
 rank=1
 size=1
@@ -171,16 +184,26 @@ size=1
 data, prior_matrix_t, adj_matrix = QJSweeper.generate_synth_data(p, n)
 
 # make a random prior matrix with 0s and 1s
-prior_matrix_r = np.random.randint(2, size=(p, p))
-np.fill_diagonal(prior_matrix_r, 0)
+r_p_1 = np.random.randint(2, size=(p, p))
+np.fill_diagonal(r_p_1, 0)
 
-# check if prior_matrix_r and prior_matrix_t are the same
-print(np.array_equal(prior_matrix_r, prior_matrix_t))
+r_p_2 = np.random.randint(2, size=(p, p))
+np.fill_diagonal(r_p_2, 0)
 
-lambda_np, theta_mat = estimate_lambda_np(edge_counts_all, Q, lambda_range)
-lambda_wp_t, tau_tr, mus = estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix_t)
-lambda_wp_r, tau_tr, mus = estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix_r)
 
-print(lambda_np)
-print(lambda_wp_t)
-print(lambda_wp_r)
+# check if r_p_1 and r_p_2 are the same
+print(np.array_equal(r_p_1, r_p_2))
+
+# # check if prior_matrix_r and prior_
+# matrix_t are the same
+# print(np.array_equal(prior_matrix_r, prior_matrix_t))
+
+lambda_np, theta_mat = estimate_lambda_np(select_edge_counts_all, Q, select_lambda_range)
+
+lambda_wp_t, tau_tr, mus = estimate_lambda_wp(select_edge_counts_all, Q, select_lambda_range, prior_matrix_t)
+lambda_wp_r, tau_tr, mus = estimate_lambda_wp(select_edge_counts_all, Q, select_lambda_range, r_p_1)
+lambda_wp_r2, tau_tr, mus = estimate_lambda_wp(select_edge_counts_all, Q, select_lambda_range, r_p_2)
+
+# print(lambda_np)
+# print(lambda_wp_t)
+# print(lambda_wp_r)

@@ -4,9 +4,6 @@ import pickle
 
 from itertools import combinations
 
-n = 5
-b = int(0.75 * n)
+n =10e+5
 
-all_combinations = list(combinations(range(n), b))
-
-print(len(all_combinations))
+print(n)

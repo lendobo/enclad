@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import networkx as nx
 import math
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ import sys
 import pickle
 import warnings
 import os
+import argparse
 
 
 # Activate the automatic conversion of numpy objects to R objects
@@ -27,8 +29,12 @@ numpy2ri.activate()
 ro.r('''
 weighted_glasso <- function(data, penalty_matrix, nobs) {
   library(glasso)
-  result <- glasso(s=as.matrix(data), rho=penalty_matrix, nobs=nobs)
-  return(list(precision_matrix=result$wi, edge_counts=result$wi != 0))
+  tryCatch({
+    result <- glasso(s=as.matrix(data), rho=penalty_matrix, nobs=nobs)
+    return(list(precision_matrix=result$wi, edge_counts=result$wi != 0))
+  }, error=function(e) {
+    return(list(error_message=toString(e$message)))
+  })
 }
 ''')
 
@@ -66,16 +72,20 @@ class QJSweeper:
 
     @staticmethod
     def generate_synth_data(p, n):
-        if p == 100:
+
+        random.seed(42)
+        np.random.seed(42)
+
+        if p <= 100:
             m = random.choice([1,2,2])
-        elif p == 300:
+        elif 100 < p <= 300:
             m = random.choice([3,5,6])
-        elif p == 500:
+        elif 300 < p <= 500:
             m = random.choice([5,8,10])
-        elif p == 1000:
+        elif 500 < p <= 1000:
             m = random.choice([10,15,20])
         else:
-            m = 5
+            m = 20
 
         # TRUE NETWORK
         G = nx.barabasi_albert_graph(p, m, seed=42)
@@ -114,10 +124,7 @@ class QJSweeper:
                     prior_matrix[j, i] = 0.9
         np.fill_diagonal(prior_matrix, 0)
 
-        prior_matrix = np.zeros((p, p))
-
         # DATA MATRIX
-        np.random.seed(42)
         data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
 
         return data, prior_matrix, adj_matrix
@@ -138,7 +145,7 @@ class QJSweeper:
         # Each rank will attempt to generate Q/size unique subsamples
         subsamples_per_rank = Q // size
         attempts = 0
-        max_attempts = subsamples_per_rank * 10  # to avoid an infinite loop
+        max_attempts = 10e+5  # to avoid an infinite loop
 
         while len(subsamples_indices) < subsamples_per_rank and attempts < max_attempts:
             # Generate a random combination
@@ -174,7 +181,11 @@ class QJSweeper:
         p = self.p
         prior_matrix = self.prior_matrix
         sub_sample = data[np.array(single_subsamp_idx), :]
+        # try:
         S = empirical_covariance(sub_sample)
+        # except Exception as e:
+        #     print(f"Error in computing empirical covariance: {e}", file=sys.stderr)
+        #     traceback.print_exc(file=sys.stderr)
 
         # Number of observations
         nobs = sub_sample.shape[0]
@@ -186,18 +197,21 @@ class QJSweeper:
 
         # Call the R function from Python
         weighted_glasso = ro.globalenv['weighted_glasso']
-        try:
-            result = weighted_glasso(S, penalty_matrix, nobs)
-            if 'error' in result.names:
-                print(f"R Error or Warning: {result.rx('message')[0]}")
-                return np.zeros((p,p)), np.zeros((p,p)), 0
-            else:
-                precision_matrix = np.array(result.rx('precision_matrix')[0])
-                edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
-                return edge_counts, precision_matrix, 1
-        except RRuntimeError as e:
-            print(f"RRuntimeError: {e}")
-            return np.zeros((p,p)), np.zeros((p,p)), 0
+        # try:
+        result = weighted_glasso(S, penalty_matrix, nobs)
+        # Check for an error message returned from R
+        if 'error_message' in result.names:
+            error_message = result.rx('error_message')[0][0]
+            print(f"R Error: {error_message}", file=sys.stderr, flush=True)
+            return np.zeros((p, p)), np.zeros((p, p)), 0
+        else:
+            precision_matrix = np.array(result.rx('precision_matrix')[0])
+            edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
+            return edge_counts, precision_matrix, 1
+        # except Exception as e:
+        #     print(f"Unexpected error: {e}", file=sys.stderr, flush=True)
+        #     return np.zeros((p, p)), np.zeros((p, p)), 0
+
 
 
     def run_subsample_optimization(self, lambda_range):
@@ -219,24 +233,46 @@ class QJSweeper:
 
 
 
-def main(rank, size):
+def main(rank, size, machine='local'):
     #######################
-    p = 50             # number of variables (nodes)
-    n = 500             # number of samples
+    p = args.p           # number of variables (nodes)
+    n = args.n             # number of samples
     b = int(0.75 * n)   # size of sub-samples
-    Q = 100             # number of sub-samples
+    Q = args.Q             # number of sub-samples
     
-    l_lo = 0.01
-    l_hi = 0.4 
-    lambda_range = np.linspace(l_lo, l_hi, 40)
+    llo = args.llo
+    lhi = args.lhi
+    lamlen = args.lamlen
+    lambda_range = np.linspace(llo, lhi, lamlen)
     #######################
 
-    data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n)
-    synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
+    if args.run_type == 'synthetic':
+        # Synthetic run
+        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n)
+        synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
 
-    # omics_QJ = 
+        edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
 
-    edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
+    elif args.run_type == 'omics':
+        # Data run
+        if machine == 'local':
+            cms2_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv', index_col=0)
+        else:
+            cms2_data = pd.read_csv(f'~/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv', index_col=0)
+        
+        cms2_data = cms2_data.iloc[:, :p]
+        cms2_array = cms2_data.values
+
+        n = cms2_array.shape[0]
+        b = int(0.75 * n)
+
+        # scale and center 
+        cms2_array = (cms2_array - cms2_array.mean(axis=0)) / cms2_array.std(axis=0)
+        prior_matrix = np.zeros((p, p))
+        # run QJ Sweeper
+        omics_QJ = QJSweeper(cms2_array, prior_matrix, b, Q, rank, size)
+
+        edge_counts_all, success_counts = omics_QJ.run_subsample_optimization(lambda_range)
 
     return edge_counts_all, p, n, Q
 
@@ -245,9 +281,24 @@ if __name__ == "__main__":
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+
+    # Set up command-line arguments
+    parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
+    parser.add_argument('--p', type=int, default=50, help='Number of variables (nodes)')
+    parser.add_argument('--n', type=int, default=500, help='Number of samples')
+    parser.add_argument('--Q', type=int, default=300, help='Number of sub-samples')
+    parser.add_argument('--llo', type=float, default=0.01, help='Lower bound for lambda range')
+    parser.add_argument('--lhi', type=float, default=0.5, help='Upper bound for lambda range')
+    parser.add_argument('--lamlen', type=int, default=80, help='Number of points in lambda range')
+    parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'omics'], help='Type of run to execute')
+    parser.add_argument('--cms', type=str, default='cms2', choices=['cms2', 'cms3', 'cms4', 'cms1'], help='CMS type to run for omics run')
+
+
+    args = parser.parse_args()
+
     # Check if running in SLURM environment
     if "SLURM_JOB_ID" in os.environ:
-        edge_counts, p, n, Q = main(rank=rank, size=size)
+        edge_counts, p, n, Q = main(rank=rank, size=size, machine='hpc')
 
         # Gather the results at the root
         all_edges = comm.gather(edge_counts, root=0)
@@ -260,7 +311,7 @@ if __name__ == "__main__":
                 combined_edge_counts += edge_count
 
             # Save combined results
-            with open(f'net_results/combined_edge_counts_all.pkl', 'wb') as f:
+            with open(f'net_results/{args.run_type}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
 
             # Transfer results to $HOME
@@ -268,8 +319,12 @@ if __name__ == "__main__":
 
     else:
         # If no SLURM environment, run for entire lambda range
-        edge_counts, p, n, Q = main(rank=1, size=1)
+        edge_counts, p, n, Q = main(rank=1, size=1, machine='local')
 
         # Save results to a pickle file
-        with open(f'net_results/edge_counts_all_{p}_{n}_{Q}_fullrange.pkl', 'wb') as f:
+        with open(f'net_results/edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
             pickle.dump(edge_counts, f)
+
+
+# scp mbarylli@snellius.surf.nl:"phase_1_code/Networks/net_results/omics_edge_counts_all_pnQ\(100\,\ 106\,\ 300\).pkl" net_results/
+ 

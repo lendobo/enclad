@@ -366,16 +366,20 @@ def optimize_graph(data, prior_matrix, lambda_val):
 
 
 ### Import data
-selected_genes = 100
+selected_genes = 10
 # cms4_data = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_midrange_.csv', index_col=0)
-cms4_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top{selected_genes}.csv', index_col=0)
+cms4_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top_DEA.csv', index_col=0)
 
-cms2_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top{selected_genes}.csv', index_col=0)
+cms2_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv', index_col=0)
+print(cms2_data.shape)
 
 # downsizer = 100
 # # subset the data at 10 random columns
 # cms4_data = cms4_data.sample(n=downsizer, axis=1)
 # cms2_data = cms2_data.sample(n=downsizer, axis=1)
+
+# look at the first 10 columns of cms2_data
+cms2_data = cms2_data.iloc[:, :300]
 
 cms2_array = cms2_data.values
 # data_array = 2**data_array
