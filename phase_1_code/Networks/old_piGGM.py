@@ -258,19 +258,22 @@ def main(rank, size, machine='local'):
     elif args.run_type == 'omics':
         # Data run
         if machine == 'local':
-            cms2_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv', index_col=0)
+            cms2_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/processed_data/CMS2_balanced_data.csv', index_col=0)
+            cms2_omics_prior = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/processed_data/CMS2_balanced_adjacency_matrix.csv', index_col=0)
         else:
             cms2_data = pd.read_csv(f'~/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv', index_col=0)
         
-        cms2_data = cms2_data.iloc[:, :p]
+        cms2_data = cms2_data.iloc[:, :]
         cms2_array = cms2_data.values
+
+        cms2_omics_prior = cms2_omics_prior.iloc[:, :]
+        prior_matrix = cms2_omics_prior.values
 
         n = cms2_array.shape[0]
         b = int(0.75 * n)
 
         # scale and center 
         cms2_array = (cms2_array - cms2_array.mean(axis=0)) / cms2_array.std(axis=0)
-        prior_matrix = np.zeros((p, p))
         # run QJ Sweeper
         omics_QJ = QJSweeper(cms2_array, prior_matrix, b, Q, rank, size)
 
@@ -324,7 +327,7 @@ if __name__ == "__main__":
         edge_counts, p, n, Q = main(rank=1, size=1, machine='local')
 
         # Save results to a pickle file
-        with open(f'net_results/local_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
+        with open(f'net_results/local_{args.run_type}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
             pickle.dump(edge_counts, f)
 
 
