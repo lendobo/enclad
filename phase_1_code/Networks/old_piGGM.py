@@ -9,7 +9,7 @@ from numpy.random import multivariate_normal
 from scipy.special import comb, erf
 import scipy.stats as stats
 from scipy.linalg import block_diag, eigh, inv
-from sklearn.covariance import empirical_covariance, GraphicalLasso
+from sklearn.covariance import empirical_covariance
 import rpy2.robjects as ro
 from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr
@@ -62,7 +62,7 @@ class QJSweeper:
     subsample_optimiser(b, Q, lambda_range)
         Optimizes the objective function for all sub-samples and lambda values, using optimize_for_q_and_j.
     """
-    def __init__(self, data, prior_matrix, b, Q, rank, size):
+    def __init__(self, data, prior_matrix, b, Q, rank=1, size=1):
         self.data = data
         self.prior_matrix = prior_matrix
         self.p = data.shape[1]
@@ -90,6 +90,7 @@ class QJSweeper:
         # TRUE NETWORK
         G = nx.barabasi_albert_graph(p, m, seed=42)
         adj_matrix = nx.to_numpy_array(G)
+
         
         # PRECISION MATRIX
         precision_matrix = -0.5 * adj_matrix
@@ -116,13 +117,14 @@ class QJSweeper:
         prior_matrix = np.zeros((p, p))
         for i in range(p):
             for j in range(i, p):
-                if adj_matrix[i, j] != 0 and np.random.rand() < 0.95 :
-                    prior_matrix[i, j] = 0.9
-                    prior_matrix[j, i] = 0.9
-                elif adj_matrix[i, j] == 0 and np.random.rand() < 0.05:
-                    prior_matrix[i, j] = 0.9
-                    prior_matrix[j, i] = 0.9
+                if adj_matrix[i, j] != 0 and np.random.rand() < 1 :
+                    prior_matrix[i, j] = 1
+                    prior_matrix[j, i] = 1
+                elif adj_matrix[i, j] == 0 and np.random.rand() < 0.0:
+                    prior_matrix[i, j] = 1
+                    prior_matrix[j, i] = 1
         np.fill_diagonal(prior_matrix, 0)
+
 
         # DATA MATRIX
         data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
@@ -286,9 +288,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
     parser.add_argument('--p', type=int, default=50, help='Number of variables (nodes)')
     parser.add_argument('--n', type=int, default=500, help='Number of samples')
-    parser.add_argument('--Q', type=int, default=300, help='Number of sub-samples')
+    parser.add_argument('--Q', type=int, default=800, help='Number of sub-samples')
     parser.add_argument('--llo', type=float, default=0.01, help='Lower bound for lambda range')
-    parser.add_argument('--lhi', type=float, default=0.5, help='Upper bound for lambda range')
+    parser.add_argument('--lhi', type=float, default=0.4, help='Upper bound for lambda range')
     parser.add_argument('--lamlen', type=int, default=80, help='Number of points in lambda range')
     parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'omics'], help='Type of run to execute')
     parser.add_argument('--cms', type=str, default='cms2', choices=['cms2', 'cms3', 'cms4', 'cms1'], help='CMS type to run for omics run')
@@ -322,7 +324,7 @@ if __name__ == "__main__":
         edge_counts, p, n, Q = main(rank=1, size=1, machine='local')
 
         # Save results to a pickle file
-        with open(f'net_results/edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
+        with open(f'net_results/local_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
             pickle.dump(edge_counts, f)
 
 

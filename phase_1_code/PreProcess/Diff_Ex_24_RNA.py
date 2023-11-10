@@ -52,10 +52,13 @@ for i, gene in enumerate(random_genes):
     # plot cms2_gene_values
     ax1 = plt.subplot(4, 5, i+1)  # Adjusted the grid to 4x5 and indexed correctly
     stats.probplot(cms2_gene_values, dist="norm", plot=ax1)
+    ax1.set_facecolor('lightgrey')
+
     
     # plot cms2_gene_values_e2
     ax2 = plt.subplot(4, 5, i+11)  # Adjusted the grid to 4x5 and indexed correctly
     stats.probplot(cms2_gene_values_e2, dist="norm", plot=ax2)
+    # change background color
     plt.tight_layout()
 plt.show()
 
@@ -204,7 +207,7 @@ print(f'Number of data points below -{Log2FX_X}: {len(diff_expr_results[diff_exp
 print(f'Number of data points above {Log2FX_X}: {len(diff_expr_results[diff_expr_results["Log-differences"] > Log2FX_X])}')
 
 
-top_n = 500
+top_n = 250
 
 # Isolate genes that are above diff_expr_results[diff_expr_results["Log-differences"] > logX2FC and above significance threshold
 significant_genes = diff_expr_results[diff_expr_results['Corrected P-Value'] < 0.05]
@@ -227,6 +230,7 @@ filtered_cms2_data.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hN
 with open(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/top{top_n}_cms2_names.txt', 'w') as f:
     for gene in top_genes_cms2.index:
         f.write(gene + '\n')
+
 
 # Write a transposed version to a tab-separated file
 filtered_cms4_data.T.to_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms4_top{top_n}_transposed.tsv', sep='\t')

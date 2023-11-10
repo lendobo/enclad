@@ -1,109 +1,131 @@
 import numpy as np
 from scipy.optimize import curve_fit
+import warnings
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pickle
+
+
+import numpy as np
+from scipy.optimize import curve_fit
 
 # Define a linear function for curve fitting
 def linear_func(x, a, b):
     return a * x + b
 
-def fit_lines_and_get_error(index, lambdas, edge_counts):
-    # Extracted the edge count conversion to outside of this function
-    left_data = lambdas[:index+1]
-    right_data = lambdas[index:]
+def fit_lines_and_get_error(index, lambdas, edge_counts, left_bound, right_bound):
+    # Only consider data points within the specified bounds
+    left_data = lambdas[left_bound:index+1]
+    right_data = lambdas[index:right_bound]
 
-    if len(left_data) < 2 or len(right_data) < 2:
+    if len(left_data) < 3 or len(right_data) < 3:
         return np.inf
 
-    # Fit lines to the left and right of current index
-    params_left, _ = curve_fit(linear_func, left_data, edge_counts[:index+1])
-    params_right, _ = curve_fit(linear_func, right_data, edge_counts[index:])
+    # Fit lines to the left and right of current index within bounds
+    # print(index)
+    params_left, _ = curve_fit(linear_func, left_data, edge_counts[left_bound:index+1])
+    # print(index)
+    params_right, _ = curve_fit(linear_func, right_data, edge_counts[index:right_bound])
     
-    # Calculate fit errors
-    error_left = np.sum((linear_func(left_data, *params_left) - edge_counts[:index+1]) ** 2)
-    error_right = np.sum((linear_func(right_data, *params_right) - edge_counts[index:]) ** 2)
+    # Calculate fit errors within bounds
+    error_left = np.sum((linear_func(left_data, *params_left) - edge_counts[left_bound:index+1]) ** 2)
+    error_right = np.sum((linear_func(right_data, *params_right) - edge_counts[index:right_bound]) ** 2)
     
     return error_left + error_right
 
-
-def find_single_knee_point(lambdas, edge_counts_all):
-    # Calculate the total fit error for each lambda and find the 'knee-point'
-    edge_counts = [np.sum(matrix)/2 for matrix in np.rollaxis(edge_counts_all, -1)]
-    errors = [fit_lines_and_get_error(i, lambdas, edge_counts) for i in range(len(lambdas))]
-    knee_point_index = np.argmin(errors)
+def find_knee_point(lambda_range, edge_counts_all, left_bound, right_bound):
+    errors = [fit_lines_and_get_error(i, lambda_range, edge_counts_all, left_bound, right_bound) 
+              for i in range(left_bound, right_bound)]
+    knee_point_index = np.argmin(errors) + left_bound
     return knee_point_index
 
-#### Main code ####
+def find_all_knee_points(lambda_range, edge_counts_all):
+    # Sum the edge counts across all nodes
+    edge_counts_all = np.sum(edge_counts_all, axis=(0, 1))
 
-lambda_range = np.linspace(0.01, 0.4, 40)
+    # Find the main knee point across the full range
+    main_knee_point_index = find_knee_point(lambda_range, edge_counts_all, 0, len(lambda_range))
+    main_knee_point = lambda_range[main_knee_point_index]
+    
+    # For the left knee point, consider points to the left of the main knee point
+    left_knee_point_index = find_knee_point(lambda_range, edge_counts_all, 0, main_knee_point_index)
+    left_knee_point = lambda_range[left_knee_point_index]
+    
+    # For the right knee point, consider points to the right of the main knee point
+    # Update the bounds to ensure the fit_lines_and_get_error function considers only the right subset
+    right_knee_point_index = find_knee_point(lambda_range, edge_counts_all, main_knee_point_index, len(lambda_range))
+    right_knee_point = lambda_range[right_knee_point_index]
+    
+    return left_knee_point, main_knee_point, right_knee_point, left_knee_point_index, main_knee_point_index, right_knee_point_index
 
-p_range = 100
-n = 300
-b_values = 250 # int((2 / 3) * n)
-Q_values = 300 # int((1 / 3) * n)
+# Main code
+if __name__ == "__main__":
+    #### Main code ####
+    p = 100             # number of variables (nodes)
+    n = 500             # number of samples
+    b = int(0.75 * n)   # size of sub-samples
+    Q = 800             # number of sub-samples
 
-filename_edges = 'net_results/synthetic_edge_counts_all_pnQ250_800_1000_0.01_0.4_40.pkl'
-with open(filename_edges, 'rb') as f:
-    edge_counts_all = pickle.load(f)
+    lowerbound = 0.01
+    upperbound = 0.4
+    lambda_range = np.linspace(lowerbound, upperbound, 60)
 
-# divide each value in edge_counts_all by 2*Q
-edge_counts_all = edge_counts_all / (2 * Q_values)
+    filename_edges = f'net_results/synthetic_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_60.pkl'
+    with open(filename_edges, 'rb') as f:
+        edge_counts_all = pickle.load(f)
 
-
-print("[Nodes, Nodes, Lambdas]:", edge_counts_all.shape)
-
-knee_point_index = find_single_knee_point(lambda_range, edge_counts_all)
-knee_point = lambda_range[knee_point_index]
-print("Found main knee-point at lambda =", knee_point)
-
-left_knee_point_index = find_single_knee_point(lambda_range[:knee_point_index+1], edge_counts_all[..., :knee_point_index+1])
-right_knee_point_index = knee_point_index + find_single_knee_point(lambda_range[knee_point_index:], edge_counts_all[..., knee_point_index:])
-
-print("Found left knee-point at index:", left_knee_point_index)
-print("Found right knee-point at index:", right_knee_point_index)
-print("Left knee-point at lambda =", lambda_range[left_knee_point_index])
-print("Right knee-point at lambda =", lambda_range[right_knee_point_index])
-
-# Convert the 3D array to edge counts for each lambda for plotting
-edge_counts = [np.sum(matrix)/2 for matrix in np.rollaxis(edge_counts_all, -1)]
-
-# Fit curves again around optimal knee-point for plotting
-left_data = lambda_range[:knee_point_index]
-right_data = lambda_range[knee_point_index+1:]
-params_left, _ = curve_fit(linear_func, left_data, edge_counts[:knee_point_index])
-params_right, _ = curve_fit(linear_func, right_data, edge_counts[knee_point_index+1:])
-
-# Fit curves around left knee-point for plotting
-left_data_l = lambda_range[:left_knee_point_index+1]
-right_data_l = lambda_range[left_knee_point_index+1:]
-params_left_l, _ = curve_fit(linear_func, left_data_l, edge_counts[:left_knee_point_index+1])
-params_right_l, _ = curve_fit(linear_func, right_data_l, edge_counts[left_knee_point_index+1:])
-
-# Fit curves around right knee-point for plotting
-left_data_r = lambda_range[:right_knee_point_index+1]
-right_data_r = lambda_range[right_knee_point_index+1:]
-params_left_r, _ = curve_fit(linear_func, left_data_r, edge_counts[:right_knee_point_index+1])
-params_right_r, _ = curve_fit(linear_func, right_data_r, edge_counts[right_knee_point_index+1:])
+    # divide each value in edge_counts_all by 2*Q
+    edge_counts_all = edge_counts_all / (2 * Q)
 
 
+    left_knee_point, main_knee_point, right_knee_point, left_knee_point_index, knee_point_index, right_knee_point_index = find_all_knee_points(lambda_range, edge_counts_all)
+    print("Left Knee Point at lambda =", left_knee_point)
+    print("Main Knee Point at lambda =", main_knee_point)
+    print("Right Knee Point at lambda =", right_knee_point)
 
-# plot the fitted curves to the left and right of the knee point
-plt.figure(figsize=(10, 6))
-plt.scatter(lambda_range, edge_counts, label="Data")
-plt.plot(lambda_range[:knee_point_index], linear_func(lambda_range[:knee_point_index], *params_left), color="green", label="Left Fit", alpha=0.4)
-plt.plot(lambda_range[knee_point_index+1:], linear_func(lambda_range[knee_point_index+1:], *params_right), color="green", label="Right Fit", alpha=0.4)
-plt.plot(lambda_range[:left_knee_point_index+1], linear_func(lambda_range[:left_knee_point_index+1], *params_left_l), color="orange", label="Left, L", alpha=0.4)
-plt.plot(lambda_range[left_knee_point_index+1:], linear_func(lambda_range[left_knee_point_index+1:], *params_right_l), color="orange", label="right, L", alpha=0.4)
-plt.plot(lambda_range[:right_knee_point_index+1], linear_func(lambda_range[:right_knee_point_index+1], *params_left_r), color="purple", label="Left, R", alpha=0.4)
-plt.plot(lambda_range[right_knee_point_index+1:], linear_func(lambda_range[right_knee_point_index+1:], *params_right_r), color="purple", label="right, R", alpha=0.4)
-plt.axvline(x=lambda_range[knee_point_index], color="green", linestyle="--", label="Knee Point")
-plt.axvline(x=lambda_range[left_knee_point_index], color="orange", linestyle="--", label="Left Knee Point")
-plt.axvline(x=lambda_range[right_knee_point_index], color="purple", linestyle="--", label="Right Knee Point")
-#draw horizontal line at 0
-plt.axhline(y=0, color="black", alpha=0.5)
-plt.axvline(x=0, color="black", alpha=0.5)
-plt.xlabel("Penalty value")
-plt.ylabel("Number of edges")
-plt.legend()
-plt.show()
+    # We will now plot the additional lines: the right red line and the left magenta line
+    # Sum the edge counts across all nodes
+    edge_counts_all = np.sum(edge_counts_all, axis=(0, 1))
+
+    plt.figure(figsize=(14, 7))
+    plt.plot(lambda_range, edge_counts_all, 'bo', label='Edge Counts', alpha = 0.5)
+
+    # Fit and plot the lines for the left knee point
+    left_data = lambda_range[:left_knee_point_index+1]
+    left_fit_params, _ = curve_fit(linear_func, left_data, edge_counts_all[:left_knee_point_index+1])
+    plt.plot(left_data, linear_func(left_data, *left_fit_params), 'r-', label='Left Fit')
+
+    # Fit and plot the line between the left knee point and the main knee point (right red line)
+    left_knee_to_main_data = lambda_range[left_knee_point_index:knee_point_index+1]
+    left_knee_to_main_fit_params, _ = curve_fit(linear_func, left_knee_to_main_data, edge_counts_all[left_knee_point_index:knee_point_index+1])
+    plt.plot(left_knee_to_main_data, linear_func(left_knee_to_main_data, *left_knee_to_main_fit_params), 'r--', label='Right of Left Knee Fit')
+
+    # Fit and plot the lines for the main knee point
+    main_left_data = lambda_range[:knee_point_index]
+    main_right_data = lambda_range[knee_point_index:]
+    main_left_fit_params, _ = curve_fit(linear_func, main_left_data, edge_counts_all[:knee_point_index])
+    main_right_fit_params, _ = curve_fit(linear_func, main_right_data, edge_counts_all[knee_point_index:])
+    plt.plot(main_left_data, linear_func(main_left_data, *main_left_fit_params), 'g-', label='Main Left Fit')
+    plt.plot(main_right_data, linear_func(main_right_data, *main_right_fit_params), 'g-', label='Main Right Fit')
+
+    # Fit and plot the line between the main knee point and the right knee point (left magenta line)
+    main_to_right_knee_data = lambda_range[knee_point_index:right_knee_point_index+1]
+    main_to_right_knee_fit_params, _ = curve_fit(linear_func, main_to_right_knee_data, edge_counts_all[knee_point_index:right_knee_point_index+1])
+    plt.plot(main_to_right_knee_data, linear_func(main_to_right_knee_data, *main_to_right_knee_fit_params), 'm--', label='Left of Right Knee Fit')
+
+    # Fit and plot the lines for the right knee point
+    right_data = lambda_range[right_knee_point_index:]
+    right_fit_params, _ = curve_fit(linear_func, right_data, edge_counts_all[right_knee_point_index:])
+    plt.plot(right_data, linear_func(right_data, *right_fit_params), 'm-', label='Right Fit')
+
+    # Mark the knee points on the plot
+    plt.axvline(x=left_knee_point, color='r', linestyle='--', label='Left Knee Point')
+    plt.axvline(x=main_knee_point, color='g', linestyle='--', label='Main Knee Point')
+    plt.axvline(x=right_knee_point, color='m', linestyle='--', label='Right Knee Point')
+
+    plt.xlabel('Lambda')
+    plt.ylabel('Edge Counts')
+    plt.title('Knee Points and Fitted Lines')
+    plt.legend()
+    plt.grid()
+    plt.show()

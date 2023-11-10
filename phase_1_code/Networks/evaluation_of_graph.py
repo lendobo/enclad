@@ -1,4 +1,30 @@
-def optimize_graph(data, prior_matrix, lambda_val):
+import sys
+import numpy as np
+import rpy2.robjects as ro
+from rpy2.robjects import numpy2ri
+from rpy2.robjects.packages import importr
+from sklearn.covariance import empirical_covariance
+
+
+
+# Activate the automatic conversion of numpy objects to R objects
+numpy2ri.activate()
+
+# Define the R function for weighted graphical lasso
+ro.r('''
+weighted_glasso <- function(data, penalty_matrix, nobs) {
+  library(glasso)
+  tryCatch({
+    result <- glasso(s=as.matrix(data), rho=penalty_matrix, nobs=nobs)
+    return(list(precision_matrix=result$wi, edge_counts=result$wi != 0))
+  }, error=function(e) {
+    return(list(error_message=toString(e$message)))
+  })
+}
+''')
+
+
+def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
     """
     Optimizes the objective function using the entire data set and the estimated lambda.
 
@@ -16,14 +42,42 @@ def optimize_graph(data, prior_matrix, lambda_val):
     opt_precision_mat : array-like, shape (p, p)
         The optimized precision matrix.
     """
-    # Use GraphicalLasso to estimate the precision matrix
-    model = GraphicalLasso(alpha=lambda_val, mode='cd', max_iter=100)
+    # Number of observations
+    nobs = data.shape[0]
+    p = data.shape[1]
+
+    complete_graph_edges = (p * (p - 1)) / 2
+
+    S = empirical_covariance(data)
+
+
+    # generate penalty matrix, where values = lambda_np for non-prior edges and lambda_wp for prior edges
+    penalty_matrix = np.zeros_like(prior_matrix)
+
+    # Assign penalties based on the prior matrix
+    penalty_matrix[prior_matrix == 1] = lambda_wp
+    penalty_matrix[prior_matrix == 0] = lambda_np
+
+    # print(f'P: {p}')
+
+    # Call the R function from Python
+    weighted_glasso = ro.globalenv['weighted_glasso']
     try:
-        model.fit(data)
-        return model.precision_
+        result = weighted_glasso(S, penalty_matrix, nobs)   
+        # Check for an error message returned from R
+        if 'error_message' in result.names:
+            error_message = result.rx('error_message')[0][0]
+            print(f"R Error: {error_message}", file=sys.stderr, flush=True)
+            return np.zeros((p, p)), np.zeros((p, p)), 0
+        else:
+            precision_matrix = np.array(result.rx('precision_matrix')[0])
+            np.fill_diagonal(precision_matrix, 0)
+            edge_counts = np.sum((np.abs(precision_matrix) > 1e-5).astype(int)) / 2
+            density = edge_counts / complete_graph_edges
+            return precision_matrix, edge_counts, density
     except Exception as e:
-        print(f"Optimization did not succeed due to {str(e)}")
-        return np.zeros((data.shape[1], data.shape[1]))
+        print(f"Unexpected error: {e}", file=sys.stderr, flush=True)
+        return np.zeros((p, p)), np.zeros((p, p)), 0
 
 
 
@@ -48,6 +102,7 @@ def evaluate_reconstruction(adj_matrix, opt_precision_mat, threshold=1e-5):
     # Convert the optimized precision matrix to binary form
     reconstructed_adj = (np.abs(opt_precision_mat) > threshold).astype(int)
     np.fill_diagonal(reconstructed_adj, 0)
+    np.fill_diagonal(adj_matrix, 0)
 
     # True positives, false positives, etc.
     tp = np.sum((reconstructed_adj == 1) & (adj_matrix == 1))

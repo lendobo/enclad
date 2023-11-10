@@ -62,3 +62,25 @@ ggplot(results_df, aes(x = results_df[, comp_col], y = -log10(P.Value), color = 
     name = "Adj.P.Val < 0.05",
     labels = c("Down", "N.S.", "Up")
   )
+
+# Get results for CMS2 vs CMS4 contrast
+results_CMS2_CMS4 <- topTable(fit2, adjust="fdr", coef="CMS2 - CMS4", number=Inf)
+
+# Now we define top100_CMS2 as the top 100 entries from this result set
+top500_CMS2 <- head(results_CMS2_CMS4, 500)
+
+
+# Write the top 100 genes overexpressed in CMS2 to a text file
+write.table(row.names(top500_CMS2), file = "../data/Synapse/TCGA/Proteomics_CMS_groups/top500_CMS2_PROT.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+
+# Define top100_CMS4 as the top entries from the CMS2 vs CMS4 results with negative logFC
+# This indicates higher expression in CMS4 compared to CMS2
+top_CMS4_overexpressed <- results_CMS2_CMS4[results_CMS2_CMS4$logFC < 0, ]
+
+# Since we are interested in the top 100, we need to sort them by logFC in ascending order to get the most underexpressed in CMS2 which means overexpressed in CMS4
+top_CMS4_overexpressed <- head(top_CMS4_overexpressed[order(top_CMS4_overexpressed$logFC), ], 500)
+
+# Output the gene names of the top 100 overexpressed in CMS4 to a text file
+write.table(row.names(top_CMS4_overexpressed), file = "../data/Synapse/TCGA/Proteomics_CMS_groups/top500_CMS4_PROT.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+
