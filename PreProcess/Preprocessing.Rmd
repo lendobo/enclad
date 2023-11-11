@@ -1,0 +1,391 @@
+---
+title: "BDA2023_Preprocessing"
+date: "28/12/2022"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.show = 'hide', results="hide")
+```
+
+## A multivariate RNA-seq data set
+
+We use the data set from Brooks et al. (2011).
+These are from an experiment in which the RNA profile from Drosophila melanogaster (the fruit fly) control cells were compared to that of an RNAi-knockdown treatment of a gene involved in RNA-splicing.
+RNA splicing is a post-transcriptional "editing" procedure that takes place for most genes in eukaryotic organisms.
+The data consist of 4 control samples and 3 knockdown samples (so, 4 and 3 replicates).
+The data file is a CSV (comma-separated) file with 8 columns, the first of which contains the gene name, and the subsequent 7 containing the data for the experiments.
+When loading the data in R we get
+
+```{r readcounts}
+counts = read.csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/ENCLAD/phase_1_code/data/Synapse/TCGA/Proteomics_CMS_groups/TCGACRC_proteomics_ALL_labelled.csv')
+
+rownames(counts) <- counts[, 1]
+
+counts <- counts[-1, ]
+counts <- counts[, -1]
+
+
+
+head(counts)
+```
+
+where 'ct.n' indicates the control samples and 'kd.n' the knockdown samples.
+The numbers in the table are numbers of sequences in the sample that were mapped to the corresponding gene.
+For example, for gene FBgn0000008 the number of sequences that map to this gene counted in sample ct.1 is 76.
+The counts have already been corrected for sequences mapped to multiple genes (i.e. non-specific sequences, these are deleted) and for paired-end sequencing.
+
+## Strategy
+
+1.  Investigate the error structure
+2.  Test whether the data suffers from heteroscedasticity. This means that the measurement error variance is not constant, but depends on the measured value. This is often the case with RNAseq measurements
+3.  If the RNAseq data is heteroscedastic, then a variance stabilization transformation has to be applied to the data before a T-test on each gene can be performed
+4.  Finally, use a FDR criterion to decide which list of putatively differentially expressed genes to study further.
+
+Note that instead of approach 3) a more sophisticated approach has been touched upon in the lecture.
+It uses a Negative-Binomial (NB) distribution to model the measurement error.
+It also applies an empirical Bayesian approach to moderate the test over the genes.
+This method is used in the R-packages DESeq and edgeR for RNAseq analysis (Anders et al. (2013)).
+However, approach 3) is a good alternative, and is easy to understand.
+The final result (list of "significant genes") hardly differs between this and the more sophisticated method.
+
+## Comparing samples
+
+The first thing that should be noticed is that every sample has a different number of total counts.
+This will of course influence the counts for a specific gene.
+Instead of the actual measured counts we are interested in the rate (or percentage) of counts for a given gene.
+It is this rate that we are looking for.
+So, let's see what the "sequence depth" is of each of the samples:
+
+```{r total counts}
+totalcounts = colSums(counts)
+totalcounts
+```
+
+Based on these total counts, we expect to see a factor 2.3 difference in the counts per gene for the replicate samples "ct.1" and "ct.3", for example.
+If we want to be able to compare the sample counts, we should calculate the observed rates.
+Here I chose to calculate observed rates per million total counts to obtain readable numbers :
+
+```{r ratespermillion}
+ratespermillion = as.data.frame(sweep(10^6*counts,2,totalcounts,FUN="/"))
+head(ratespermillion)
+```
+
+## Is the data heteroscedastic?
+
+A general way to investigate the variance structure of a measurement is to plot sample standard deviations against sample means on a logarithmic scale.
+It's a good idea to always make such a plot.
+If you have enough measurements to observe trends, this plot will tell you a lot about the data, and specifically it tells you whether you can use standard statistical tests like t-test, ANOVA etc. on the data.
+We need to distinguish between the control and knockdown columns in the data set, as the means and standard deviations will be calculated per group.
+Hence, we define their names (i.e. ct.1, ct.2, etc.) for later use:
+
+```{r names}
+ct.names = paste('ct',1:4,sep = '.')
+kd.names = paste('kd',1:3,sep = '.')
+```
+
+Now we can calculate the average rates of the two groups of samples, as well as the standard deviation of the average rates :
+
+```{r rpm}
+# The apply() function applies a function (the third argument to apply, 
+# here mean or sd) to a data frame (the first argument) by row (when the
+# second argument = 1) or column (when the second argument = 2).
+control.mean = apply(ratespermillion[ct.names],1,mean)
+control.sd =  apply(ratespermillion[ct.names],1,sd)
+knockdown.mean = apply(ratespermillion[kd.names],1,mean)
+knockdown.sd =  apply(ratespermillion[kd.names],1,sd)
+```
+
+Now we can plot the results on a double logarithmic scale:
+
+```{r plot rpm}
+# Plot results for control samples in blue
+plot(control.mean,control.sd,log = 'xy',pch = 20,cex=.5,col='blue',xlab = 'Mean Rate',ylab = 'Stand dev')
+# and the knockdown samples in red
+points(knockdown.mean,knockdown.sd,pch=20,cex=0.5,col='red')
+title('Standard deviation vs mean rate')
+```
+
+The reason to use a double logarithmic scale is the fact that in many experimental data sets the standard deviation σ is proportional to a power of the mean \mu, symbolically, $\sigma ∝ \mu^b$, or $\sigma=A\mu^b$.
+Taking the logarithm of both sides gives $\log(\sigma)=\log(A)+b⋅\log(\mu)$, which is the equation of a straight line with offset $\log⁡(A)$ and slope $b$ and variables $log⁡(σ)$ and $log⁡(μ)$.
+We would expect to see the approximate relation
+
+$\log(sd)=\log(\frac{10^6}{A})+b\log(r)$
+
+where $r$ is the observed mean rate and $sd$ the sample standard deviation of the rate.
+If we fit a straight line to the log-transformed $sd$ and mean rate, and print the coefficients of this fit we get
+
+```{r linear model}
+all.fit = lm(sd~mean, data.frame(mean=log(c(control.mean,knockdown.mean)),sd=log(c(control.sd,knockdown.sd))))
+coef(all.fit)
+```
+
+which says that the slope equals 0.862 $$\^1$$.
+$$\^1$$: NB!
+If one would draw reads from a single sample then the count data would follow a Poisson distribution.
+For a Poisson distribution the standard deviation $\sigma$ equals the square root of the mean value, thus for each gene $\sigma = \mu^{0.5}$.
+In that case the slope $b$ should have been 0.5.
+Here the slope was larger than 0.5.
+This is a known effect in RNA-seq data analysis and is called "over-dispersion" of the data.
+The origin of this high variability is thought to be additional variation that the process of biological replication introduces.
+I.e. the biological samples are thought to yield data originating from different Poisson processes.
+
+The standard deviation of the RNAseq data depends strongly on the measured counts.
+Because the data is heteroscedastic, we cannot apply a normal t-test to each gene.
+As an alternative we could use a T-test with "unequal variance" assumption between the two treatments.
+However for such a test to be valid, the approach would require the assumption that the samples within a treatment are drawn from a common normal distribution.
+However, the unequal variance assumption gives a T-test less power because, with the same data, we now have to estimate two different instead of one common standard deviation.
+To try it, let's see whether for the gene "FBgn0000043" the two treatments have an equal rate:
+
+```{r ttest on ratespermillion data with unequal variance}
+t.test(ratespermillion['FBgn0000043',ct.names],ratespermillion['FBgn0000043',kd.names],var.equal=FALSE)
+```
+
+This shows that the average rates in the control and knockdown groups are approximately 2000 and 3000, and that this difference is significant (p = 0.0055) at an acceptable Type I error rate of 0.05.
+
+We perform the t-test for all the genes and store this (we use this later).
+
+```{r p-values}
+# calculate p-values of all genes using unequal variance
+pvalues.orig = apply(ratespermillion, 1, function(row) 
+{t.test(x=row[ct.names], y=row[kd.names], var.equal=FALSE)$p.value})
+```
+
+## Using a variance stabilizing transform
+
+The best way to solve this problem is to investigate and model the error distribution in detail, and use a statistical test specifically suited for this error distribution.
+This yields statistical tests with the highest possible power.
+The current algorithms for RNA-seq analysis, used in R-packages like DESeq and edgeR use a so-called negative-binomial (NB) distribution to model the measurement error.
+See for example Anders et al. (2013) for a description on how to use such algorithms.
+
+The second-best, and rather simple way to be able to compare the samples is by using a so-called variance-stabilizing transform of the data and subsequently using the tests which assume a homoscedastic Normal distribution of the errors, like the equal-variance T-test, ANOVA, etc.
+We will use this approach here, because of its simplicity and general applicability.
+
+A variance-stabilizing transform is what it says, namely a transformation of the data yielding a new data set that has a variance that no longer depends on the mean of the measured value.
+We saw that in our case the variance or standard deviation depended on the mean value like $σ=aμ^b$.
+We need a transformation $g$ that makes $g(σ)=σ_g$ independent of $μ$ (i.e. $\frac{dg}{dμ} σ=σ_g=c$).
+For $σ_g$ we have the linear approximation
+
+$\sigma_g = \frac{dg}{d\mu}\sigma = \frac{dg}{d\mu}a\mu^b$
+
+For the right-hand side to become independent of μ, we choose
+
+$\frac{dg}{d\mu} = \frac{1}{\mu^b}$
+
+In other words, the transformation function $g$ should be the integral of the function $1/μ^b$ and thus we are looking for
+
+$g(x)=\int\frac{1}{x^b}dx$
+
+which equals $\ln(x)$ when $b=1$ and $\frac{1}{(1-b)} x^{1-b}$ when $b≠1$.
+
+In data transformation the factor $\frac{1}{1-b}$ is irrelevant, so we could take $g(x)=x^{1-b}$ for the case $b≠1$.
+Notice that this is a first-order approximation, so for data sets with very large errors it does not work as well.
+
+Now we can use this fact to transform the RNA-seq count data.
+From the fit above we have a proportionality constant equal to 0.862, so that the transforming function would be $g(x)=x^{1-0.862}=x^{0.138}$
+
+## Applying a variance-stabilizing transformation
+
+We apply the transformation function to the data set expressed and obtain a transformed data set:
+
+```{r transform}
+## transform the ratespermillion data using the fitted coefficient
+transformed = as.data.frame(ratespermillion^(1-coef(all.fit)['mean']))
+head(transformed)
+```
+
+We can now check whether the standard deviation of the transformed data is really independent of the average value by plotting the standard deviations of the transformed values against their means:
+
+```{r mean and sd for transformed values}
+#mean and sd for transformed values
+control.t.mean = apply(transformed[ct.names],1,mean)
+control.t.sd = apply(transformed[ct.names],1,sd)
+knockdown.t.mean = apply(transformed[kd.names],1,mean)
+knockdown.t.sd = apply(transformed[kd.names],1,sd)
+
+# Plot sd vs mean of transformed data
+plot(x=control.t.mean, y=control.t.sd, pch=20, cex=0.5, col='blue', ylim = c(-0.03,0.3),
+     xlab='Mean transformed value', ylab='Sd of transformed value')
+points(x=knockdown.t.mean, y=knockdown.t.sd, pch=20, cex=0.5, col='red')
+title('SD versus mean rate of transformed data')
+```
+
+Clearly, the main increasing trend is gone, and only a almost horizontally shaped cloud.
+Note that some genes with very high standard deviation are not shown on this plot.
+This is a large improvement compared to the original data.
+We can now apply T-tests with equal variance assumption to the transformed data set, for example to the same gene as before:
+
+```{r ttest on transformed data}
+#ttest on transformed data
+t.test(x=transformed['FBgn0000043', ct.names],
+       y=transformed['FBgn0000043', kd.names], var.equal=TRUE)
+```
+
+The p-value is half of the value in the test performed on the original rate data.
+By the way, even if we do not assume equal variance here, we still get a lower p-value.
+Check this!
+We can repeat the t-test for every gene in the dataset and store the results.
+
+```{r pvalues}
+# T-test on all rows, and extracting the p-values from the test result
+pvalues.t <- apply(transformed, 1, function(row) 
+{t.test(x=row[ct.names], y=row[kd.names], var.equal=TRUE)$p.value})
+# Add the p-values to the ratespermillion table:
+ratespermillion$pvalue.t <- pvalues.t
+head(ratespermillion)
+```
+
+To investigate the overall effect the transformation had on the p-values we plot the p-values before and after the transformation
+
+```{r compare pvalues}
+# compare the p-values before and after transformation
+plot(x=-log10(pvalues.orig),y=-log10(pvalues.t),xlim=c(0,8),ylim=c(0,8),xlab="-log10(p-values) before transformation",ylab="-log10(p-values) after transformation")
+abline(coef=c(0,1),col='blue')
+legend(0.2,7.5,legend=c('x=y'),col=c('blue'),lty=1,box.lty=0)
+title('p values before and after transformation')
+```
+
+## Calculating the log(ratio) of gene expression in control and knockdown samples
+
+A biologist will be interested in obtaining a measure of the difference in gene expression in the knockdown samples compared to the control samples.
+They usually use the (base 2) logarithm of the ratio of average RNA concentrations in both sample groups.
+Since the total counts differ between replicate samples, samples with a higher total count should get a higher weight in determining this average than samples with a lower total count.
+For Poisson-distributed count data there is a natural way to achieve this, namely by adding all counts for a gene in a sample group, and dividing by the total number of counts in that group.
+We will do this here too.
+A more sophisticated way to calculate a weighted average should of course take into account the true distribution of the error.
+This is what is done in the DESeq and edgeR packages referred to before.
+Here we use the simple way.
+
+```{r Calculate log ratios of the average counts of kd samples / ct samples}
+log2ratio <- apply(
+  counts, 1, function(x) {log(sum(x[kd.names])/sum(totalcounts[kd.names]),2) -
+      log(sum(x[ct.names])/sum(totalcounts[ct.names]),2)})
+
+head(log2ratio)
+```
+
+Having the table with average log_2 (expression ratios) for each gene and having the transformed data that we can use for statistical hypothesis testing, we can now answer the question: which genes are differentially regulated between the control and knockdown group?
+To obtain an quick view we can combine both p-values and log2 ratios by plotting them in a so-called volcano plot.
+
+```{r Volcano plot}
+# combine log2ratios and p-values to create a volcano plot
+par(mfrow=c(1,1))
+p05 = -log10(0.05)
+plot(y=-log10(pvalues.t),x=log2ratio)
+lines(x=c(-1,-1),y=c(p05,7),col='gray')
+lines(x=c(1,1),y=c(p05,7),col='gray')
+lines(x=c(-6,-1),y=c(p05,p05),col='gray')
+lines(x=c(1,4),y=c(p05,p05),col='gray')
+text( x = 3, y = p05+0.2, label = "P = 0.05")
+text (x=1.15, y = 6, label="FC = 2",srt=90)  
+title('volcano plot')
+```
+
+## Questions:
+
+1.  Why do we call the data set used in this practical a multivariate data set? In other words, what is the definition of a multivariate data set and why does it apply here?
+2.  Many laboratory measurement instruments yield data with an error variance that varies with the average measured value. It also appears that very often a logarithmic transform of the original data (i.e. g(x)=ln(x)) stabilizes the error variance quite well. For which relation between error variance and average value does this transform lead to a perfect variance stabilization?
+3.  What is the general effect of transformation of the data on the pvalues of the t test?
+4.  What is the interpretation of genes in each of the 6 segments of the Volcano plot?
+
+## Multiple hypothesis tests
+
+In common statistical testing we use the so-called Type I error rate as a criterion to decide whether the null hypothesis (the "dull-hypothesis") will be rejected.
+A type I error would be an incorrect rejection of the null hypothesis.
+This would be a "false positive", because we would consider a rejection of the null hypothesis to be an interesting observation that warrants further research.
+You want the probability of this event to be low, and we usually use a type I error rate of 0.05, meaning that in 1 out of 20 tests we would incorrectly reject the null hypothesis, which in our case boils down to 360 (=0.05×7196=360), genes.
+In fact, the number of genes in our data set having a p-value lower or equal to 0.05 is 1368.
+Approximately 26% of these will be false positives, which is rather a large fraction if you intend, for example, to do expensive follow-up experiments based on this result.
+
+## The Type I error rate is not a suitable criterion when testing multiple hypotheses
+
+This definition of Type I error exactly illustrates the problem with choosing Type I error rate as a criterion when testing not just 1 hypothesis, but for example 1000.
+If we apply the same statistical test to 1000 genes we are performing 1000 statistical tests, i.e. we are testing multiple hypotheses.
+With a Type I error rate criterion of 0.05, we would accept that on average 50 out of the 1000 genes, if they were all not differentially regulated, would incorrectly be called differentially regulated between the sample groups.
+What is worse, we would not know the number of genes that is truly regulated.
+If we would obtain a list of 55 positive genes out of these tests, all of them could be false positives.
+
+## Using the False Discovery Rate instead of the Type I error rate
+
+There is a way to avoid this problem, and to use a better criterion than the Type I error rate.
+It is called the False Discovery rate (FDR).
+If you get a list of 55 genes, and your colleague says that the false discovery rate of this list is 10%, then this means that the expected number of false positives (falsely rejected null hypotheses) in this list equals 10%×55=5.5.
+(Above, we saw that we could produce a list of genes, based on a 5% Type I error rate, that contained maximally 26% false positives.) Please realize that this is very different from a list of genes all individually having a Type I error rate of 10%.
+A list with an FDR of 10% will be shorter than a list of genes from the same data set all individually having a Type I error rate of 10%.
+All individual tests in a list of genes with an FDR of 10% will have p-values for individual hypotheses tests that are much lower than 0.1!
+What is somewhat miraculous about the FDR is that it is apparently possible to say something about the fraction of true positives and true negatives in a data set.
+For an individual statistical hypothesis test it is not possible to say anything about the probability that your positive is a true positive (in contrast, the probability that it is a false positive is equal to the allowed Type I Error Rate).
+The crucial difference is that this is possible if you do many tests!
+
+## The distribution of all p-values in an multiple-hypothesis test
+
+A careful study of the distribution of all p-values in an experiment with multiple hypothesis tests is key to understanding the calculation of the FDR.
+Below we plot this distribution for the p-values from the t-tests on the transformed data.
+We divide the data into use nbins=100 bins.
+
+```{r p-value histogram}
+# A histogram of the p-values.
+nbins <- 100
+bins <- hist(pvalues.t, nclass=nbins, col='grey50', main = 'p-value histogram')
+```
+
+If none of the genes were truly differentially regulated, we should have obtained a flat, so-called uniform distribution of p-values, because of the definition of what a p-value is.
+If the upper end of the observed distribution reflects the level of the distribution of genes that are not differentially regulated, than any proportion of the histogram at the lower end above this level will be caused by true positives.
+That is the peak at the lower end is due to tests performed on true positives.
+This means that, for any p-value upper cut-off, we can estimate the fraction of true and false positives in the resulting list of genes.
+This fraction is called the FDR.
+We estimate the background true negative level (the null.level) from, say, the average level between p-values 0.4, where the histogram seems to stabilize, and 1, and draw that level in the histogram.
+Our choice to use this interval to reflect the uniform distribution of truly negative hypothesis tests is subjective, but you should know that there are methods to do this in a more objective way.
+
+```{r p-value histogram with line}
+null.bins <- bins$breaks[-1] > 0.4
+null.level <- sum(bins$counts[null.bins])/sum(null.bins)
+plot(bins, col='grey50', main = 'p-value histogram')
+abline(a=null.level,b=0,col='red',lwd=2)
+```
+
+The fraction of the bins that is above this null-level is an estimation of the fraction of true positives or FDR.
+You can increase that fraction by lowering the maximal p-value at which you select genes.
+For example, let's take a p-value cut-off of the common 0.05, i.e. we choose all genes with p-value≤0.05.
+What is the estimated fraction of false positives?
+The quantity null.level calculated above is the estimated number of true positives per bin.
+The bins in the plot above have a width of 0.01, so the interval 0 - 0.05 contains nbins×0.05= 5 bins.
+Then the estimated fraction of false positives (the FDR) for this selected set of genes is
+
+```{r fdr}
+fdr.05 <- null.level*nbins*0.05/sum(pvalues.t <= 0.05)
+```
+
+which equals 0.2.
+This may be acceptable or unacceptable, depending on what you subsequently want to do with this list of genes (see question below).
+Suppose you want an FDR of maximally 10%.
+How could you choose the corresponding p-value cut-off?
+For that you need to know the relation between p-value cut-off and FDR.
+We could make a plot of that relation at intervals every bin width:
+
+```{r p-value cutoff}
+pvalue.cutoff <- seq(1/nbins, 1, by=1/nbins)
+fdr <- vector(mode="numeric",length=length(pvalue.cutoff))
+for (i in seq_along(pvalue.cutoff)) {
+  fdr[i] <- null.level*(pvalue.cutoff[i]*nbins)/sum(pvalues.t <= pvalue.cutoff[i])
+}
+plot(pvalue.cutoff, fdr, xlab='p-value cut-off', ylab='FDR', ylim=c(0,1))
+title('FDR and p-value relationship')
+```
+
+The two lowest p-value cut-off values in this series (0.01 and 0.02) yield FDR's of 0.0867 an 0.123, respectively.
+You could use either of these as your cut-off.
+Note that with a higher FDR you select more genes, but have a higher change that these are false positives.
+
+## Questions part 2
+
+1.  Is the relationship between FDR and p-value cut-off shown in figure 7 universally true for any data set or is it specific for this data set? Why?
+2.  Argue why a data set with no true positives yields a uniform distribution of p-values when testing multipwhich equals 0.2. This may be acceptable or unacceptable, depending on what you subsequently want to do with this list of genes (see question below). Suppose you want an FDR of maximally 10%. How could you choose the corresponding p-value cut-off? For that you need to know the relation between p-value cut-off and FDR. We could make a plot of that relation at intervals every bin width:le hypotheses using a proper statistical test.
+3.  Name a number of arguments for choosing a particular FDR value when investigating a data set. What about the argument "The FDR must be 0.05 because p-value cut-offs of 0.05 are generally accepted in the literature"?
