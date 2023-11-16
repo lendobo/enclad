@@ -7,8 +7,6 @@ from pymnet import *
 from diffupy.diffuse import run_diffusion_algorithm
 from diffupy.matrix import Matrix
 from diffupy.diffuse_raw import diffuse_raw
-from diffupy.kernels import regularised_laplacian_kernel, diffusion_kernel
-
 
 # %%
 TRRUST_df = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/data/TRRUSTv2/trrust_rawdata.human.tsv', sep='\t')
@@ -112,16 +110,18 @@ TRRUST_sample = TRRUST_df.sample(n=10, random_state=1)
 TRRUST_sample = TRRUST_df[TRRUST_df['TF_PROT'] == 'ABL1']
 
 # CREATING THE BASIC DOGMA GRAPH
-G = nx.DiGraph()
+G_dir = nx.DiGraph()
+G_undir = nx.Graph()
 
-# Add edges for each relationship
-for _, row in TRRUST_df.iterrows():
-    if pd.notna(row['TF_RNA']) and pd.notna(row['TF_PROT']):
-        G.add_edge(row['TF_RNA'] + ".r>", row['TF_PROT'] + ".p>")
-    if pd.notna(row['TF_PROT']) and pd.notna(row['BS_RNA']):
-        G.add_edge(row['TF_PROT'] + ".p>", row['BS_RNA'] + '.r]')
-    if pd.notna(row['BS_RNA']) and pd.notna(row['BS_PROT']):
-        G.add_edge(row['BS_RNA'] + '.r]', row['BS_PROT'] + ".p]")
+for G in [G_dir, G_undir]:
+    # Add edges for each relationship
+    for _, row in TRRUST_df.iterrows():
+        if pd.notna(row['TF_RNA']) and pd.notna(row['TF_PROT']):
+            G.add_edge(row['TF_RNA'] + ".r>", row['TF_PROT'] + ".p>")
+        if pd.notna(row['TF_PROT']) and pd.notna(row['BS_RNA']):
+            G.add_edge(row['TF_PROT'] + ".p>", row['BS_RNA'] + '.r]')
+        if pd.notna(row['BS_RNA']) and pd.notna(row['BS_PROT']):
+            G.add_edge(row['BS_RNA'] + '.r]', row['BS_PROT'] + ".p]")
 
 
 # # write TRRUST_df to csv
@@ -133,7 +133,7 @@ for _, row in TRRUST_df.iterrows():
 
 
 # %%
-def construct_directed_adj(edges_df, nodes):
+def construct_adj(edges_df, nodes, gtype='directed'):
     # Initialize a 100x100 matrix with zeros
     adjacency_matrix = pd.DataFrame(0, index=nodes, columns=nodes)
 
@@ -149,32 +149,38 @@ def construct_directed_adj(edges_df, nodes):
 
         # Check if both genes are in the nodes list
         if gene1 in nodes and gene2 in nodes:
-            # Set undirected edge
-            if annotation in undirected_annotations:
-                adjacency_matrix.loc[gene1, gene2] = 1
-                adjacency_matrix.loc[gene2, gene1] = 1
-            
-            # Set directed edge from gene1 to gene2
-            elif annotation in directed_annotations_gene1_to_gene2:
-                adjacency_matrix.loc[gene1, gene2] = 1
-            
-            # Set directed edge from gene2 to gene1
-            elif annotation in directed_annotations_gene2_to_gene1:
-                adjacency_matrix.loc[gene2, gene1] = 1
-    
+            if gtype == 'directed':
+                # Set undirected edge
+                if annotation in undirected_annotations:
+                    adjacency_matrix.loc[gene1, gene2] = 1
+                    adjacency_matrix.loc[gene2, gene1] = 1
+                
+                # Set directed edge from gene1 to gene2
+                elif annotation in directed_annotations_gene1_to_gene2:
+                    adjacency_matrix.loc[gene1, gene2] = 1
+                
+                # Set directed edge from gene2 to gene1
+                elif annotation in directed_annotations_gene2_to_gene1:
+                    adjacency_matrix.loc[gene2, gene1] = 1
+            else:
+                if annotation in undirected_annotations or annotation in directed_annotations_gene1_to_gene2 or annotation in directed_annotations_gene2_to_gene1:
+                    adjacency_matrix.loc[gene1, gene2] = 1
+                    adjacency_matrix.loc[gene2, gene1] = 1
+
     return adjacency_matrix
 
 
 # Loading Edges
 edges_all_PROTS = pd.read_csv('data/FI_TRRUST_Edges.csv')
 
+PPI_directed = construct_adj(edges_all_PROTS, all_PROTS)
 # construct RNA adjacency matrix
-PPI_interactions = construct_directed_adj(edges_all_PROTS, all_PROTS)
+PPI_undirected = construct_adj(edges_all_PROTS, all_PROTS, gtype='undirected')
 
 # count all 1s in the adjacency matrix
-PPI_interactions.sum().sum()
+print(PPI_directed.sum().sum())
 
-# PPI_interactions.head()
+print(PPI_undirected.sum().sum())
 
 
 # %%
@@ -196,17 +202,17 @@ def get_protein_role(protein):
     else:
         print(protein)
 
+for PPI_interactions in [PPI_directed, PPI_undirected]:
+    # INTEGRATING both networks
+    for gene1 in PPI_interactions.columns:
+        for gene2 in PPI_interactions.index:
+            # Check if there is an edge from gene1 to gene2
+            if PPI_interactions.loc[gene1, gene2] == 1:
+                gene1_role = get_protein_role(gene1)
+                gene2_role = get_protein_role(gene2)
 
-# INTEGRATING both networks
-for gene1 in PPI_interactions.columns:
-    for gene2 in PPI_interactions.index:
-        # Check if there is an edge from gene1 to gene2
-        if PPI_interactions.loc[gene1, gene2] == 1:
-            gene1_role = get_protein_role(gene1)
-            gene2_role = get_protein_role(gene2)
-
-            # Add directed edge with appropriate suffixes based on roles
-            G.add_edge(gene1 + gene1_role, gene2 + gene2_role)
+                # Add directed edge with appropriate suffixes based on roles
+                G.add_edge(gene1 + gene1_role, gene2 + gene2_role)
 
 
 # %% Investigating the Subgraph
@@ -218,26 +224,32 @@ def get_connected_subgraph(G, start_node, num_nodes):
     subgraph = G.subgraph(bfs_nodes)
     return subgraph
 
+G_undirected = G.to_undirected()
+
 # Example usage
-top_node = DEA_TF_PROTS[0] + ".r>"
-num_nodes = 20  # Define how many nodes you want in the subgraph
+top_node = list(G_undirected.nodes())[0]  # DEA_TF_PROTS[0] + ".r>"
+num_nodes = 5  # Define how many nodes you want in the subgraph
 
-# TEsting both directed and undirected subgraphs
-subG_dir = get_connected_subgraph(G, top_node, num_nodes)
-subG_undir = subG_dir.to_undirected()
+subG_undirected = get_connected_subgraph(G_undirected, top_node, num_nodes)
+subG_directed = get_connected_subgraph(G, top_node, num_nodes)
 
-# # Get adjacency matrix
-# adj_subG_undir = nx.adjacency_matrix(subG_undir)
-# print(adj_subG_undir)
-# print('\n')
-# adj_subG_dir = nx.adjacency_matrix(subG_dir)
-# print(adj_subG_dir)
 
-# %%
+
+# UNDIRECTED node colors
+node_colors_undirected = []
+for node in subG_undirected:
+    if ".p>" in node:
+        node_colors_undirected.append('forestgreen')  # Color for 'TF_PROT' nodes
+    elif ".p]" in node:
+        node_colors_undirected.append('palegreen')  # Color for 'BS_PROT' nodes
+    elif ".r>" in node:
+        node_colors_undirected.append('royalblue')  # Color for 'TF_RNA' nodes
+    else:  # ".r]" in node
+        node_colors_undirected.append('skyblue')  # Color for 'BS_RNA' nodes
 
 # Define node colors based on unique node types
 node_colors = []
-for node in subG_dir:
+for node in subG_directed:
     if ".p>" in node:
         node_colors.append('forestgreen')  # Color for 'TF_PROT' nodes
     elif ".p]" in node:
@@ -247,70 +259,62 @@ for node in subG_dir:
     else:  # ".r]" in node
         node_colors.append('skyblue') # Color for 'BS_RNA' nodes
 
-# # Draw the undirected subgraph
-# plt.figure(figsize=(10, 10), dpi=300)
-# nx.draw_networkx(subG_undir, pos=nx.spring_layout(subG_undir),
-#                  node_size=250,
-#                  with_labels=True,
-#                  edge_color='lightgrey',
-#                  node_color=node_colors,
-#                  alpha=0.75)
+# Draw the undirected subgraph
+plt.figure(figsize=(10, 10), dpi=300)
+nx.draw_networkx(subG_undirected, pos=nx.spring_layout(subG_undirected),
+                 node_size=250,
+                 with_labels=True,
+                 edge_color='lightgrey',
+                 node_color=node_colors_undirected,
+                 alpha=0.75)
 
-# # Show the plot
-# plt.show()
+# Show the plot
+plt.show()
 
 # Now draw the subgraph
 plt.figure(figsize=(10, 10), dpi=300)
-nx.draw_networkx(subG_dir, pos=nx.spring_layout(subG_dir), 
+nx.draw_networkx(subG_directed, pos=nx.spring_layout(subG_directed), 
                  node_size=250, 
                  with_labels=True,
                  edge_color='lightgrey',
                  node_color=node_colors,  # Adjust if node_colors needs to be recalculated for subG
                  arrowsize=25, 
-                 alpha=0.75)
+                 alpha=0.75,
+                 cmap='plasma')
 
 plt.show()
 
+# Get adjacency matrix
+adj_subG_undir = nx.adjacency_matrix(subG_undirected)
+print(adj_subG_undir)
 
+adj_subG_dir = nx.adjacency_matrix(subG_directed)
+print(adj_subG_dir)
 
 ################################## DIFFUSION ##############################################################################
 # %%
-gchoice = subG_dir
-
-# A very small sigma2 value
-sigma2 = 1.5
-
-# A small add_diag value
-add_diag = 1
-
-lap_kernel = regularised_laplacian_kernel(gchoice, sigma2=sigma2, add_diag=add_diag, normalized=False)
-diff_kernel = diffusion_kernel(gchoice, sigma2=1, normalized=True)
-
 # Preparing the nodes of subG
-network_nodes = list(gchoice.nodes())
+network_nodes = list(subG.nodes())
 label_values = np.array([1 if node == top_node else 0 for node in network_nodes])
-print(top_node)
 
 input_matrix = Matrix(mat=label_values, rows_labels=network_nodes, cols_labels=['score'])
 
 
-diffusion_results = diffuse_raw(graph=None, scores=input_matrix, k=lap_kernel)
+diffusion_results = diffuse_raw(graph=subG, scores=input_matrix, z=False)
+
 print(diffusion_results)
 
-diffusion_scores_dict = {node: score for node, score in zip(diffusion_results.rows_labels, diffusion_results.mat)}
-# sum over the diffusion scores
-print(sum(diffusion_scores_dict.values()))
 # %%
+diffusion_scores_dict = {node: score for node, score in zip(diffusion_results.rows_labels, diffusion_results.mat)}
+
 # Normalize the diffusion scores for coloring
 max_score = max(diffusion_scores_dict.values())
 min_score = min(diffusion_scores_dict.values())
 norm = plt.Normalize(vmin=min_score, vmax=max_score)
 cmap = plt.cm.coolwarm
 
-node_colors = [cmap(norm(diffusion_scores_dict[node])) for node in gchoice.nodes()]
+node_colors = [cmap(norm(diffusion_scores_dict[node])) for node in subG.nodes()]
 
-pos = nx.spring_layout(gchoice)  # or any other layout algorithm
-nx.draw_networkx(gchoice, pos, node_color=node_colors, with_labels=True, arrowsize=1)
+pos = nx.spring_layout(subG)  # or any other layout algorithm
+nx.draw_networkx(subG, pos, node_color=node_colors, with_labels=True)
 plt.show()
-
-# %%
