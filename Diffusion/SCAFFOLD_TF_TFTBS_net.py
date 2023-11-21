@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
-from pymnet import *
 from diffupy.diffuse import run_diffusion_algorithm
 from diffupy.matrix import Matrix
 from diffupy.diffuse_raw import diffuse_raw
@@ -155,7 +154,7 @@ def construct_directed_adj(edges_df, nodes):
                 adjacency_matrix.loc[gene2, gene1] = 1
             
             # Set directed edge from gene1 to gene2
-            elif annotation in directed_annotations_gene1_to_gene2:
+            if annotation in directed_annotations_gene1_to_gene2:
                 adjacency_matrix.loc[gene1, gene2] = 1
             
             # Set directed edge from gene2 to gene1
@@ -210,28 +209,60 @@ for gene1 in PPI_interactions.columns:
 
 
 # %% Investigating the Subgraph
-def get_connected_subgraph(G, start_node, num_nodes):
-    # Perform BFS and get the first 'num_nodes' from the list
-    bfs_nodes = list(nx.bfs_tree(G, start_node))[:num_nodes]
+def get_connected_subgraph(G, start_node, num_nodes, mode='bfs'):
+    if mode == 'bfs':
+        # Perform BFS and get the first 'num_nodes' from the list
+        nodes = list(nx.bfs_tree(G, start_node))[:num_nodes]
+    else:
+        # Perform DFS and get the first 'num_nodes' from the list
+        nodes = list(nx.dfs_tree(G, start_node))[:num_nodes]
 
     # Create a subgraph using these nodes
-    subgraph = G.subgraph(bfs_nodes)
+    subgraph = G.subgraph(nodes)
     return subgraph
 
-# Example usage
+########################################## SUBGRAPHS and SYNTH GRAPHS #####################################################################
 top_node = DEA_TF_PROTS[0] + ".r>"
-num_nodes = 20  # Define how many nodes you want in the subgraph
+p = 200  # Define how many nodes you want in the subgraph
 
 # TEsting both directed and undirected subgraphs
-subG_dir = get_connected_subgraph(G, top_node, num_nodes)
+subG_dir = get_connected_subgraph(G, top_node, p, mode='dfs')
 subG_undir = subG_dir.to_undirected()
 
-# # Get adjacency matrix
-# adj_subG_undir = nx.adjacency_matrix(subG_undir)
-# print(adj_subG_undir)
-# print('\n')
-# adj_subG_dir = nx.adjacency_matrix(subG_dir)
-# print(adj_subG_dir)
+# RANDOM GRAPH
+random_g = nx.erdos_renyi_graph(p, 0.1, seed=6, directed=False)
+
+# SCALE FREE GRAPH
+if p <= 100:
+    m = random.choice([1,2,2])
+elif 100 < p <= 300:
+    m = random.choice([3,5,6])
+elif 300 < p <= 500:
+    m = random.choice([5,8,10])
+elif 500 < p <= 1000:
+    m = random.choice([10,15,20])
+else:
+    m = 20
+
+scale_free_g = nx.barabasi_albert_graph(p, m, seed=42)
+
+def graph_analysis(network):
+    # get degree distribution
+    degrees = [val for (node, val) in network.degree()]
+    plt.hist(degrees, bins=20)
+    plt.xlabel('Degree')
+    plt.ylabel('Frequency')
+    plt.title(fr'Degree Distribution for {len(degrees)} nodes')
+    plt.show()
+
+    # plot on a log-log scale
+    plt.scatter(np.log10(range(1, len(degrees) + 1)), np.log10(sorted(degrees, reverse=True)))
+    plt.xlabel('log10(Rank)')
+    plt.ylabel('log10(Degree)')
+    plt.title(fr'Log-Log Degree Distribution for {len(degrees)} nodes')
+    plt.show()
+
+graph_analysis(scale_free_g)
 
 # %%
 
@@ -247,70 +278,119 @@ for node in subG_dir:
     else:  # ".r]" in node
         node_colors.append('skyblue') # Color for 'BS_RNA' nodes
 
-# # Draw the undirected subgraph
-# plt.figure(figsize=(10, 10), dpi=300)
-# nx.draw_networkx(subG_undir, pos=nx.spring_layout(subG_undir),
-#                  node_size=250,
-#                  with_labels=True,
-#                  edge_color='lightgrey',
-#                  node_color=node_colors,
-#                  alpha=0.75)
-
-# # Show the plot
-# plt.show()
-
-# Now draw the subgraph
+# Draw the undirected subgraph
 plt.figure(figsize=(10, 10), dpi=300)
-nx.draw_networkx(subG_dir, pos=nx.spring_layout(subG_dir), 
-                 node_size=250, 
+nx.draw_networkx(subG_undir, pos=nx.spring_layout(subG_undir, weight=1),
+                 node_size=250,
                  with_labels=True,
+                 font_size=5,
+                 font_color='grey',
                  edge_color='lightgrey',
-                 node_color=node_colors,  # Adjust if node_colors needs to be recalculated for subG
-                 arrowsize=25, 
+                 node_color=node_colors,
                  alpha=0.75)
 
+# Show the plot
 plt.show()
 
+# # Now draw the subgraph
+# plt.figure(figsize=(10, 10), dpi=300)
+# nx.draw_networkx(subG_dir, pos=nx.spring_layout(subG_dir, weight=1, scale=1), 
+#                  node_size=250, 
+#                  with_labels=False,
+#                  edge_color='lightgrey',
+#                  node_color=node_colors,  # Adjust if node_colors needs to be recalculated for subG
+#                  arrows=True,
+#                  arrowsize=25, 
+#                  alpha=0.75)
 
+# plt.show()
+
+
+# # plot random_g
+# plt.figure(figsize=(10, 10), dpi=300)
+# nx.draw_networkx(random_g, pos=nx.spring_layout(random_g, weight=1, scale=1), 
+#                  node_size=250, 
+#                  with_labels=True,
+#                  edge_color='lightgrey',
+#                  arrowsize=25, 
+#                  alpha=0.75)
+
+# plt.show()
 
 ################################## DIFFUSION ##############################################################################
+
 # %%
-gchoice = subG_dir
+import random
+
+gchoice = subG_undir # random_g
+node_choice = list(subG_undir.nodes())
+print(node_choice)
 
 # A very small sigma2 value
-sigma2 = 1.5
+sigma2 = 80
 
 # A small add_diag value
 add_diag = 1
 
-lap_kernel = regularised_laplacian_kernel(gchoice, sigma2=sigma2, add_diag=add_diag, normalized=False)
-diff_kernel = diffusion_kernel(gchoice, sigma2=1, normalized=True)
+lap_kernel = regularised_laplacian_kernel(gchoice, sigma2=sigma2, add_diag=add_diag, normalized=True)
+diff_kernel = diffusion_kernel(gchoice, sigma2=sigma2, normalized=True)
 
 # Preparing the nodes of subG
 network_nodes = list(gchoice.nodes())
-label_values = np.array([1 if node == top_node else 0 for node in network_nodes])
-print(top_node)
+label_values = np.array([1 if node in node_choice else 0 for node in network_nodes])
 
 input_matrix = Matrix(mat=label_values, rows_labels=network_nodes, cols_labels=['score'])
 
 
-diffusion_results = diffuse_raw(graph=None, scores=input_matrix, k=lap_kernel)
-print(diffusion_results)
+# Perform the diffusion
+diffusion_results = diffuse_raw(graph=None, scores=input_matrix, k=diff_kernel)
 
-diffusion_scores_dict = {node: score for node, score in zip(diffusion_results.rows_labels, diffusion_results.mat)}
-# sum over the diffusion scores
-print(sum(diffusion_scores_dict.values()))
-# %%
+# Convert the Matrix object to a dictionary of node scores
+diffusion_scores_dict = {node: score for node, score in zip(diffusion_results.rows_labels, diffusion_results.mat.flatten())}
+
+# Sum over the diffusion scores to check the total 'heat'
+total_heat = sum(diffusion_scores_dict.values())
+# plot distribution of scores
+plt.hist(diffusion_scores_dict.values(), bins=20)
+plt.xlabel('Diffusion Score')
+plt.ylabel('Frequency')
+plt.title(fr'Diffusion Scores for {len(diffusion_scores_dict)} nodes, $\sigma^2$ = {sigma2}, add_diag = {add_diag}')
+plt.show()
+
+# print(diffusion_scores_dict)
+# print(f"Total diffusion score: {total_heat}")
+
 # Normalize the diffusion scores for coloring
 max_score = max(diffusion_scores_dict.values())
 min_score = min(diffusion_scores_dict.values())
 norm = plt.Normalize(vmin=min_score, vmax=max_score)
 cmap = plt.cm.coolwarm
 
-node_colors = [cmap(norm(diffusion_scores_dict[node])) for node in gchoice.nodes()]
+node_colors = [cmap(norm(diffusion_scores_dict[str(node)])) for node in gchoice.nodes()]
 
-pos = nx.spring_layout(gchoice)  # or any other layout algorithm
-nx.draw_networkx(gchoice, pos, node_color=node_colors, with_labels=True, arrowsize=1)
+# pos = nx.spring_layout(gchoice)  # or any other layout algorithm
+# nx.draw_networkx(gchoice, 
+#                  pos, 
+#                  node_color=node_colors, 
+#                  with_labels=True,
+#                  font_size=5,
+#                  arrows=True, 
+#                  arrowsize=1,
+#                  alpha=0.8)
+# plt.show()
+
+# Draw the undirected subgraph
+plt.figure(figsize=(10, 10), dpi=300)
+nx.draw_networkx(gchoice, pos=nx.spring_layout(gchoice, weight=1),
+                 node_size=250,
+                 with_labels=True,
+                 font_size=5,
+                 font_color='grey',
+                 edge_color='lightgrey',
+                 node_color=node_colors,
+                 alpha=0.75)
+
+# Show the plot
 plt.show()
 
 # %%
