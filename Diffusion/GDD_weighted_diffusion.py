@@ -76,42 +76,82 @@ def knockdown_node(G, node_to_isolate, reduction_factor=0.5):
 
     return modified_graph, new_laplacian
 
+def adjust_inter_set_edge_weights(G, new_weight=0.5):
+    """
+    Apply a specific weight to edges between nodes from two different sets.
+
+    :param G: NetworkX graph
+    :param set1: First set of nodes
+    :param set2: Second set of nodes
+    :param new_weight: Weight to apply to inter-set edges
+    :return: Modified graph
+    """
+    nodes = list(G.nodes())
+    random.shuffle(nodes)
+    midpoint = len(nodes) // 2
+    set1, set2 = nodes[:midpoint], nodes[midpoint:]
+
+    modified_graph = G.copy()
+    for u in set1:
+        for v in set2:
+            if modified_graph.has_edge(u, v):
+                # Apply the new weight to the edge
+                modified_graph[u][v]['weight'] = new_weight
+
+    return modified_graph, set1, set2
+
 # %%
 # generate a random integer from 0 to 100
 rand_seed = random.randint(0, 100)
-print(f'random seed: 43 not {rand_seed}')
+print(f'random seed: {rand_seed}')
 # set random seed to that number
-np.random.seed(43)
-random.seed(43)
+np.random.seed(rand_seed)
+random.seed(rand_seed)
 
-# PARAMETERS
-N = 25  # Number of nodes
-m = 1    # Number of edges to attach from a new node to existing nodes
+# %%
+################################################################# GRAPH PARAMETERS
+N = 100  # Number of nodes
+m = 3    # Number of edges to attach from a new node to existing nodes
 
-t_values = np.linspace(0.01, 10, 500)
-fixed_reduction = 0.05
-node_to_isolate = np.random.randint(0, N - 1)
+
 
 # SCALE FREE GRAPH
-scale_free_graph = nx.barabasi_albert_graph(N, m)
+scale_free_graph = nx.barabasi_albert_graph(N, m, seed=rand_seed)
 laplacian_matrix = nx.laplacian_matrix(scale_free_graph).toarray()
 # Assign random weights to each edge (for example, weights between 0.1 and 1.0)
 weighted_scale_free_graph = scale_free_graph.copy()
 for u, v in weighted_scale_free_graph.edges():
     weighted_scale_free_graph[u][v]['weight'] = np.random.uniform(0.1, 1.0)
-weighted_scalefree_laplacian = weighted_laplacian_matrix(weighted_scale_free_graph)
+
+weighted_split_scalefree_g, set_1, set_2 = adjust_inter_set_edge_weights(weighted_scale_free_graph, new_weight=0.01)
+
+# get hub nodes
+degree_dict = dict(scale_free_graph.degree(scale_free_graph.nodes()))
+# get 3 nodes with largest degree
+hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:3]
+low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:3]
+print(f'hub nodes: {hub_nodes}')
+print(f'anti-hubs nodes: {low_nodes}')
+
 
 # RANDOM GRAPH
-random_graph = nx.erdos_renyi_graph(N, 0.5) 
+random_graph = nx.erdos_renyi_graph(N, 0.5, seed=rand_seed) 
 random_laplacian = nx.laplacian_matrix(random_graph).toarray()
 weighted_random_graph = random_graph.copy()
 for u, v in weighted_random_graph.edges():
     weighted_random_graph[u][v]['weight'] = 1.0
-weighted_random_laplacian = weighted_laplacian_matrix(weighted_random_graph)
 
-weighted_graph_use = weighted_random_graph
+################################################# NODE AND DIFFUSION PARAMETERS
+t_values = np.linspace(0.01, 10, 500)
+fixed_reduction = 0.1
 
+nodes_to_investigate = hub_nodes + low_nodes
+node_to_isolate = np.random.choice(nodes_to_investigate)
 
+# CHOOSING GRAPH
+weighted_graph_use = weighted_split_scalefree_g
+
+###############################################################################
 
 
 # %%
@@ -121,7 +161,10 @@ max_gdds = []
 max_gdd_times = []
 
 original_weighted_graph_use = copy.deepcopy(weighted_graph_use)
-for reduction in np.linspace(0.1, 0.9, 9):
+
+reduction_factors = np.linspace(0.1, 0.9, 9)
+
+for reduction in reduction_factors:
     # kernels = [laplacian_exponential_diffusion_kernel(laplacian_matrix, t) for t in t_values]
 
     # NODE KNOCKOUT
@@ -164,7 +207,6 @@ for reduction in np.linspace(0.1, 0.9, 9):
         if np.round(reduction, 2) != fixed_reduction:
             ax1.plot(t_values, gdd_values, label=f'{round(reduction, 2)}', alpha=0.65)
         else:
-            print(max_gdd)
             ax1.plot(t_values, gdd_values, label=f'{round(reduction, 2)}', alpha = 1, color='black', linewidth=2)
         # ax1.plot(max_gdd_time, max_gdd, 'ro', label='Max GDD')
         # add a text label at maximum point
@@ -177,7 +219,7 @@ for reduction in np.linspace(0.1, 0.9, 9):
 
 ax1.plot(max_gdd_times, max_gdds, 'r', label='Max GDD')
 
-for node in range(N):
+for node in nodes_to_investigate:
     weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
     weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
     knockdown_graph2, knockdown_laplacian2 = knockdown_node(weighted_graph_use, node, reduction_factor=fixed_reduction)
@@ -189,15 +231,15 @@ for node in range(N):
     if node != node_to_isolate:
         ax2.plot(t_values, gdd_values_fixed, label=f'{node}', alpha=0.8)
     else:
-        print(f'maximum GDD: {max(gdd_values_fixed)}, time: {t_values[gdd_values_fixed.index(max(gdd_values_fixed))]}')
+        print(f'Node {node} reduction ({fixed_reduction}), maximum GDD: {max(gdd_values_fixed)}, time: {t_values[gdd_values_fixed.index(max(gdd_values_fixed))]}')
         choice_gdd = gdd_values_fixed
 
-ax2.plot(t_values, choice_gdd, label=f'{node}', alpha = 1, color='black', linewidth=2)
+ax2.plot(t_values, choice_gdd, label=f'{node_to_isolate}', alpha = 1, color='black', linewidth=2)
 ax2.set_xlabel('Diffusion Time (t)', fontsize=15)
 # ax2.set_ylabel('GDD Value (Graph Difference)', fontsize=15)
 ax2.set_xlim(ax1.get_xlim())
 ax2.set_ylim(ax1.get_ylim())
-ax2.set_title(f'GDD Values per Node Knockdown, reduction={fixed_reduction}', fontsize=15)
+ax2.set_title(f'GDD Values per Node Knockdown, reduction={fixed_reduction} s{rand_seed}', fontsize=15)
 ax2.legend(loc='upper right', title='Knocked Node')
 ax2.grid(True)
 
@@ -210,7 +252,33 @@ plt.show()
 
 
 # %%
-def plot_diffusion_process_for_two_graphs(graphs, laplacians, times, node_to_isolate, start_node=0):
+def separate_subgraph_layout(G, set1, set2, separation_vector):
+    """
+    Calculate a layout that visually separates two sets of nodes in a graph.
+
+    :param G: NetworkX graph
+    :param set1: First set of nodes
+    :param set2: Second set of nodes
+    :param separation_vector: A tuple (dx, dy) specifying how much to separate the layouts
+    :return: A dictionary of positions keyed by node
+    """
+    # Create subgraphs
+    subgraph1 = G.subgraph(set1)
+    subgraph2 = G.subgraph(set2)
+
+    # Compute layouts for subgraphs
+    layout1 = nx.spring_layout(subgraph1)
+    layout2 = nx.spring_layout(subgraph2)
+
+    # Shift the second layout
+    layout2 = {node: (pos[0] + separation_vector[0], pos[1] + separation_vector[1]) for node, pos in layout2.items()}
+
+    # Combine layouts
+    combined_layout = {**layout1, **layout2}
+    return combined_layout
+
+
+def plot_diffusion_process_for_two_graphs(graphs,  laplacians, set1, set2, times, node_to_isolate, start_node=9):
     """
     Plots the diffusion process on two graphs at specified times from a single starting node.
 
@@ -224,10 +292,12 @@ def plot_diffusion_process_for_two_graphs(graphs, laplacians, times, node_to_iso
         raise ValueError("Function requires exactly two graphs and three time points.")
     
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))  # 2 rows, 3 columns
-    fig.suptitle(f'Unperturbed graph (top), Knockdown of node {node_to_isolate} by factor {fixed_reduction} (bottom)', fontsize=25)
+    fig.suptitle(f'Unperturbed graph (top), Knockdown of node {node_to_isolate} by factor {fixed_reduction} (bottom) s{rand_seed}', fontsize=25)
 
 
-    layout=nx.spring_layout(graphs[0])
+    # layout=nx.spring_layout(graphs[0])
+    layout = separate_subgraph_layout(graphs[0], set1, set2, separation_vector=(4, 0))
+
     label_layout = {node: (x - 0.1, y) for node, (x, y) in layout.items()}  # Shift labels to the left
 
     for i, (G, L) in enumerate(zip(graphs, laplacians)):
@@ -252,9 +322,10 @@ def plot_diffusion_process_for_two_graphs(graphs, laplacians, times, node_to_iso
             nx.draw_networkx_nodes(G, layout, node_size=200,
                                    node_color=[mapper.to_rgba(value) for value in heat_values],
                                    ax=axes[i, j])
-            # set label positions to the left of their respective nodes
-
             nx.draw_networkx_labels(G, label_layout, font_size=20, ax=axes[i, j])
+            nx.draw_networkx_nodes(G, layout, nodelist=[node_to_isolate, start_node], node_size=300,
+                               node_color=['blue', 'red'],  # Example: red color
+                               ax=axes[i, j])
             axes[i, j].set_title(f"Graph {i+1}, t={round(t, 2)}", fontsize=20)
             axes[i, j].axis('off')
 
@@ -263,15 +334,19 @@ def plot_diffusion_process_for_two_graphs(graphs, laplacians, times, node_to_iso
     plt.show()
 
 # Example usage
-t_values = [0.1, max_gdd_times[node_to_isolate], 10]
+fixed_reduction_index = np.where(np.isclose(reduction_factors, fixed_reduction))[0][0]
+t_values = [0.1, max_gdd_times[fixed_reduction_index], 10]
 
 weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
+weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
 knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduction_factor=fixed_reduction)
+
+seed_node = node_to_isolate + 1
 
 # Example usage with 3 graphs and their Laplacians for 9 different times
 plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph], 
-                                           [weighted_random_laplacian, knockdown_laplacian], 
-                                           t_values, start_node=0, node_to_isolate=node_to_isolate)
+                                           [weighted_lap_use, knockdown_laplacian], set_1, set_2,
+                                           t_values, start_node=seed_node, node_to_isolate=node_to_isolate)
 
 
 
