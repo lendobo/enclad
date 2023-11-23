@@ -146,7 +146,7 @@ t_values = np.linspace(0.01, 10, 500)
 fixed_reduction = 0.1
 
 nodes_to_investigate = hub_nodes + low_nodes
-node_to_isolate = np.random.choice(nodes_to_investigate)
+node_to_isolate = 0 #np.random.choice(nodes_to_investigate)
 
 # CHOOSING GRAPH
 weighted_graph_use = weighted_split_scalefree_g
