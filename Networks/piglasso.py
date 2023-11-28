@@ -234,6 +234,14 @@ class QJSweeper:
         return edge_counts_all, success_counts
 
 
+def load_data(run_type, data_file, prior_file):
+    data = pd.read_csv(data_file, index_col=0)
+    if prior_file:
+        prior = pd.read_csv(prior_file, index_col=0)
+    else:
+        prior = pd.DataFrame(np.zeros((data.shape[1], data.shape[1])))
+
+    return data, prior
 
 def main(rank, size, machine='local'):
     #######################
@@ -255,32 +263,30 @@ def main(rank, size, machine='local'):
 
         edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
 
-    elif args.run_type == 'omics':
-        # Data run
-        if machine == 'local':
-            cms2_data = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/processed_data/CMS2_balanced_data.csv', index_col=0)
-            cms2_omics_prior = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/phase_1_code/data/processed_data/CMS2_balanced_adjacency_matrix.csv', index_col=0)
+    elif args.run_type == 'proteomics' or args.run_type == 'transcriptomics':
+        # Loading data
+        cms_data = pd.read_csv(args.data_file, index_col=0)
+        p = cms_data.shape[1]
+        cms_array = cms_data.values
+
+        # Checking for prior
+        if args.prior_file:
+            cms_omics_prior = pd.read_csv(args.prior_file, index_col=0)
         else:
-            cms2_data = pd.read_csv(f'~/phase_1_code/data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_cms2_top_DEA.csv', index_col=0)
+            print('----------------\nNo prior supplied, defaulting to data-only run\n----------------')
+            cms_omics_prior = pd.DataFrame(np.zeros((p,p)))
 
-        p = cms2_data.shape[1]
+        prior_matrix = cms_omics_prior.values
 
-        # cms2_data = cms2_data.iloc[:, :p]
-        cms2_array = cms2_data.values
-
-        # cms2_omics_prior = cms2_omics_prior.iloc[:, :p]
-        prior_matrix = cms2_omics_prior.values
-
-        n = cms2_array.shape[0]
+        n = cms_array.shape[0]
         b = int(0.75 * n)
 
-        print(cms2_array.shape)
-        print(prior_matrix.shape)
+        print(f'Variables, Samples: {p, n}')
 
         # scale and center 
-        cms2_array = (cms2_array - cms2_array.mean(axis=0)) / cms2_array.std(axis=0)
+        cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
         # run QJ Sweeper
-        omics_QJ = QJSweeper(cms2_array, prior_matrix, b, Q, rank, size)
+        omics_QJ = QJSweeper(cms_array, prior_matrix, b, Q, rank, size)
 
         edge_counts_all, success_counts = omics_QJ.run_subsample_optimization(lambda_range)
 
@@ -299,9 +305,11 @@ if __name__ == "__main__":
     parser.add_argument('--Q', type=int, default=800, help='Number of sub-samples')
     parser.add_argument('--llo', type=float, default=0.01, help='Lower bound for lambda range')
     parser.add_argument('--lhi', type=float, default=0.4, help='Upper bound for lambda range')
-    parser.add_argument('--lamlen', type=int, default=80, help='Number of points in lambda range')
-    parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'omics'], help='Type of run to execute')
-    parser.add_argument('--cms', type=str, default='cms2', choices=['cms2', 'cms3', 'cms4', 'cms1'], help='CMS type to run for omics run')
+    parser.add_argument('--lamlen', type=int, default=40, help='Number of points in lambda range')
+    parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'proteomics', 'transcriptomics'], help='Type of run to execute')
+    parser.add_argument('--data_file', type=str, default='Please choose option: --run_type synthetic if no data', help='omics data file (Protein / RNA))')
+    parser.add_argument('--prior_file', type=str, default=None, help='adjacency matrix for prior')
+    parser.add_argument('--cms', type=str, default='cms4', choices=['cms2', 'cms3', 'cms4', 'cms1'], help='CMS type to run for omics run')
 
 
     args = parser.parse_args()
@@ -332,7 +340,7 @@ if __name__ == "__main__":
         edge_counts, p, n, Q = main(rank=1, size=1, machine='local')
 
         # Save results to a pickle file
-        with open(f'net_results/local_{args.run_type}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
+        with open(f'Networks/net_results/local_{args.run_type}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
             pickle.dump(edge_counts, f)
 
 

@@ -9,7 +9,7 @@ from scipy.optimize import curve_fit
 import warnings
 from tqdm import tqdm
 
-from old_piGGM import QJSweeper
+from piglasso import QJSweeper
 
 
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     granularity = 40
     lambda_range = np.linspace(lowerbound, upperbound, 40)
 
-    filename_edges = f'net_results/local_omics_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_{granularity}.pkl'
+    filename_edges = f'Networks/net_results/local_omics_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_{granularity}.pkl'
     with open(filename_edges, 'rb') as f:
         edge_counts_all = pickle.load(f)
 

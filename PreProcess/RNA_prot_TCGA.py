@@ -70,7 +70,7 @@ label_file_path = "../data/Synapse/mergedPhenotype/cms_labels_public_all.txt"
 # Reading and filtering the label data
 label_data_filtered = pd.read_csv(label_file_path, header=None, skiprows=range(0, 2826), usecols=[0, 4], sep="\t")
 label_data_filtered.columns = ["Sample_ID", "CMS_Label"]
-label_data_filtered = label_data_filtered[label_data_filtered['Sample_ID'].str.startswith('TCGA-')]
+label_data_filtered = label_data_filtered[label_data_filtered['Sample_ID'].str.startswith('TCGA-')] # only TCGA samples
 label_data_filtered['Sample_ID'] = label_data_filtered['Sample_ID'].apply(lambda x: '-'.join(x.split('-')[0:3]))
 
 # Preparing the proteomic data for merging
@@ -79,18 +79,18 @@ proteomic_data_for_merge['Sample_ID'] = proteomic_data_for_merge.index
 proteomic_data_for_merge['Sample_ID'] = proteomic_data_for_merge['Sample_ID'].apply(lambda x: '-'.join(x.split('-')[0:3]))
 
 # Merging the label data with the proteomic data
-merged_data = pd.merge(proteomic_data_for_merge, label_data_filtered, on="Sample_ID", how="left")
+merged_prot_data = pd.merge(proteomic_data_for_merge, label_data_filtered, on="Sample_ID", how="left")
 
 # Splitting the data based on CMS labels
-cms1_data = merged_data[merged_data['CMS_Label'] == 'CMS1'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
-cms2_data = merged_data[merged_data['CMS_Label'] == 'CMS2'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
-cms3_data = merged_data[merged_data['CMS_Label'] == 'CMS3'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
-cms4_data = merged_data[merged_data['CMS_Label'] == 'CMS4'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
+cms1_data = merged_prot_data[merged_prot_data['CMS_Label'] == 'CMS1'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
+cms2_data = merged_prot_data[merged_prot_data['CMS_Label'] == 'CMS2'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
+cms3_data = merged_prot_data[merged_prot_data['CMS_Label'] == 'CMS3'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
+cms4_data = merged_prot_data[merged_prot_data['CMS_Label'] == 'CMS4'].set_index('Sample_ID').drop(columns=['CMS_Label']).transpose()
 
 # Place column 'CMS_label as first column in merged data
-merged_data = merged_data[['CMS_Label'] + [col for col in merged_data.columns if col != 'CMS_Label']]
+merged_prot_data = merged_prot_data[['CMS_Label'] + [col for col in merged_prot_data.columns if col != 'CMS_Label']]
 # Combined labelled file
-merged_data.set_index('Sample_ID').transpose().to_csv("../data/Synapse/TCGA/Proteomics_CMS_groups/TCGACRC_proteomics_ALL_labelled.csv")
+merged_prot_data.set_index('Sample_ID').transpose().to_csv("../data/Synapse/TCGA/Proteomics_CMS_groups/TCGACRC_proteomics_ALL_labelled.csv")
 
 # Saving the new dataframes as separate .csv files
 cms1_data.to_csv("../data/Synapse/TCGA/Proteomics_CMS_groups/TCGACRC_proteomics_CMS1.csv")

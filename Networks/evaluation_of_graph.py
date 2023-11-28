@@ -64,13 +64,7 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
     print(f'Density of prior matrix: {np.sum(penalty_matrix == lambda_wp) / complete_graph_edges}\n')
 
     # # fill diagonal with 0s
-    # np.fill_diagonal(penalty_matrix, 0)
-
-    # write penalty matrix to file
-    np.savetxt('penalty_matrix.txt', penalty_matrix, delimiter=',')
-
-    # penalty_matrix = lambda_np * np.ones((p,p)) # prior_matrix
-
+    np.fill_diagonal(penalty_matrix, 0)
 
     # print(f'P: {p}')
     # Call the R function from Python

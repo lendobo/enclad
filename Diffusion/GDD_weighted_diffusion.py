@@ -1,6 +1,7 @@
 # %%
 import networkx as nx
 import numpy as np
+import pandas as pd
 import scipy.linalg
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -10,7 +11,7 @@ import copy
 
 
 # %%
-# Step 2: Adjust Laplacian Matrix Calculation for Weighted Graph
+# Adjust Laplacian Matrix Calculation for Weighted Graph
 def weighted_laplacian_matrix(G):
     """
     Calculate the Laplacian matrix for a weighted graph.
@@ -148,10 +149,65 @@ fixed_reduction = 0.1
 nodes_to_investigate = hub_nodes + low_nodes
 node_to_isolate = 0 #np.random.choice(nodes_to_investigate)
 
-# CHOOSING GRAPH
-weighted_graph_use = weighted_split_scalefree_g
+
+
+
+
 
 ###############################################################################
+# %% OMICS GRAPH
+adj_matrix_proteomics = pd.read_csv('../Networks/net_results/transcriptomics_adj_matrix_pnQ49_500_800_0.01_0.7_60.csv', index_col=0)
+adj_matrix_transcriptomics = pd.read_csv('../Networks/net_results/proteomics_adj_matrix_pnQ50_500_800_0.01_0.7_60.csv', index_col=0)
+
+
+# Create separate graphs for each adjacency matrix
+G_proteomics_layer = nx.from_pandas_adjacency(adj_matrix_proteomics)
+G_transcriptomic_layer = nx.from_pandas_adjacency(adj_matrix_transcriptomics)
+
+# Create a multiplex graph
+G_multiplex = nx.Graph()
+
+# Add nodes and edges from the proteomics graph
+for node in G_proteomics_layer.nodes():
+    G_multiplex.add_node(node, layer='proteomics')
+for u, v in G_proteomics_layer.edges():
+    G_multiplex.add_edge(u, v, layer='proteomics')
+
+# Add nodes and edges from the transcriptomics graph
+for node in G_transcriptomic_layer.nodes():
+    G_multiplex.add_node(node, layer='transcriptomics')
+for u, v in G_transcriptomic_layer.edges():
+    G_multiplex.add_edge(u, v, layer='transcriptomics')
+
+# Add inter-layer edges for common nodes
+nodes_proteomics = set(G_proteomics_layer.nodes())
+nodes_transcriptomics = set(G_transcriptomic_layer.nodes())
+common_nodes = nodes_proteomics.intersection(nodes_transcriptomics)
+for node in common_nodes:
+    G_multiplex.add_edge(node, node, layer='interlayer')
+
+weighted_G_multiplex = G_multiplex.copy()
+for u, v in weighted_G_multiplex.edges():
+    weighted_G_multiplex[u][v]['weight'] = 1.0
+
+# Display some basic information about the multiplex graph
+num_nodes = G_multiplex.number_of_nodes()
+num_edges = G_multiplex.number_of_edges()
+num_nodes, num_edges
+
+##############################
+
+# CHOOSING GRAPH
+weighted_graph_use = weighted_G_multiplex
+
+# rename nodes to integers
+mapping = {node: i for i, node in enumerate(weighted_graph_use.nodes())}
+weighted_graph_use = nx.relabel_nodes(weighted_graph_use, mapping)
+
+
+
+
+
 
 
 # %%
@@ -352,80 +408,80 @@ plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph],
 
 
 
-# %% ############################ BARBELL GRAPHS ############################
-# Let's generate the three barbell graphs as shown in the image.
-# The first graph will be a complete barbell graph, the second will have its bridge removed, 
-# and the third will have its central connection removed.
+# # %% ############################ BARBELL GRAPHS ############################
+# # Let's generate the three barbell graphs as shown in the image.
+# # The first graph will be a complete barbell graph, the second will have its bridge removed, 
+# # and the third will have its central connection removed.
 
-# Define the number of nodes in the barbell graph's complete subgraphs and the bridge length
-m1 = 5  # Number of nodes in the complete subgraphs
-m2 = 0  # Number of nodes in the bridge
+# # Define the number of nodes in the barbell graph's complete subgraphs and the bridge length
+# m1 = 5  # Number of nodes in the complete subgraphs
+# m2 = 0  # Number of nodes in the bridge
 
-# Generate the complete barbell graph
-G_single_edge = nx.barbell_graph(m1, m2)
+# # Generate the complete barbell graph
+# G_single_edge = nx.barbell_graph(m1, m2)
 
-# Identify the nodes to move and disconnect
-node_to_move_from_first_bell = m1 - 2  # Second to last node in the first bell
-node_to_move_from_second_bell = m1 + 1  # Second node in the second bell
+# # Identify the nodes to move and disconnect
+# node_to_move_from_first_bell = m1 - 2  # Second to last node in the first bell
+# node_to_move_from_second_bell = m1 + 1  # Second node in the second bell
 
-G_complete = G_single_edge.copy()
-# Add the new edge directly connecting the two identified nodes
-G_complete.add_edge(node_to_move_from_first_bell, node_to_move_from_second_bell)
+# G_complete = G_single_edge.copy()
+# # Add the new edge directly connecting the two identified nodes
+# G_complete.add_edge(node_to_move_from_first_bell, node_to_move_from_second_bell)
 
-G_cc = G_complete.copy()
-# remove edge between nodes 7 and 9
-G_cc.remove_edge(7, 9)
+# G_cc = G_complete.copy()
+# # remove edge between nodes 7 and 9
+# G_cc.remove_edge(7, 9)
 
-# Verify the graphs by plotting them
-fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-# Plot the complete barbell graph
-nx.draw(G_complete, ax=axes[0], with_labels=True)
-axes[0].set_title('Complete Barbell Graph')
-# Plot the barbell graph with the bridge removed
-nx.draw(G_single_edge, ax=axes[1], with_labels=True)
-axes[1].set_title('Barbell Graph with Bridge Removed')
-# Plot the barbell graph with the bell connection removed
-nx.draw(G_cc, ax=axes[2], with_labels=True)
-axes[2].set_title('Barbell Graph with bell connection removed')
+# # Verify the graphs by plotting them
+# fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+# # Plot the complete barbell graph
+# nx.draw(G_complete, ax=axes[0], with_labels=True)
+# axes[0].set_title('Complete Barbell Graph')
+# # Plot the barbell graph with the bridge removed
+# nx.draw(G_single_edge, ax=axes[1], with_labels=True)
+# axes[1].set_title('Barbell Graph with Bridge Removed')
+# # Plot the barbell graph with the bell connection removed
+# nx.draw(G_cc, ax=axes[2], with_labels=True)
+# axes[2].set_title('Barbell Graph with bell connection removed')
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()
 
 
 
 # %% PLOTTING THE MAX GDD
-# Compute the Laplacian Matrices for both graphs
-laplacian_A = weighted_laplacian_matrix(G_complete)
-laplacian_B = weighted_laplacian_matrix(G_cc)
+# # Compute the Laplacian Matrices for both graphs
+# laplacian_A = weighted_laplacian_matrix(G_complete)
+# laplacian_B = weighted_laplacian_matrix(G_cc)
 
-# Step 3 and 4: Compute the Laplacian Kernels and calculate the xi values over a range of t values
-t_values = np.linspace(0, 10, 1000)
-xi_values = []
+# # Step 3 and 4: Compute the Laplacian Kernels and calculate the xi values over a range of t values
+# t_values = np.linspace(0, 10, 1000)
+# xi_values = []
 
-for t in t_values:
-    kernel_A = laplacian_exponential_kernel_eigendecomp(*np.linalg.eigh(laplacian_A), t)
-    kernel_B = laplacian_exponential_kernel_eigendecomp(*np.linalg.eigh(laplacian_B), t)
-    xi = np.linalg.norm((kernel_A - kernel_B), 'fro')
-    xi_values.append(xi)
+# for t in t_values:
+#     kernel_A = laplacian_exponential_kernel_eigendecomp(*np.linalg.eigh(laplacian_A), t)
+#     kernel_B = laplacian_exponential_kernel_eigendecomp(*np.linalg.eigh(laplacian_B), t)
+#     xi = np.linalg.norm((kernel_A - kernel_B), 'fro')
+#     xi_values.append(xi)
 
-# Find the maximum xi value and the corresponding t value using line search
-max_xi = max(xi_values)
-max_xi_index = xi_values.index(max_xi)
-max_xi_time = t_values[max_xi_index]
+# # Find the maximum xi value and the corresponding t value using line search
+# max_xi = max(xi_values)
+# max_xi_index = xi_values.index(max_xi)
+# max_xi_time = t_values[max_xi_index]
 
-# Step 5: Plot xi against t
-plt.figure(figsize=(10, 6))
-plt.plot(t_values, xi_values, label='xi(t)')
-plt.plot(max_xi_time, max_xi, 'ro', label='Max xi')
-# add a text label at maximum point
-plt.annotate(f'Max xi = {round(max_xi, 2)}\n at t = {round(max_xi_time, 2)}', xy=(max_xi_time, max_xi), xytext=(max_xi_time + 1, max_xi - 0.1),
-             )
-plt.xlabel('Diffusion Time (t)')
-plt.ylabel('Xi Value (Graph Difference)')
-plt.title('Xi Values Over Diffusion Time for Two Graphs')
-plt.legend()
-plt.grid(True)
-plt.show()
+# # Step 5: Plot xi against t
+# plt.figure(figsize=(10, 6))
+# plt.plot(t_values, xi_values, label='xi(t)')
+# plt.plot(max_xi_time, max_xi, 'ro', label='Max xi')
+# # add a text label at maximum point
+# plt.annotate(f'Max xi = {round(max_xi, 2)}\n at t = {round(max_xi_time, 2)}', xy=(max_xi_time, max_xi), xytext=(max_xi_time + 1, max_xi - 0.1),
+#              )
+# plt.xlabel('Diffusion Time (t)')
+# plt.ylabel('Xi Value (Graph Difference)')
+# plt.title('Xi Values Over Diffusion Time for Two Graphs')
+# plt.legend()
+# plt.grid(True)
+# plt.show()
 
 
 # %% TESTING EIGENDECOMP

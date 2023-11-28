@@ -253,14 +253,14 @@ def create_scaffold_network(TRRUST_df, PPI_interactions, get_gene_role, directed
     else:
         G = nx.Graph()
 
-    # Add edges for each relationship in TRRUST
-    for _, row in TRRUST_df.iterrows():
-        if pd.notna(row['TF_RNA']) and pd.notna(row['TF_PROT']):
-            G.add_edge(row['TF_RNA'] + ".r>", row['TF_PROT'] + ".p>")
-        if pd.notna(row['TF_PROT']) and pd.notna(row['BS_RNA']):
-            G.add_edge(row['TF_PROT'] + ".p>", row['BS_RNA'] + '.r]')
-        if pd.notna(row['BS_RNA']) and pd.notna(row['BS_PROT']):
-            G.add_edge(row['BS_RNA'] + '.r]', row['BS_PROT'] + ".p]")
+    # # Add edges for each relationship in TRRUST
+    # for _, row in TRRUST_df.iterrows():
+    #     if pd.notna(row['TF_RNA']) and pd.notna(row['TF_PROT']):
+    #         G.add_edge(row['TF_RNA'] + ".r>", row['TF_PROT'] + ".p>")
+    #     if pd.notna(row['TF_PROT']) and pd.notna(row['BS_RNA']):
+    #         G.add_edge(row['TF_PROT'] + ".p>", row['BS_RNA'] + '.r]')
+    #     if pd.notna(row['BS_RNA']) and pd.notna(row['BS_PROT']):
+    #         G.add_edge(row['BS_RNA'] + '.r]', row['BS_PROT'] + ".p]")
 
 
     # INTEGRATING the PPI part to get the SCAFFOLD GRAPH
@@ -282,7 +282,10 @@ def create_scaffold_network(TRRUST_df, PPI_interactions, get_gene_role, directed
 # SCAFFOLD_G = create_scaffold_network(TRRUST_df, PPI_interactions, get_gene_role, directed=False)
 
 # Write G to file
-nx.write_graphml(SCAFFOLD_G, 'data/SCAFFOLD_graph.graphml')
+# nx.write_graphml(SCAFFOLD_G, 'data/SCAFFOLD_graph.graphml')
+
+
+
 # %% Investigating the Subgraph
 # load from file
 SCAFFOLD_G = nx.read_graphml('data/SCAFFOLD_graph.graphml')
@@ -296,7 +299,7 @@ components = list(nx.connected_components(SCAFFOLD_G))
 num_disconnected_components = len(components)
 
 print('GRAPH COMPONENT ANALYSIS\n-------------------------------')
-print(f"Number of disconnected components: {num_disconnected_components}")
+print(f"Number of graph components: {num_disconnected_components}")
 
 # check length of each component. Check number of edges
 for i, component in enumerate(components):
@@ -319,57 +322,43 @@ def get_connected_subgraph(G, start_node, num_nodes, mode='bfs'):
 
     return subgraph
 
+
+# %%
 ########################################## SUBGRAPHS and SYNTH GRAPHS #####################################################################
-top_var_name = np.random.choice(PPI_DEA_PROTS)
-top_node = top_var_name + get_gene_role(top_var_name)[0]
-
 print('\n DEA-centered SUBGRAPHS\n-------------------------------')
-print(f'Top DEA node: {top_node}')
 
-p = 500  # Define how many nodes you want in the subgraph
+p = 50  # Define how many nodes you want in the subgraph
 
-# TEsting both directed and undirected subgraphs
-subG_undir = get_connected_subgraph(SCAFFOLD_G, top_node, p, mode='bfs')
+def count_common_proteins(subgraph, protein_list):
+    # Count how many nodes in the subgraph are in the protein list
+    return len([node for node in subgraph.nodes if node in protein_list])
 
-# get highest degree node
-highest_degree_node = max(subG_undir.degree(), key=lambda x: x[1])[0]
-print(f'Highest degree node: {highest_degree_node}')
+# Initialize variables to track the best subgraph
+best_subgraph = None
+best_count = 0
+best_node = None
 
-# RANDOM GRAPH
-random_g = nx.erdos_renyi_graph(p, 0.1, seed=6, directed=False)
+for prot in PPI_DEA_PROTS:
+    # Generate the subgraph for each node
+    top_node = prot + get_gene_role(prot)[0]
+    subgraph = get_connected_subgraph(SCAFFOLD_G, top_node, p, mode='bfs')
+    
+    # Count how many proteins from PPI_DEA_PROTS are in the subgraph
+    protein_list = [prot + get_gene_role(prot)[0] for prot in PPI_DEA_PROTS]
+    count = count_common_proteins(subgraph, protein_list)
+    
+    # Update best subgraph if this one has more proteins from the list
+    if count > best_count:
+        best_subgraph = subgraph
+        best_count = count
+        best_node = top_node
 
-# SCALE FREE GRAPH
-if p <= 100:
-    m = random.choice([1,2,2])
-elif 100 < p <= 300:
-    m = random.choice([3,5,6])
-elif 300 < p <= 500:
-    m = random.choice([5,8,10])
-elif 500 < p <= 1000:
-    m = random.choice([10,15,20])
-else:
-    m = 20
+# Output the best subgraph info
+print(f"Best starting node: {best_node}")
+print(f"Number of DEA proteins in the best subgraph: {best_count}")
 
-scale_free_g = nx.barabasi_albert_graph(p, m, seed=42)
-
-def graph_analysis(network):
-    # get degree distribution
-    degrees = [val for (node, val) in network.degree()]
-    plt.hist(degrees, bins=20)
-    plt.xlabel('Degree')
-    plt.ylabel('Frequency')
-    plt.title(fr'Degree Distribution for {len(degrees)} nodes')
-    plt.show()
-
-    # plot on a log-log scale
-    plt.scatter(np.log10(range(1, len(degrees) + 1)), np.log10(sorted(degrees, reverse=True)))
-    plt.xlabel('log10(Rank)')
-    plt.ylabel('log10(Degree)')
-    plt.title(fr'Log-Log Degree Distribution for {len(degrees)} nodes')
-    plt.show()
-
-# graph_analysis(subG_undir)
-
+# GEnerating the subgraph that captures the most DEA proteins
+subG_undir = get_connected_subgraph(SCAFFOLD_G, best_node, p, mode='bfs')
 
 # Define node colors based on unique node types
 node_colors = []
@@ -411,6 +400,7 @@ plt.show()
 
 print(f'Total number of proteins in subG: {tf_prots + bs_prots + wiring_prots}')
 print(f'Total number of RNAs in subG: {tf_rna + bs_rna}')
+print(f'total number of edges in subG: {subG_undir.number_of_edges()}')
 
 
 # Draw the undirected subgraph
@@ -427,105 +417,86 @@ nx.draw_networkx(subG_undir, pos=nx.spring_layout(subG_undir, weight=1),
 # Show the plot
 plt.show()
 
-# # Now draw the subgraph
-# plt.figure(figsize=(10, 10), dpi=300)
-# nx.draw_networkx(subG_dir, pos=nx.spring_layout(subG_dir, weight=1, scale=1), 
-#                  node_size=250, 
-#                  with_labels=False,
-#                  edge_color='lightgrey',
-#                  node_color=node_colors,  # Adjust if node_colors needs to be recalculated for subG
-#                  arrows=True,
-#                  arrowsize=25, 
-#                  alpha=0.75)
 
-# plt.show()
-
-
-# # plot random_g
-# plt.figure(figsize=(10, 10), dpi=300)
-# nx.draw_networkx(random_g, pos=nx.spring_layout(random_g, weight=1, scale=1), 
-#                  node_size=250, 
-#                  with_labels=True,
-#                  edge_color='lightgrey',
-#                  arrowsize=25, 
-#                  alpha=0.75)
-
-# plt.show()
-
-################################## DIFFUSION ##############################################################################
 
 # %%
-import random
+################################################### EXPORTING FOR PIGLASSO
+# Get pandas dataframe of the subgraph
+subG_undir_df = nx.to_pandas_edgelist(subG_undir)
+subG_undir_df.head()
 
-gchoice = subG_undir # random_g
-node_choice = list(subG_undir.nodes())
-print(node_choice)
+# get adjacency matrix with node names
+subG_undir_adj = nx.to_pandas_adjacency(subG_undir)
+subG_undir_adj.head()
 
-# A very small sigma2 value
-sigma2 = 80
+# remove suffixes from node names
+subG_undir_adj.columns = [col.split('.')[0] for col in subG_undir_adj.columns]
+subG_undir_adj.index = [index.split('.')[0] for index in subG_undir_adj.index]
 
-# A small add_diag value
-add_diag = 1
+#write to csv
+subG_undir_adj.to_csv(f'data/SUBGRAPH_ADJACENCY_PROT_{p}.csv', index=True)
 
-lap_kernel = regularised_laplacian_kernel(gchoice, sigma2=sigma2, add_diag=add_diag, normalized=True)
-diff_kernel = diffusion_kernel(gchoice, sigma2=sigma2, normalized=True)
+cms_protein_file = pd.read_csv('../data/Synapse/TCGA/Proteomics_CMS_groups/TCGACRC_proteomics_ALL_labelled.csv', index_col=0)
+cms_rna_file = pd.read_csv('../data/Synapse/TCGA/TCGACRC_expression.tsv', sep='\t', index_col=0)
 
-# Preparing the nodes of subG
-network_nodes = list(gchoice.nodes())
-label_values = np.array([1 if node in node_choice else 0 for node in network_nodes])
-
-input_matrix = Matrix(mat=label_values, rows_labels=network_nodes, cols_labels=['score'])
+cms_protein_file = cms_protein_file.transpose()
+cms_rna_file = cms_rna_file.transpose()
 
 
-# Perform the diffusion
-diffusion_results = diffuse_raw(graph=None, scores=input_matrix, k=diff_kernel)
+# only keep columns that are in subG_undir_adj
+cms_protein_file = cms_protein_file[subG_undir_adj.columns]
+# filter the columns of cms_rna_file
+common_protein_rna = subG_undir_adj.columns.intersection(cms_rna_file.columns)
+cms_rna_file = cms_rna_file[common_protein_rna]
 
-# Convert the Matrix object to a dictionary of node scores
-diffusion_scores_dict = {node: score for node, score in zip(diffusion_results.rows_labels, diffusion_results.mat.flatten())}
+# cms_protein_file.head()
+# cms_rna_file.head()
 
-# Sum over the diffusion scores to check the total 'heat'
-total_heat = sum(diffusion_scores_dict.values())
-# plot distribution of scores
-plt.hist(diffusion_scores_dict.values(), bins=20)
-plt.xlabel('Diffusion Score')
-plt.ylabel('Frequency')
-plt.title(fr'Diffusion Scores for {len(diffusion_scores_dict)} nodes, $\sigma^2$ = {sigma2}, add_diag = {add_diag}')
-plt.show()
 
-# print(diffusion_scores_dict)
-# print(f"Total diffusion score: {total_heat}")
+# write to csv
+cms_protein_file.to_csv(f'data/TCGACRC_proteomics_SUBGRAPH_SELECT_{p}.csv', index=True)
+cms_rna_file.to_csv(f'data/TCGACRC_transcriptomics_SUBGRAPH_SELECT_{p}.csv', index=True)
 
-# Normalize the diffusion scores for coloring
-max_score = max(diffusion_scores_dict.values())
-min_score = min(diffusion_scores_dict.values())
-norm = plt.Normalize(vmin=min_score, vmax=max_score)
-cmap = plt.cm.coolwarm
+# %%
 
-node_colors = [cmap(norm(diffusion_scores_dict[str(node)])) for node in gchoice.nodes()]
+prot_file = pd.read_csv('../data/Synapse/TCGA/TCGACRC_proteomics.csv', index_col=0)
 
-# pos = nx.spring_layout(gchoice)  # or any other layout algorithm
-# nx.draw_networkx(gchoice, 
-#                  pos, 
-#                  node_color=node_colors, 
-#                  with_labels=True,
-#                  font_size=5,
-#                  arrows=True, 
-#                  arrowsize=1,
-#                  alpha=0.8)
-# plt.show()
+# sum over values of "TCGA-A6-3807-01A-22" column
+prot_file['TCGA-A6-3807-01A-22'] = prot_file['TCGA-A6-3807-01A-22'].astype(float)
+sumcheck = prot_file['TCGA-A6-3807-01A-22'].sum()
+print(f'Sum of values in TCGA-A6-3807-01A-22 column: {sumcheck}')
+# # RANDOM GRAPH
+# random_g = nx.erdos_renyi_graph(p, 0.1, seed=6, directed=False)
 
-# Draw the undirected subgraph
-plt.figure(figsize=(10, 10), dpi=300)
-nx.draw_networkx(gchoice, pos=nx.spring_layout(gchoice, weight=1),
-                 node_size=250,
-                 with_labels=True,
-                 font_size=5,
-                 font_color='grey',
-                 edge_color='lightgrey',
-                 node_color=node_colors,
-                 alpha=0.75)
+# # SCALE FREE GRAPH
+# if p <= 100:
+#     m = random.choice([1,2,2])
+# elif 100 < p <= 300:
+#     m = random.choice([3,5,6])
+# elif 300 < p <= 500:
+#     m = random.choice([5,8,10])
+# elif 500 < p <= 1000:
+#     m = random.choice([10,15,20])
+# else:
+#     m = 20
 
-# Show the plot
-plt.show()
+# scale_free_g = nx.barabasi_albert_graph(p, m, seed=42)
 
+# def graph_analysis(network):
+#     # get degree distribution
+#     degrees = [val for (node, val) in network.degree()]
+#     plt.hist(degrees, bins=20)
+#     plt.xlabel('Degree')
+#     plt.ylabel('Frequency')
+#     plt.title(fr'Degree Distribution for {len(degrees)} nodes')
+#     plt.show()
+
+#     # plot on a log-log scale
+#     plt.scatter(np.log10(range(1, len(degrees) + 1)), np.log10(sorted(degrees, reverse=True)))
+#     plt.xlabel('log10(Rank)')
+#     plt.ylabel('log10(Degree)')
+#     plt.title(fr'Log-Log Degree Distribution for {len(degrees)} nodes')
+#     plt.show()
+
+# # graph_analysis(subG_undir)
 # %%
