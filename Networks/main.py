@@ -7,7 +7,7 @@ import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 
-def run(data, 
+def analysis(data, 
         prior_matrix, 
         p, 
         n, 
@@ -27,7 +27,7 @@ def run(data,
 
     l_lo = left_knee_point_index     # Set it at knee-point index -1 
     if run_type == 'SYNTHETIC':
-        l_hi = right_knee_point_index + 10 # set at knee-point index
+        l_hi = right_knee_point_index # set at knee-point index
     else:
         l_hi = right_knee_point_index + 25
         print(f'right_knee_point_index: {right_knee_point_index}')
@@ -94,23 +94,23 @@ def run(data,
 
 
 
+
 rank=1
 size=1
-
 # ################################################# SYNTHETIC PART #################################################
-# # Parameters
-# p = 100             # number of variables (nodes)
-# n = 800             # number of samples
-# b = int(0.75 * n)   # size of sub-samples
-# Q = 1200             # number of sub-samples
+# Parameters
+p = 50             # number of variables (nodes)
+n = 500             # number of samples
+b = int(0.8 * n)   # size of sub-samples
+Q = 1000             # number of sub-samples
 
-# lowerbound = 0.01
-# upperbound = 0.4
-# granularity = 60
-# lambda_range = np.linspace(lowerbound, upperbound, granularity)
+lowerbound = 0.01
+upperbound = 0.4
+granularity = 80
+lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
 # # Load edge counts
-# filename_edges = f'net_results/synthetic_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_{granularity}.pkl'
+# filename_edges = f'Networks/net_results/synthetic_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_{granularity}.pkl'
 # with open(filename_edges, 'rb') as f:
 #     synth_edge_counts_all = pickle.load(f)
 # # divide each value in edge_counts_all by 2*Q
@@ -119,10 +119,22 @@ size=1
 # # # Generate synthetic data and prior matrix
 # synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n)
 
+n = 69
+p_values = [50, 100, 200, 400]
 
-# ## REsults for synthetic data
-# run(synth_data, synth_prior_matrix, p, n, Q, lowerbound, upperbound, granularity, synth_edge_counts_all, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=True)
+for p in p_values:
+    print(f'NETWORK SIZE for samples: {n} and variables: {p}')
+    filename_edges = f'Networks/net_results/synthetic_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_{granularity}.pkl'
+    with open(filename_edges, 'rb') as f:
+        synth_edge_counts_all = pickle.load(f)
+    # divide each value in edge_counts_all by 2*Q
+    synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
 
+    # # Generate synthetic data and prior matrix
+    synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, min_fn_perc=0.8, fp_perc=0)
+    ## REsults for synthetic data
+    analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
+             synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=True)
 
 ################################################## OMICS DATA PART #################################################
 # Parameters
@@ -173,14 +185,14 @@ print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
 
 p = cms_array.shape[1]
 n = cms_array.shape[0]
-b = int(0.75 * n)
+b = int(0.8 * n)
 
 # scale and center 
 cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
 
 # RUN ANALYSIS
-precision_mat, edge_counts, density = run(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-            lowerbound, upperbound, granularity, omics_edge_counts_all, prior_bool, run_type='OMICS', plot=True)
+# precision_mat, edge_counts, density = run(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+            # lowerbound, upperbound, granularity, omics_edge_counts_all, prior_bool, run_type='OMICS', plot=True)
 
 
 # get adjacency from precision matrix

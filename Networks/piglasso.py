@@ -71,7 +71,7 @@ class QJSweeper:
         self.subsample_indices = self.get_subsamples_indices(self.n, b, Q, rank, size)
 
     @staticmethod
-    def generate_synth_data(p, n):
+    def generate_synth_data(p, n, min_fn_perc, fp_perc):
 
         random.seed(42)
         np.random.seed(42)
@@ -117,10 +117,10 @@ class QJSweeper:
         prior_matrix = np.zeros((p, p))
         for i in range(p):
             for j in range(i, p):
-                if adj_matrix[i, j] != 0 and np.random.rand() < 0.8 :
+                if adj_matrix[i, j] != 0 and np.random.rand() < min_fn_perc :
                     prior_matrix[i, j] = 1
                     prior_matrix[j, i] = 1
-                elif adj_matrix[i, j] == 0 and np.random.rand() < 0.1:
+                elif adj_matrix[i, j] == 0 and np.random.rand() < fp_perc:
                     prior_matrix[i, j] = 1
                     prior_matrix[j, i] = 1
         np.fill_diagonal(prior_matrix, 0)
@@ -247,7 +247,7 @@ def main(rank, size, machine='local'):
     #######################
     p = args.p           # number of variables (nodes)
     n = args.n             # number of samples
-    b = int(0.75 * n)   # size of sub-samples
+    b = int(args.b_perc * n)   # size of sub-samples
     Q = args.Q             # number of sub-samples
     
     llo = args.llo
@@ -258,7 +258,7 @@ def main(rank, size, machine='local'):
 
     if args.run_type == 'synthetic':
         # Synthetic run
-        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n)
+        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.min_fn_perc, args.fp_perc)
         synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
 
         edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
@@ -279,7 +279,7 @@ def main(rank, size, machine='local'):
         prior_matrix = cms_omics_prior.values
 
         n = cms_array.shape[0]
-        b = int(0.75 * n)
+        b = int(args.b_perc * n)
 
         print(f'Variables, Samples: {p, n}')
 
@@ -303,14 +303,16 @@ if __name__ == "__main__":
     parser.add_argument('--p', type=int, default=50, help='Number of variables (nodes)')
     parser.add_argument('--n', type=int, default=500, help='Number of samples')
     parser.add_argument('--Q', type=int, default=800, help='Number of sub-samples')
+    parser.add_argument('--b_perc', type=float, default=0.8, help='Size of sub-samples (as a percentage of n)')
     parser.add_argument('--llo', type=float, default=0.01, help='Lower bound for lambda range')
     parser.add_argument('--lhi', type=float, default=0.4, help='Upper bound for lambda range')
     parser.add_argument('--lamlen', type=int, default=40, help='Number of points in lambda range')
     parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'proteomics', 'transcriptomics'], help='Type of run to execute')
-    parser.add_argument('--data_file', type=str, default='Please choose option: --run_type synthetic if no data', help='omics data file (Protein / RNA))')
+    parser.add_argument('--data_file', type=str, default=None, help='omics data file (Protein / RNA))')
     parser.add_argument('--prior_file', type=str, default=None, help='adjacency matrix for prior')
     parser.add_argument('--cms', type=str, default='cms4', choices=['cms2', 'cms3', 'cms4', 'cms1'], help='CMS type to run for omics run')
-
+    parser.add_argument('--min_fn_perc', type=float, default=1, help='(1 - probability of false negative) for prior')
+    parser.add_argument('--fp_perc', type=float, default=0, help='probability of false positive for prior')
 
     args = parser.parse_args()
 
@@ -318,30 +320,40 @@ if __name__ == "__main__":
     if "SLURM_JOB_ID" in os.environ:
         edge_counts, p, n, Q = main(rank=rank, size=size, machine='hpc')
 
-        # Gather the results at the root
-        all_edges = comm.gather(edge_counts, root=0)
+        num_elements = p * p * args.lamlen
+        sendcounts = np.array([num_elements] * size)
+        displacements = np.arange(size) * num_elements
 
         if rank == 0:
-            combined_edge_counts = np.zeros_like(all_edges[0])
+            # Gather the results at the root
+            all_edges = np.empty(size * num_elements, dtype=edge_counts.dtype)
+        else:
+            all_edges = None
 
-            # Sum the edge counts across all ranks for each lambda value
-            for edge_count in all_edges:
-                combined_edge_counts += edge_count
+        comm.Gatherv(sendbuf=edge_counts.flatten(), recvbuf=(all_edges, sendcounts, displacements, MPI.DOUBLE), root=0)
+
+        if rank == 0:
+            # Reshape all_edges back to the original shape (size, p, p, len(lambda_range))
+            reshaped_edges = all_edges.reshape(size, p, p, args.lamlen)
+
+            combined_edge_counts = np.sum(reshaped_edges, axis=0)
+
 
             # Save combined results
-            with open(f'net_results/{args.run_type}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
+            with open(f'net_results/{args.run_type}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
 
             # Transfer results to $HOME
-            os.system("cp -r net_results/ $HOME/phase_1_code/Networks/")
+            os.system("cp -r net_results/ $HOME/thesis_code/Networks/")
 
     else:
         # If no SLURM environment, run for entire lambda range
         edge_counts, p, n, Q = main(rank=1, size=1, machine='local')
+        print(edge_counts.dtype)
 
         # Save results to a pickle file
-        with open(f'Networks/net_results/local_{args.run_type}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}.pkl', 'wb') as f:
-            pickle.dump(edge_counts, f)
+        with open(f'Networks/net_results/local_{args.run_type}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
+            pickle.dump(edge_counts)
 
 
 # scp mbarylli@snellius.surf.nl:"phase_1_code/Networks/net_results/omics_edge_counts_all_pnQ\(100\,\ 106\,\ 300\).pkl" net_results/
