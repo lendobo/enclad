@@ -8,7 +8,8 @@ import matplotlib.colors as mcolors
 import math
 import random
 import copy
-
+import time
+from mpi4py import MPI
 
 # %%
 # Adjust Laplacian Matrix Calculation for Weighted Graph
@@ -56,50 +57,52 @@ def knockout_node(G, node_to_isolate):
 
     return modified_graph, new_laplacian
 
-def knockdown_node(G, node_to_isolate, reduction_factor=0.5):
+# def knockdown_node(G, node_to_isolate, reduction_factor=0.5):
+#     """
+#     Reduces the weights of all edges connected to a node in the graph.
+
+#     :param G: NetworkX graph
+#     :param node_to_isolate: Node whose edges will be reduced
+#     :param reduction_factor: Factor to reduce edge weights by, defaults to 0.5
+#     :return: Tuple containing the modified graph and its weighted Laplacian matrix
+#     """
+#     modified_graph = G.copy()
+#     # Reduce the weight of all edges to and from this node
+#     for neighbor in G[node_to_isolate]:
+#         # Reduce the weight by the reduction factor
+#         modified_graph[node_to_isolate][neighbor]['weight'] *= reduction_factor
+#         modified_graph[neighbor][node_to_isolate]['weight'] *= reduction_factor
+    
+#     # Compute the weighted Laplacian matrix for the modified graph
+#     new_laplacian = weighted_laplacian_matrix(modified_graph)
+
+#     return modified_graph, new_laplacian
+
+def knockdown_node_both_layers(G, node_to_isolate_base, reduction_factor=0.3):
     """
-    Reduces the weights of all edges connected to a node in the graph.
+    Reduces the weights of all edges connected to a node in both layers of the graph.
 
     :param G: NetworkX graph
-    :param node_to_isolate: Node whose edges will be reduced
+    :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
     :param reduction_factor: Factor to reduce edge weights by, defaults to 0.5
     :return: Tuple containing the modified graph and its weighted Laplacian matrix
     """
     modified_graph = G.copy()
-    # Reduce the weight of all edges to and from this node
-    for neighbor in G[node_to_isolate]:
-        # Reduce the weight by the reduction factor
-        modified_graph[node_to_isolate][neighbor]['weight'] *= reduction_factor
-        modified_graph[neighbor][node_to_isolate]['weight'] *= reduction_factor
+    
+    # Add layer suffixes to the base node name
+    node_to_isolate_proteomics = f"{node_to_isolate_base}.p"
+    node_to_isolate_transcriptomics = f"{node_to_isolate_base}.t"
+    
+    # Reduce the weight of all edges to and from this node in both layers
+    for node_to_isolate in [node_to_isolate_proteomics, node_to_isolate_transcriptomics]:
+        for neighbor in G[node_to_isolate]:
+            modified_graph[node_to_isolate][neighbor]['weight'] *= reduction_factor
+            modified_graph[neighbor][node_to_isolate]['weight'] *= reduction_factor
     
     # Compute the weighted Laplacian matrix for the modified graph
     new_laplacian = weighted_laplacian_matrix(modified_graph)
-
     return modified_graph, new_laplacian
 
-def adjust_inter_set_edge_weights(G, new_weight=0.5):
-    """
-    Apply a specific weight to edges between nodes from two different sets.
-
-    :param G: NetworkX graph
-    :param set1: First set of nodes
-    :param set2: Second set of nodes
-    :param new_weight: Weight to apply to inter-set edges
-    :return: Modified graph
-    """
-    nodes = list(G.nodes())
-    random.shuffle(nodes)
-    midpoint = len(nodes) // 2
-    set1, set2 = nodes[:midpoint], nodes[midpoint:]
-
-    modified_graph = G.copy()
-    for u in set1:
-        for v in set2:
-            if modified_graph.has_edge(u, v):
-                # Apply the new weight to the edge
-                modified_graph[u][v]['weight'] = new_weight
-
-    return modified_graph, set1, set2
 
 # %%
 # generate a random integer from 0 to 100
@@ -109,45 +112,6 @@ print(f'random seed: {rand_seed}')
 np.random.seed(rand_seed)
 random.seed(rand_seed)
 
-# %%
-################################################################# GRAPH PARAMETERS
-N = 100  # Number of nodes
-m = 3    # Number of edges to attach from a new node to existing nodes
-
-
-
-# SCALE FREE GRAPH
-scale_free_graph = nx.barabasi_albert_graph(N, m, seed=rand_seed)
-laplacian_matrix = nx.laplacian_matrix(scale_free_graph).toarray()
-# Assign random weights to each edge (for example, weights between 0.1 and 1.0)
-weighted_scale_free_graph = scale_free_graph.copy()
-for u, v in weighted_scale_free_graph.edges():
-    weighted_scale_free_graph[u][v]['weight'] = np.random.uniform(0.1, 1.0)
-
-weighted_split_scalefree_g, set_1, set_2 = adjust_inter_set_edge_weights(weighted_scale_free_graph, new_weight=0.01)
-
-# get hub nodes
-degree_dict = dict(scale_free_graph.degree(scale_free_graph.nodes()))
-# get 3 nodes with largest degree
-hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:3]
-low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:3]
-print(f'hub nodes: {hub_nodes}')
-print(f'anti-hubs nodes: {low_nodes}')
-
-
-# RANDOM GRAPH
-random_graph = nx.erdos_renyi_graph(N, 0.5, seed=rand_seed) 
-random_laplacian = nx.laplacian_matrix(random_graph).toarray()
-weighted_random_graph = random_graph.copy()
-for u, v in weighted_random_graph.edges():
-    weighted_random_graph[u][v]['weight'] = 1.0
-
-################################################# NODE AND DIFFUSION PARAMETERS
-t_values = np.linspace(0.01, 10, 500)
-fixed_reduction = 0.1
-
-nodes_to_investigate = hub_nodes + low_nodes
-node_to_isolate = 0 #np.random.choice(nodes_to_investigate)
 
 
 
@@ -156,57 +120,130 @@ node_to_isolate = 0 #np.random.choice(nodes_to_investigate)
 
 ###############################################################################
 # %% OMICS GRAPH
-adj_matrix_proteomics = pd.read_csv('../Networks/net_results/transcriptomics_adj_matrix_pnQ49_500_800_0.01_0.7_60.csv', index_col=0)
-adj_matrix_transcriptomics = pd.read_csv('../Networks/net_results/proteomics_adj_matrix_pnQ50_500_800_0.01_0.7_60.csv', index_col=0)
+p = 137
+kpa = 0
+npp = 0.4
+npt = 0.35
+cms = 'cmsALL'
+
+adj_matrix_proteomics = pd.read_csv(f'../Networks/net_results/inferred_adjacencies/proteomics_{cms}_adj_matrix_p{p}_kpa{kpa}_np{npp}.csv', index_col=0)
+adj_matrix_transcriptomics = pd.read_csv(f'../Networks/net_results/inferred_adjacencies/transcriptomics_{cms}_adj_matrix_p{p}_kpa{kpa}_np{npt}.csv', index_col=0)
 
 
 # Create separate graphs for each adjacency matrix
 G_proteomics_layer = nx.from_pandas_adjacency(adj_matrix_proteomics)
 G_transcriptomic_layer = nx.from_pandas_adjacency(adj_matrix_transcriptomics)
 
+# Function to add a suffix to node names based on layer
+def add_layer_suffix(graph, suffix):
+    return nx.relabel_nodes(graph, {node: f"{node}{suffix}" for node in graph.nodes})
+
+# Create separate graphs for each adjacency matrix and add layer suffix
+G_proteomics_layer = add_layer_suffix(nx.from_pandas_adjacency(adj_matrix_proteomics), '.p')
+G_transcriptomic_layer = add_layer_suffix(nx.from_pandas_adjacency(adj_matrix_transcriptomics), '.t')
+
+
 # Create a multiplex graph
 G_multiplex = nx.Graph()
 
-# Add nodes and edges from the proteomics graph
-for node in G_proteomics_layer.nodes():
-    G_multiplex.add_node(node, layer='proteomics')
-for u, v in G_proteomics_layer.edges():
-    G_multiplex.add_edge(u, v, layer='proteomics')
+# Add nodes and edges from both layers
+G_multiplex.add_nodes_from(G_proteomics_layer.nodes(data=True), layer='PROT')
+G_multiplex.add_edges_from(G_proteomics_layer.edges(data=True), layer='PROT')
+G_multiplex.add_nodes_from(G_transcriptomic_layer.nodes(data=True), layer='RNA')
+G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
 
-# Add nodes and edges from the transcriptomics graph
-for node in G_transcriptomic_layer.nodes():
-    G_multiplex.add_node(node, layer='transcriptomics')
-for u, v in G_transcriptomic_layer.edges():
-    G_multiplex.add_edge(u, v, layer='transcriptomics')
+common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
 
+inter_layer_weight = 1
 # Add inter-layer edges for common nodes
-nodes_proteomics = set(G_proteomics_layer.nodes())
-nodes_transcriptomics = set(G_transcriptomic_layer.nodes())
-common_nodes = nodes_proteomics.intersection(nodes_transcriptomics)
 for node in common_nodes:
-    G_multiplex.add_edge(node, node, layer='interlayer')
+    G_multiplex.add_edge(f"{node}.p", f"{node}.t",layer='interlayer')
 
 weighted_G_multiplex = G_multiplex.copy()
-for u, v in weighted_G_multiplex.edges():
-    weighted_G_multiplex[u][v]['weight'] = 1.0
+for u, v, data in weighted_G_multiplex.edges(data=True):
+    if data.get('layer') == 'interlayer':
+        weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
+    else:
+        weighted_G_multiplex[u][v]['weight'] = 1.0
+
 
 # Display some basic information about the multiplex graph
 num_nodes = G_multiplex.number_of_nodes()
 num_edges = G_multiplex.number_of_edges()
 num_nodes, num_edges
 
+# CHOOSING GRAPH #############################################################
+weighted_graph_use = weighted_G_multiplex
+##############################################################################
+
+### VISUALIZE
+# Assume 'pos' is a dictionary of positions keyed by node
+pos = nx.spring_layout(weighted_graph_use)  # or any other layout algorithm
+
+# Shift proteomics nodes upward
+shift_amount = 0.5  # This is an arbitrary value for the amount of shift; you can adjust it as needed
+for node in G_proteomics_layer.nodes():
+    pos[node][0] += shift_amount  # Shift the x-coordinate
+    pos[node][1] += shift_amount  # Shift the y-coordinate
+
+
+# Now, draw the graph
+node_color_map = []
+for node in weighted_graph_use.nodes():
+    if node.endswith('.p'):  # Proteomics nodes end with '.p'
+        node_color_map.append('red')  # Color proteomics nodes red
+    else:
+        node_color_map.append('blue')  # Color other nodes blue
+
+# Draw nodes and edges separately to specify colors
+nx.draw_networkx_edges(weighted_graph_use, pos, alpha=0.4)
+nx.draw_networkx_nodes(weighted_graph_use, pos, node_color=node_color_map, alpha=0.8)
+nx.draw_networkx_labels(weighted_graph_use, pos, font_size=6, alpha=0.7)
+
+# Show the plot
+plt.show()
+
 ##############################
 
-# CHOOSING GRAPH
-weighted_graph_use = weighted_G_multiplex
 
-# rename nodes to integers
-mapping = {node: i for i, node in enumerate(weighted_graph_use.nodes())}
-weighted_graph_use = nx.relabel_nodes(weighted_graph_use, mapping)
+# # rename nodes to integers
+# mapping = {node: i for i, node in enumerate(weighted_graph_use.nodes())}
+# weighted_graph_use = nx.relabel_nodes(weighted_graph_use, mapping)
+
+################################################# NODE AND DIFFUSION PARAMETERS  #########################################
+# get hubs and low nodes
+degree_dict = dict(weighted_graph_use.degree(weighted_graph_use.nodes()))
+# get 3 nodes with largest degree
+hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:2]
+low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:2]
+print(f'hub nodes: {hub_nodes}')
+print(f'anti-hubs nodes: {low_nodes}')
+
+t_values = np.linspace(0.01, 10, 100)
+fixed_reduction = 0.25
+
+# chooose random 
+nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
+node_to_isolate_base = random.choice(nodes_to_investigate_bases) # THIS IS FOR INVESTIGATING THE REDUCTION FACTORS FOR FIXED NODE
+print(f'node to isolate: {node_to_isolate_base}')
 
 
+# %% RUNS                                               ### MPI PARALLELIZATION ###
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
+# Distribute nodes to investigate across processors
+num_nodes = len(nodes_to_investigate_bases)
+nodes_per_proc = num_nodes // size
+start_index = rank * nodes_per_proc
+end_index = (rank + 1) * nodes_per_proc if rank != size - 1 else num_nodes
 
+# Each processor gets a subset of nodes to investigate
+nodes_subset = nodes_to_investigate_bases[start_index:end_index]
+
+# Initialize containers for results
+local_results = {}
 
 
 
@@ -218,89 +255,90 @@ max_gdd_times = []
 
 original_weighted_graph_use = copy.deepcopy(weighted_graph_use)
 
-reduction_factors = np.linspace(0.1, 0.9, 9)
+reduction_factors = np.linspace(0.1, 0.9, 3)
 
-for reduction in reduction_factors:
-    # kernels = [laplacian_exponential_diffusion_kernel(laplacian_matrix, t) for t in t_values]
+# get the start time
+start_time = time.time()
 
-    # NODE KNOCKOUT
-    # Remove the node and recompute the Laplacian matrix
-    weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
-    weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
+for node_base in nodes_subset:
+    local_results[node_base] = {}
+    for reduction in reduction_factors:
+        # kernels = [laplacian_exponential_diffusion_kernel(laplacian_matrix, t) for t in t_values]
 
-    knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduction_factor=reduction)
+        # NODE KNOCKOUT
+        # Remove the node and recompute the Laplacian matrix
+        weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
+        weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
 
-    # CALCULATE GDD
-    # Compute the Frobenius norm of the difference between the kernels for each t
-    gdd_values = [np.linalg.norm(laplacian_exponential_diffusion_kernel(weighted_lap_use, t) -
-                                laplacian_exponential_diffusion_kernel(knockdown_laplacian, t), 'fro') 
-                                for t in t_values]
+        knockdown_graph, knockdown_laplacian = knockdown_node_both_layers(weighted_graph_use, node_to_isolate_base, 
+                                                                                        reduction_factor=reduction)
 
-    # Finding the maximum GDD value
-    max_gdd = max(gdd_values)
-    max_gdd_index = gdd_values.index(max_gdd)
-    max_gdd_time = t_values[max_gdd_index]
+        # CALCULATE GDD
+        # Compute the Frobenius norm of the difference between the kernels for each t
+        gdd_values = [np.linalg.norm(laplacian_exponential_diffusion_kernel(weighted_lap_use, t) -
+                                    laplacian_exponential_diffusion_kernel(knockdown_laplacian, t), 'fro') 
+                                    for t in t_values]
 
-    max_gdds.append(max_gdd)
-    max_gdd_times.append(max_gdd_time)
+        # # Finding the maximum GDD value # THIS PART CAN BE DONE AFTER COMPUTATION IS COMPLETE
+        # max_gdd = max(gdd_values)
+        # max_gdd_index = gdd_values.index(max_gdd)
+        # max_gdd_time = t_values[max_gdd_index]
 
+        # max_gdds.append(max_gdd)
+        # max_gdd_times.append(max_gdd_time)
 
-    # # EDGE KNOCKOUT
-    # edges_list = list(weighted_graph_use.edges())
-    # random_index = random.randint(0, len(edges_list) - 1)
-    # edge_to_isolate = edges_list[random_index]
-    # de_edged_graph = weighted_graph_use.copy()
-    # de_edged_graph.remove_edge(*edge_to_isolate)
-    # de_edged_laplacian = weighted_laplacian_matrix(de_edged_graph)
-
-    # edge_gdd_values = [np.linalg.norm(laplacian_exponential_diffusion_kernel(laplacian_matrix, t) -
-    #                                 laplacian_exponential_diffusion_kernel(de_edged_laplacian, t), 'fro')
-    #                                 for t in t_values]
-
-    if True:
-        if False: 
-            ax1.plot(t_values, edge_gdd_values, label='GDD(t) for EDGE KNOCKOUT')
-        if np.round(reduction, 2) != fixed_reduction:
-            ax1.plot(t_values, gdd_values, label=f'{round(reduction, 2)}', alpha=0.65)
-        else:
-            ax1.plot(t_values, gdd_values, label=f'{round(reduction, 2)}', alpha = 1, color='black', linewidth=2)
-        # ax1.plot(max_gdd_time, max_gdd, 'ro', label='Max GDD')
-        # add a text label at maximum point
-        # ax1.annotate(f'Max GDD = {round(max_gdd, 2)}\n at t = {round(max_gdd_time, 2)}', xy=(max_gdd_time, max_gdd), xytext=(max_gdd_time + 0.01, max_gdd - 0.01))
-        ax1.set_xlabel('Diffusion Time (t)', fontsize=15)
-        ax1.set_ylabel('GDD Value (Graph Difference)', fontsize=15)
-        ax1.set_title(f'GDD Values per Reduction Factor, NODE: {node_to_isolate}', fontsize=15)
-        ax1.legend(loc='upper right', title='Knockdown \nReduction Factor')
-        ax1.grid(True)
-
-ax1.plot(max_gdd_times, max_gdds, 'r', label='Max GDD')
-
-for node in nodes_to_investigate:
-    weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
-    weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
-    knockdown_graph2, knockdown_laplacian2 = knockdown_node(weighted_graph_use, node, reduction_factor=fixed_reduction)
-    # CALCULATE GDD
-    # Compute the Frobenius norm of the difference between the kernels for each t
-    gdd_values_fixed = [np.linalg.norm(laplacian_exponential_diffusion_kernel(weighted_lap_use, t) -
-                                       laplacian_exponential_diffusion_kernel(knockdown_laplacian2, t), 'fro') 
-                        for t in t_values]
-    if node != node_to_isolate:
-        ax2.plot(t_values, gdd_values_fixed, label=f'{node}', alpha=0.8)
-    else:
-        print(f'Node {node} reduction ({fixed_reduction}), maximum GDD: {max(gdd_values_fixed)}, time: {t_values[gdd_values_fixed.index(max(gdd_values_fixed))]}')
-        choice_gdd = gdd_values_fixed
-
-ax2.plot(t_values, choice_gdd, label=f'{node_to_isolate}', alpha = 1, color='black', linewidth=2)
-ax2.set_xlabel('Diffusion Time (t)', fontsize=15)
-# ax2.set_ylabel('GDD Value (Graph Difference)', fontsize=15)
-ax2.set_xlim(ax1.get_xlim())
-ax2.set_ylim(ax1.get_ylim())
-ax2.set_title(f'GDD Values per Node Knockdown, reduction={fixed_reduction} s{rand_seed}', fontsize=15)
-ax2.legend(loc='upper right', title='Knocked Node')
-ax2.grid(True)
+        # Store the results
+        local_results[node_base][reduction] = gdd_values
 
 
-plt.show()
+        # if True:
+        #     if np.round(reduction, 2) != fixed_reduction:
+        #         ax1.plot(t_values, gdd_values, label=f'{round(reduction, 2)}', alpha=0.65)
+        #     else:
+        #         ax1.plot(t_values, gdd_values, label=f'{round(reduction, 2)}', alpha = 1, color='black', linewidth=2)
+        #     # ax1.plot(max_gdd_time, max_gdd, 'ro', label='Max GDD')
+        #     # add a text label at maximum point
+        #     # ax1.annotate(f'Max GDD = {round(max_gdd, 2)}\n at t = {round(max_gdd_time, 2)}', xy=(max_gdd_time, max_gdd), xytext=(max_gdd_time + 0.01, max_gdd - 0.01))
+        #     ax1.set_xlabel('Diffusion Time (t)', fontsize=15)
+        #     ax1.set_ylabel('GDD Value (Graph Difference)', fontsize=15)
+        #     ax1.set_title(f'GDD Values per Reduction Factor, NODE: {node_to_isolate_base}', fontsize=15)
+        #     ax1.legend(loc='upper right', title='Knockdown \nReduction Factor')
+        #     ax1.grid(True)
+
+# ax1.plot(max_gdd_times, max_gdds, 'r', label='Max GDD')
+ 
+# for node_base in nodes_to_investigate_bases:
+#     weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
+#     weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
+#     knockdown_graph, knockdown_laplacian = knockdown_node_both_layers(weighted_graph_use, node_base, 
+#                                                                               reduction_factor=fixed_reduction)
+#     # CALCULATE GDD
+#     # Compute the Frobenius norm of the difference between the kernels for each t
+#     gdd_values_fixed = [np.linalg.norm(laplacian_exponential_diffusion_kernel(weighted_lap_use, t) -
+#                                        laplacian_exponential_diffusion_kernel(knockdown_laplacian, t), 'fro') 
+#                         for t in t_values]
+#     if node_base != node_to_isolate_base:
+#         ax2.plot(t_values, gdd_values_fixed, label=f'{node_base}', alpha=0.8)
+#     else:
+#         print(f'Node {node_base} reduction ({fixed_reduction}), maximum GDD: {max(gdd_values_fixed)}, time: {t_values[gdd_values_fixed.index(max(gdd_values_fixed))]}')
+#         choice_gdd = gdd_values_fixed
+
+# ax2.plot(t_values, choice_gdd, label=f'{node_to_isolate_base}', alpha = 1, color='black', linewidth=2)
+# ax2.set_xlabel('Diffusion Time (t)', fontsize=15)
+# # ax2.set_ylabel('GDD Value (Graph Difference)', fontsize=15)
+# ax2.set_xlim(ax1.get_xlim())
+# ax2.set_ylim(ax1.get_ylim())
+# ax2.set_title(f'GDD Values per Node Knockdown, reduction={fixed_reduction} s{rand_seed}', fontsize=15)
+# ax2.legend(loc='upper right', title='Knocked Node')
+# ax2.grid(True)
+
+# get the end time
+end_time = time.time()
+
+print(f'elapsed time (node knockdown calc): {end_time - start_time}')
+
+
+# plt.show()
 
 
 
@@ -408,6 +446,109 @@ plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph],
 
 
 
+# %%
+import proplot as plt, cmasher as cmr, pandas as pd, numpy as np, os, sys, networkx as nx, warnings
+
+
+def multilayer_layout(
+    G: nx.Graph,
+    subset_key="layer",
+    layout=nx.spring_layout,
+    separation: float = 10.0,
+) -> dict:
+    # set positions
+    layers = {}
+    for node, layer in nx.get_node_attributes(G, subset_key).items():
+        layers[layer] = layers.get(layer, []) + [node]
+
+    # set layout within each layer
+    pos = {}
+    for layer, nodes in layers.items():
+        subgraph = G.subgraph(nodes)
+        layer_pos = {
+            node: node_pos + separation * np.array([0, int(layer)])
+            for node, node_pos in layout(subgraph).items()
+        }
+        pos.update(layer_pos)
+    return pos
+
+
+def draw_multilayer_layout(
+    G,
+    subset_key="layer",
+    ax=None,
+    layout=nx.spring_layout,
+    separation=2.0,
+    node_kwargs=dict(node_size=12),
+    within_edge_kwargs=dict(style="solid", alpha=0.05, edge_color="lightgray"),
+    between_edge_kwargs=dict(style="dashed", alpha=0.65, edge_color="gray"),
+    cmap=plt.Colormap("Spectral"),
+):
+    # get the layout
+    pos = multilayer_layout(
+        G,
+        subset_key=subset_key,
+        layout=layout,
+        separation=separation,
+    )
+
+    # find connections between and plot them differently
+    connectors = set()
+    others = set()
+    for node in G.nodes():
+        for neighbor in G.neighbors(node):
+            if G.nodes[node][subset_key] != G.nodes[neighbor][subset_key]:
+                connectors.add((node, neighbor))
+            else:
+                others.add((node, neighbor))
+    # draw the graph
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    attr = set(nx.get_node_attributes(G, subset_key).values())
+    color_space = np.linspace(0, 1, len(attr), 0)
+    cmap = cmap(color_space)
+
+    node_colors = [cmap[G.nodes[node]["layer"]] for node in G.nodes()]
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, **node_kwargs)
+    nx.draw_networkx_edges(G, pos, edgelist=others, **within_edge_kwargs)
+    nx.draw_networkx_edges(G, pos, edgelist=connectors, **between_edge_kwargs)
+    return ax
+
+
+def disjoint_union_all(Gs: list[nx.Graph]) -> nx.Graph:
+    G = Gs[0]
+    for Gi in Gs[1:]:
+        G = nx.disjoint_union(G, Gi)
+    return G
+
+
+if __name__ == "__main__":
+    graphs = []
+    for layer in range(3):
+        g = nx.random_tree(100, seed=3)
+        nx.set_node_attributes(g, layer, "layer")
+        graphs.append(g)
+
+    g = disjoint_union_all(graphs)
+    from random import sample
+
+    for ni in range(10):
+        edge = sample(list(g.nodes()), 2)
+        if not g.has_edge(*edge):
+            g.add_edge(*edge)
+
+    fig, ax = plt.subplots()
+    draw_multilayer_layout(g, ax=ax)
+    ax.axis("equal")
+    ax.grid(False)
+
+    plt.show(block=1)
+
+
+
+
+
 # # %% ############################ BARBELL GRAPHS ############################
 # # Let's generate the three barbell graphs as shown in the image.
 # # The first graph will be a complete barbell graph, the second will have its bridge removed, 
@@ -506,3 +647,37 @@ plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph],
 # print(f'Reconstructed Kernel from eigen-decomposition (weighted):\n {kernel_eigendecomp_weighted[:5, :5]}')
 
 # # np.allclose(kernel_eigendecomp, kernel_direct)
+
+# %%
+# %%
+################################################################# GRAPH PARAMETERS
+# N = 100  # Number of nodes
+# m = 3    # Number of edges to attach from a new node to existing nodes
+
+
+
+# # SCALE FREE GRAPH
+# scale_free_graph = nx.barabasi_albert_graph(N, m, seed=rand_seed)
+# laplacian_matrix = nx.laplacian_matrix(scale_free_graph).toarray()
+# # Assign random weights to each edge (for example, weights between 0.1 and 1.0)
+# weighted_scale_free_graph = scale_free_graph.copy()
+# for u, v in weighted_scale_free_graph.edges():
+#     weighted_scale_free_graph[u][v]['weight'] = np.random.uniform(0.1, 1.0)
+
+# weighted_split_scalefree_g, set_1, set_2 = adjust_inter_set_edge_weights(weighted_scale_free_graph, new_weight=0.01)
+
+# # get hub nodes
+# degree_dict = dict(scale_free_graph.degree(scale_free_graph.nodes()))
+# # get 3 nodes with largest degree
+# hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:3]
+# low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:3]
+# print(f'hub nodes: {hub_nodes}')
+# print(f'anti-hubs nodes: {low_nodes}')
+
+
+# # RANDOM GRAPH
+# random_graph = nx.erdos_renyi_graph(N, 0.5, seed=rand_seed) 
+# random_laplacian = nx.laplacian_matrix(random_graph).toarray()
+# weighted_random_graph = random_graph.copy()
+# for u, v in weighted_random_graph.edges():
+#     weighted_random_graph[u][v]['weight'] = 1.0

@@ -236,6 +236,7 @@ class QJSweeper:
 
 def load_data(run_type, data_file, prior_file):
     data = pd.read_csv(data_file, index_col=0)
+    # remove first column (CMS label)
     if prior_file:
         prior = pd.read_csv(prior_file, index_col=0)
     else:
@@ -282,6 +283,7 @@ def main(rank, size, machine='local'):
         b = int(args.b_perc * n)
 
         print(f'Variables, Samples: {p, n}')
+        print(cms_array[1])
 
         # scale and center 
         cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
@@ -310,7 +312,7 @@ if __name__ == "__main__":
     parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'proteomics', 'transcriptomics'], help='Type of run to execute')
     parser.add_argument('--data_file', type=str, default=None, help='omics data file (Protein / RNA))')
     parser.add_argument('--prior_file', type=str, default=None, help='adjacency matrix for prior')
-    parser.add_argument('--cms', type=str, default='cms4', choices=['cms2', 'cms3', 'cms4', 'cms1'], help='CMS type to run for omics run')
+    parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS type to run for omics run')
     parser.add_argument('--min_fn_perc', type=float, default=1, help='(1 - probability of false negative) for prior')
     parser.add_argument('--fp_perc', type=float, default=0, help='probability of false positive for prior')
 
@@ -340,7 +342,7 @@ if __name__ == "__main__":
 
 
             # Save combined results
-            with open(f'net_results/{args.run_type}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
+            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
 
             # Transfer results to $HOME
@@ -352,7 +354,7 @@ if __name__ == "__main__":
         print(edge_counts.dtype)
 
         # Save results to a pickle file
-        with open(f'Networks/net_results/local_{args.run_type}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_{args.lamlen}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
+        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
             pickle.dump(edge_counts)
 
 

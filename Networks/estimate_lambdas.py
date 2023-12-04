@@ -223,12 +223,15 @@ if __name__ == "__main__":
     b = int(0.75 * n)   # size of sub-samples
     Q = 300             # number of sub-samples
 
+    omics_type = 'proteomics'
+    cms = 'cmsALL'
+
     lowerbound = 0.01
     upperbound = 0.4
     granularity = 40
     lambda_range = np.linspace(lowerbound, upperbound, 40)
 
-    filename_edges = f'Networks/net_results/local_omics_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_{granularity}.pkl'
+    filename_edges = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ150_200_1000_0.01_0.6_80_10.pkl'
     with open(filename_edges, 'rb') as f:
         edge_counts_all = pickle.load(f)
 
