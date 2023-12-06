@@ -15,8 +15,11 @@ plt.style.use('dark_background')
 
 # %%
 TRRUST_df = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/data/TRRUSTv2/trrust_rawdata.human.tsv', sep='\t')
-data_proteins = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/data/Synapse/TCGA/Proteomics_CMS_groups/Prot_Names.csv')
-data_RNA = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/hNITR/data/Synapse/TCGA/RNA_CMS_groups/RNA_names.csv')
+data_proteins = pd.read_csv('data/proteomics_for_pig_cmsALL.csv')
+data_RNA = pd.read_csv('data/transcriptomics_for_pig_cmsALL.csv')
+
+data_proteins = data_proteins.columns
+data_RNA = data_RNA.columns
 
 #tf_proteins is the first column of tf_bs_proteins
 tf_proteins = TRRUST_df.iloc[:,0].unique()
@@ -168,7 +171,7 @@ def STRING_adjacency_matrix(nodes_df, edges_df):
     # Process each edge in the edges file
     for _, row in edges_df.iterrows():
         # Extract Ensembl IDs from the edge and map them to 'query term' names
-        gene1_id, gene2_id = row['name'].split(' (ppp) ')
+        gene1_id, gene2_id = row['name'].split(' (pp) ')
         gene1_query_term = id_to_query_term.get(gene1_id)
         gene2_query_term = id_to_query_term.get(gene2_id)
 
@@ -185,8 +188,8 @@ def STRING_adjacency_matrix(nodes_df, edges_df):
 
 # Loading Edges
 edges_all_PROTS = pd.read_csv('data/FI_TRRUST_Edges.csv')
-STRING_edges_df = pd.read_csv('data/STRING_PHYS_EDGES.csv')
-STRING_nodes_df = pd.read_csv('data/STRING_PHYS_NODES.csv')
+STRING_edges_df = pd.read_csv('data/RPPA_prior_EDGES.csv')
+STRING_nodes_df = pd.read_csv('data/RPPA_prior_NODES.csv')
 
 # check overlap between STRING_nodes_df and 
 
@@ -212,7 +215,9 @@ print('These could be used for the DEA-centered subgraphs\n')
 print(f'Nodes in PPI: {PPI_interactions.shape[0]}')
 print(f'Edges in PPI: {PPI_interactions.sum().sum()}')
 
-# PPI_interactions.head()
+PPI_interactions.head()
+# write to csv
+PPI_interactions.to_csv('data/RPPA_prior_adj.csv', index=True)
 
 
 # %%
@@ -459,12 +464,12 @@ cms_rna_file.to_csv(f'data/TCGACRC_transcriptomics_SUBGRAPH_SELECT_{p}.csv', ind
 
 # %%
 
-prot_file = pd.read_csv('../data/Synapse/TCGA/TCGACRC_proteomics.csv', index_col=0)
+# prot_file = pd.read_csv('../data/Synapse/TCGA/TCGACRC_proteomics.csv', index_col=0)
 
-# sum over values of "TCGA-A6-3807-01A-22" column
-prot_file['TCGA-A6-3807-01A-22'] = prot_file['TCGA-A6-3807-01A-22'].astype(float)
-sumcheck = prot_file['TCGA-A6-3807-01A-22'].sum()
-print(f'Sum of values in TCGA-A6-3807-01A-22 column: {sumcheck}')
+# # sum over values of "TCGA-A6-3807-01A-22" column
+# prot_file['TCGA-A6-3807-01A-22'] = prot_file['TCGA-A6-3807-01A-22'].astype(float)
+# sumcheck = prot_file['TCGA-A6-3807-01A-22'].sum()
+# print(f'Sum of values in TCGA-A6-3807-01A-22 column: {sumcheck}')
 # # RANDOM GRAPH
 # random_g = nx.erdos_renyi_graph(p, 0.1, seed=6, directed=False)
 

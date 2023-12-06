@@ -48,7 +48,11 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
 
     complete_graph_edges = (p * (p - 1)) / 2
 
-    S = empirical_covariance(data)
+    try:
+        S = empirical_covariance(data)
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr, flush=True)
+        return np.zeros((p, p)), np.zeros((p, p)), 0
 
 
     # generate penalty matrix, where values = lambda_np for non-prior edges and lambda_wp for prior edges
@@ -56,15 +60,25 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
 
     prior_matrix = prior_matrix.astype(int)
 
+    print(f'Number of prior edges: {np.sum(prior_matrix == 1) / 2}')
+
     # Assign penalties based on the prior matrix
     penalty_matrix[prior_matrix == 1] = lambda_wp
     penalty_matrix[prior_matrix == 0] = lambda_np
 
-    print(f'Number of prior edges: {np.sum(prior_matrix == 1)}')
-    print(f'Density of prior matrix: {np.sum(penalty_matrix == lambda_wp) / complete_graph_edges}\n')
+    print(f'Number of prior penalty edges: {np.sum(penalty_matrix == lambda_wp) / 2}')
+    print(f'Edges in complete graph: {complete_graph_edges}')
+    print(f'Density of prior penalty matrix: {((np.sum(penalty_matrix == lambda_wp) / 2) / complete_graph_edges)}\n')
 
     # # fill diagonal with 0s
     np.fill_diagonal(penalty_matrix, 0)
+
+    # check for NaNs or Infs in penalty matrix
+    if np.isnan(penalty_matrix).any():
+        print('NaNs in penalty matrix')
+    if np.isinf(penalty_matrix).any():
+        print('Infs in penalty matrix')
+
 
     # print(f'P: {p}')
     # Call the R function from Python
