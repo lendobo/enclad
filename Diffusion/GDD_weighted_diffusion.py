@@ -92,6 +92,7 @@ def knockdown_node_both_layers(G, node_to_isolate_base, reduction_factor=0.3):
 
     :param G: NetworkX graph
     :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
+    :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
     :param reduction_factor: Factor to reduce edge weights by, defaults to 0.5
     :return: Tuple containing the modified graph and its weighted Laplacian matrix
     """
@@ -199,6 +200,15 @@ G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
 common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
 
 inter_layer_weight = 1
+# Add nodes and edges from both layers
+G_multiplex.add_nodes_from(G_proteomics_layer.nodes(data=True), layer='PROT')
+G_multiplex.add_edges_from(G_proteomics_layer.edges(data=True), layer='PROT')
+G_multiplex.add_nodes_from(G_transcriptomic_layer.nodes(data=True), layer='RNA')
+G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
+
+common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
+
+inter_layer_weight = 1
 # Add inter-layer edges for common nodes
 for node in common_nodes:
     G_multiplex.add_edge(f"{node}.p", f"{node}.t",layer='interlayer')
@@ -209,6 +219,12 @@ for u, v, data in weighted_G_multiplex.edges(data=True):
         weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
     else:
         weighted_G_multiplex[u][v]['weight'] = 1.0
+for u, v, data in weighted_G_multiplex.edges(data=True):
+    if data.get('layer') == 'interlayer':
+        weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
+    else:
+        weighted_G_multiplex[u][v]['weight'] = 1.0
+
 
 # Display some basic information about the multiplex graph
 if rank == 0:
@@ -216,6 +232,7 @@ if rank == 0:
     num_edges = G_multiplex.number_of_edges()
     num_nodes, num_edges
 
+# CHOOSING GRAPH #############################################################
 # CHOOSING GRAPH #############################################################
 weighted_graph_use = weighted_G_multiplex
 ##############################################################################
@@ -547,6 +564,99 @@ if not "SLURM_JOB_ID" in os.environ:
 
 
 
+# %%
+import proplot as plt, cmasher as cmr, pandas as pd, numpy as np, os, sys, networkx as nx, warnings
+
+
+def multilayer_layout(
+    G: nx.Graph,
+    subset_key="layer",
+    layout=nx.spring_layout,
+    separation: float = 10.0,
+) -> dict:
+    # set positions
+    layers = {}
+    for node, layer in nx.get_node_attributes(G, subset_key).items():
+        layers[layer] = layers.get(layer, []) + [node]
+
+    # set layout within each layer
+    pos = {}
+    for layer, nodes in layers.items():
+        subgraph = G.subgraph(nodes)
+        layer_pos = {
+            node: node_pos + separation * np.array([0, int(layer)])
+            for node, node_pos in layout(subgraph).items()
+        }
+        pos.update(layer_pos)
+    return pos
+
+
+def draw_multilayer_layout(
+    G,
+    subset_key="layer",
+    ax=None,
+    layout=nx.spring_layout,
+    separation=2.0,
+    node_kwargs=dict(node_size=12),
+    within_edge_kwargs=dict(style="solid", alpha=0.05, edge_color="lightgray"),
+    between_edge_kwargs=dict(style="dashed", alpha=0.65, edge_color="gray"),
+    cmap=plt.Colormap("Spectral"),
+):
+    # get the layout
+    pos = multilayer_layout(
+        G,
+        subset_key=subset_key,
+        layout=layout,
+        separation=separation,
+    )
+
+    # find connections between and plot them differently
+    connectors = set()
+    others = set()
+    for node in G.nodes():
+        for neighbor in G.neighbors(node):
+            if G.nodes[node][subset_key] != G.nodes[neighbor][subset_key]:
+                connectors.add((node, neighbor))
+            else:
+                norm = mcolors.Normalize(vmin=min(heat_values), vmax=max(heat_values), clip=True)
+
+#             # norm = mcolors.Normalize(vmin=min(heat_values), vmax=max(heat_values), clip=True)
+#             mapper = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis)
+
+#             nx.draw_networkx_edges(G, layout, alpha=0.2, ax=axes[i, j])
+#             nx.draw_networkx_nodes(G, layout, node_size=200,
+#                                    node_color=[mapper.to_rgba(value) for value in heat_values],
+#                                    ax=axes[i, j])
+#             nx.draw_networkx_labels(G, label_layout, font_size=20, ax=axes[i, j])
+#             nx.draw_networkx_nodes(G, layout, nodelist=[node_to_isolate, start_node], node_size=300,
+#                                node_color=['blue', 'red'],  # Example: red color
+#                                ax=axes[i, j])
+#             axes[i, j].set_title(f"Graph {i+1}, t={round(t, 2)}", fontsize=20)
+#             axes[i, j].axis('off')
+
+#     plt.colorbar(mapper, ax=axes[1, 2], shrink=0.7, aspect=20, pad=0.02)
+#     plt.tight_layout()
+#     plt.show()
+
+# # Example usage
+# fixed_reduction_index = np.where(np.isclose(reduction_factors, fixed_reduction))[0][0]
+# t_values = [0.1, max_gdd_times[fixed_reduction_index], 10]
+
+# weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
+# weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
+# knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduction_factor=fixed_reduction)
+
+# seed_node = node_to_isolate + 1
+
+# # Example usage with 3 graphs and their Laplacians for 9 different times
+# plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph], 
+#                                            [weighted_lap_use, knockdown_laplacian], set_1, set_2,
+#                                            t_values, start_node=seed_node, node_to_isolate=node_to_isolate)
+
+
+
+
+
 # %% COMPARING DIRECT KERNEL WITH KERNEL EIGENDECOMPOSITION
 # # start time
 # start_time = time.time()
@@ -675,6 +785,41 @@ if not "SLURM_JOB_ID" in os.environ:
 # print(f'Reconstructed Kernel from eigen-decomposition (weighted):\n {kernel_eigendecomp_weighted[:5, :5]}')
 
 # # np.allclose(kernel_eigendecomp, kernel_direct)
+
+# %%
+# %%
+################################################################# GRAPH PARAMETERS
+# N = 100  # Number of nodes
+# m = 3    # Number of edges to attach from a new node to existing nodes
+
+
+
+# # SCALE FREE GRAPH
+# scale_free_graph = nx.barabasi_albert_graph(N, m, seed=rand_seed)
+# laplacian_matrix = nx.laplacian_matrix(scale_free_graph).toarray()
+# # Assign random weights to each edge (for example, weights between 0.1 and 1.0)
+# weighted_scale_free_graph = scale_free_graph.copy()
+# for u, v in weighted_scale_free_graph.edges():
+#     weighted_scale_free_graph[u][v]['weight'] = np.random.uniform(0.1, 1.0)
+
+# weighted_split_scalefree_g, set_1, set_2 = adjust_inter_set_edge_weights(weighted_scale_free_graph, new_weight=0.01)
+
+# # get hub nodes
+# degree_dict = dict(scale_free_graph.degree(scale_free_graph.nodes()))
+# # get 3 nodes with largest degree
+# hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:3]
+# low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:3]
+# print(f'hub nodes: {hub_nodes}')
+# print(f'anti-hubs nodes: {low_nodes}')
+
+
+# # RANDOM GRAPH
+# random_graph = nx.erdos_renyi_graph(N, 0.5, seed=rand_seed) 
+# random_laplacian = nx.laplacian_matrix(random_graph).toarray()
+# weighted_random_graph = random_graph.copy()
+# for u, v in weighted_random_graph.edges():
+#     weighted_random_graph[u][v]['weight'] = 1.0
+
 
 # %%
 # %%
