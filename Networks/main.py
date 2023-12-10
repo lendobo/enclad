@@ -143,9 +143,9 @@ if False:
     
 if True:
     ################################################# VARYING SAMPLE SIZE for fixed network #################################################
-    p = 150
-    n_values = [300] #[100, 200, 400, 600, 800]
-    b_perc = 0.75
+    p = 137
+    n_values = [500] #[100, 200, 400, 600, 800]
+    b_perc = 0.6
     b = [int(b_perc * n) for n in n_values]   # size of sub-samples
     Q = 1200             # number of sub-samples
 
@@ -154,8 +154,8 @@ if True:
     granularity = 100
     lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
-    fp_fn = 0
-    skew = 5.0
+    fp_fn = 0.0
+    skew = 0
     density = 0.03
 
     for n,b in zip(n_values, b):
@@ -168,6 +168,7 @@ if True:
 
         # # Generate synthetic data and prior matrix
         synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density)
+        # synth_prior_matrix = synth_prior_matrix * 0
 
         analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
         synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
@@ -180,7 +181,7 @@ if True:
 ################################################## OMICS DATA PART #################################################
 if False:
     # Parameters
-    p = 150
+    p = 137
     Q = 800             # number of sub-samples
 
     lowerbound = 0.01

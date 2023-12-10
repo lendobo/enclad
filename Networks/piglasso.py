@@ -69,7 +69,7 @@ class QJSweeper:
         self.p = data.shape[1]
         self.n = data.shape[0]
         self.Q = Q
-        self.subsample_indices = self.get_subsamples_indices(self.n, b, Q, rank, size)
+        self.subsample_indices = self.get_subsamples_indices(self.n, b, Q, rank, size, seed=args.seed)
 
     @staticmethod
     def generate_synth_data(p, n, fp_fn_chance, skew, density=0.03, seed=42):
@@ -149,7 +149,7 @@ class QJSweeper:
 
         return data, prior_matrix, adj_matrix
     
-    def get_subsamples_indices(self, n, b, Q, rank, size):
+    def get_subsamples_indices(self, n, b, Q, rank, size, seed=42):
         """
         Generate a unique set of subsamples indices for a given MPI rank and size.
         """
@@ -159,7 +159,7 @@ class QJSweeper:
         if Q > comb(n, b, exact=True):
             raise ValueError("Q should be smaller or equal to the number of possible sub-samples.")
 
-        random.seed(42 + rank)  # Ensure each rank gets different subsamples
+        random.seed(seed + rank)  # Ensure each rank gets different subsamples
         subsamples_indices = set()
 
         # Each rank will attempt to generate Q/size unique subsamples
@@ -277,7 +277,7 @@ def main(rank, size, machine='local'):
 
     if args.run_type == 'synthetic':
         # Synthetic run
-        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.fp_fn, args.skew, args.dens)
+        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.fp_fn, args.skew, args.dens, seed=args.seed)
         synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
 
         edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
@@ -334,6 +334,7 @@ if __name__ == "__main__":
     parser.add_argument('--fp_fn', type=float, default=0, help='Chance of getting a false negative or a false positive')
     parser.add_argument('--skew', type=float, default=0, help='Skewness of the data')
     parser.add_argument('--dens', type=float, default=0.03, help='Density of the synthetic network')
+    parser.add_argument('--seed', type=int, default=42, help='Seed for generating synthetic data')
 
     args = parser.parse_args()
 

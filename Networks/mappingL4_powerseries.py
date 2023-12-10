@@ -5,15 +5,14 @@ import requests
 import pandas as pd
 import glob
 
-import pandas as pd
 import zipfile
 from tqdm import tqdm
 import logging
 
-import numpy as np
 from scipy import stats
 import scipy.stats as stats
 
+import statsmodels
 
 
 
@@ -349,6 +348,18 @@ rppa_with_labels = add_labels_to_expression(rppa_df, labels_df)
 
 rna_with_labels = add_labels_to_expression(rna_df, labels_df)
 
+rna_with_labels_123 = rna_with_labels.loc[:, rna_with_labels.iloc[0].isin(['CMS1', 'CMS2', 'CMS3'])]
+rna_with_labels_4 = rna_with_labels.loc[:, rna_with_labels.iloc[0].isin(['CMS4'])]
+
+rppa_with_labels_123 = rppa_with_labels.loc[:, rppa_with_labels.iloc[0].isin(['CMS1', 'CMS2', 'CMS3'])]
+rppa_with_labels_4 = rppa_with_labels.loc[:, rppa_with_labels.iloc[0].isin(['CMS4'])]
+
+# print all shapes
+print(f'rna_with_labels_123 shape: {rna_with_labels_123.shape}')
+print(f'rna_with_labels_4 shape: {rna_with_labels_4.shape}')
+print(f'rppa_with_labels_123 shape: {rppa_with_labels_123.shape}')
+print(f'rppa_with_labels_4 shape: {rppa_with_labels_4.shape}')
+
 # %%
 # ATTACHING LABELS TO BOTH RPPA NAD RNA DATA
 
@@ -425,7 +436,7 @@ for i, data_to_trim in enumerate([rppa_df, expression_df, rppa_df_123, expressio
         outlier_mask = (data < (Q1 - 3 * IQR)) | (data > (Q3 + 3 * IQR))
         outlier_counts += outlier_mask.astype(int)
 
-    print('--------------------------------------------------------------\n')
+    print('--------------------------------------------------------------')
     print(f'results for {dataframe_names[i]}\n')
     # Now outlier_counts contains the number of times each sample was an outlier across all columns
     print(f'Number of samples that are outliers in at least one gene: {outlier_counts[outlier_counts > 0].shape[0]}')
@@ -454,13 +465,12 @@ for i, data_to_trim in enumerate([rppa_df, expression_df, rppa_df_123, expressio
     significant_results.sort(key=lambda x: x[1])
     if len(significant_results) > 0:
         print(f'Number of significant Kolmogorov smirnoffcolumns: {len(significant_results)}')
-        print(f'percentage of total columns: {len(significant_results)/len(data_to_trim.columns)}\n')
+        print(f'percentage of total columns: {len(significant_results)/len(data_to_trim.columns)}')
 
-    print('--------------------------------------------------------------\n')
 
-# # Now significant_results contains columns and their W values, sorted by deviation from normality
-# for column, w in significant_results:
-#     print(f'{column} - W: {w} - p: {p_vals[significant_results.index((column, w))]}')
+    # # Now significant_results contains columns and their W values, sorted by deviation from normality
+    # for column, w in significant_results:
+    #     print(f'{column} - W: {w} - p: {p_vals[significant_results.index((column, w))]}')
 
     # # Create QQ-plots for each column, starting with the most deviant
     # for column, _ in significant_results:
@@ -470,9 +480,23 @@ for i, data_to_trim in enumerate([rppa_df, expression_df, rppa_df_123, expressio
     #     ax.set_title(f'QQ-plot for {column} (W: {round(_, 3)}, p: {p_vals[significant_results.index((column, _))]}')
     #     plt.show()
 
+    print('--------------------------------------------------------------\n')
 
-blacklist_expression = ['BRAF', 'PEA15', 'EIF4G1', 'WWTR1', 'SERPINE1', 'CHECK1', 'IGFB2', 'NRAS']
-# blacklist_rppa
+
+
+blacklist = ['PEA15', 'EIF4G1', 'WWTR1', 'SERPINE1', 'CHEK1', 'IGFB2', 'NRAS', 'ESR1, PEA15', 'EEF2']
+whitelist = ['VEGFR2', 'CDH1', 'BRAF', 'BAP1', 'TP53', 'CASP7', 'PRKCD', 'RAB11A', 'YAP1', 'CTNNB1', 'CCNB1', 'CCNE1', 
+             'CCNE2', 'HSPA1A', 'ARID1A', 'ASNS', 'CHEK2', 'PCNA', 'ITGA2', 'MAPK1', 'ANXA1', 'CLDN7', 'COL6A1', 'FN1', 
+             'MYH11','TP53BP1', 'EIF4EBP1', 'EEF2K', 'EIF4G1', 'FRAP1', 'RICTOR', 'RPS6', 'TSC1', 'RPS6KA1', 'ACACA',
+             'AR', 'KIT', 'EGFR', 'FASN', 'ERBB3', 'IGFBP2', 'CDKN1A', 'CDKN1B', 'SQSTM1', 'PEA15', 'RB1', 'ACVRL1'
+             'SMAD1', 'FOXM1', 'FOXO3', 'CAV1', 'PARK7', 'SERPINE1', 'RBM15', 'WWTR1', 'TGM2']
+
+# remove columns in blacklist, if they are not in whitelist
+rppa_df = rppa_df.loc[:, ~rppa_df.columns.isin(blacklist) | rppa_df.columns.isin(whitelist)]
+expression_df = expression_df.loc[:, ~expression_df.columns.isin(blacklist) | expression_df.columns.isin(whitelist)]
+
+rppa_df_123 = rppa_df_123.loc[:, ~rppa_df_123.columns.isin(blacklist) | rppa_df_123.columns.isin(whitelist)]
+expression_df_123 = expression_df_123.loc[:, ~expression_df_123.columns.isin(blacklist) | expression_df_123.columns.isin(whitelist)]
 
 # check shape of all dataframes
 print(f'\nexpression_df shape: {expression_df.shape}')
@@ -488,6 +512,11 @@ expression_df.to_csv('../Diffusion/data/Expression_for_pig_ALL.csv')
 
 rppa_df_123.to_csv('../Diffusion/data/RPPA_for_pig_123.csv')
 expression_df_123.to_csv('../Diffusion/data/Expression_for_pig_123.csv')
+
+# write column names to .txt file
+with open('../Diffusion/data/VAR_NAMES_GENELIST.txt', 'w') as f:
+    for item in rppa_df.columns:
+        f.write("%s\n" % item)
 
 
 # %%
