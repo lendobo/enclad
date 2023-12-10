@@ -5,13 +5,14 @@ import sys
 from itertools import combinations
 from scipy.special import comb, erf
 from scipy.stats import norm
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, OptimizeWarning
 import warnings
 from tqdm import tqdm
+import warnings
 
 from piglasso import QJSweeper
 
-
+warnings.simplefilter('error', OptimizeWarning)
 
 def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     """
@@ -94,7 +95,7 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     J = len(lambda_range)
 
     N_k_matrix = np.sum(edge_counts_all, axis=2)
-    p_k_matrix = N_k_matrix / (Q * J)
+    p_k_matrix = N_k_matrix / (Q * J) # EDGE_DIVIDER
 
     # reshape the prior matrix to only contain the edges in the lower triangle of the matrix
     wp_tr_idx = [(i, j) for i, j in combinations(range(p), 2) if prior_matrix[i, j] != 0] # THIS SETS THE INDICES FOR ALL VECTORIZED OPERATIONS
@@ -180,9 +181,18 @@ def fit_lines_and_get_error(index, lambdas, edge_counts, left_bound, right_bound
 
     # Fit lines to the left and right of current index within bounds
     # print(index)
-    params_left, _ = curve_fit(linear_func, left_data, edge_counts[left_bound:index+1])
-    # print(index)
-    params_right, _ = curve_fit(linear_func, right_data, edge_counts[index:right_bound])
+    try:
+        params_left, _ = curve_fit(linear_func, left_data, edge_counts[left_bound:index+1])
+    except:
+        print(f'LEFT DATA: problematic curve fit for lambda kneepoints: at lambda index {index}')
+        print(f'left indices len: {len(left_data)}')
+        params_left = (0,0)
+    try:
+        params_right, _ = curve_fit(linear_func, right_data, edge_counts[index:right_bound])
+    except:
+        print(f'RIGHT DATA: problematic curve fit for lambda kneepoints: at lambda index {index}')
+        print(f'right indices len: {len(right_data)}')
+        params_right = (0,0)
     
     # Calculate fit errors within bounds
     error_left = np.sum((linear_func(left_data, *params_left) - edge_counts[left_bound:index+1]) ** 2)
@@ -218,20 +228,24 @@ def find_all_knee_points(lambda_range, edge_counts_all):
 # Main code
 if __name__ == "__main__":
     #### Main code ####
-    p = -1             # number of variables (nodes)
-    n = 500             # number of samples
-    b = int(0.75 * n)   # size of sub-samples
-    Q = 300             # number of sub-samples
+    p = 150             # number of variables (nodes)
+    n = 2000
+    b_perc = 0.75             # number of samples
+    b = int(b_perc * n)   # size of sub-samples
+    Q = 1200             # number of sub-samples
 
     omics_type = 'proteomics'
     cms = 'cmsALL'
 
     lowerbound = 0.01
     upperbound = 0.4
-    granularity = 40
-    lambda_range = np.linspace(lowerbound, upperbound, 40)
+    granularity = 100
+    lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
-    filename_edges = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ150_200_1000_0.01_0.6_80_10.pkl'
+    min_fn_perc = 1
+    fp_perc = 0
+
+    filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_{min_fn_perc}{fp_perc}_nuPRECISION.pkl'
     with open(filename_edges, 'rb') as f:
         edge_counts_all = pickle.load(f)
 

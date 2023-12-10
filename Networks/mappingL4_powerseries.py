@@ -11,8 +11,8 @@ from tqdm import tqdm
 import logging
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy import stats
+import scipy.stats as stats
 
 
 
@@ -105,8 +105,8 @@ RPPA_filename = '../data/TCGA-COAD-L4/tmp/TCGA-COAD-L4-transposed.csv'
 RPPA_data = pd.read_csv(RPPA_filename, index_col=0)
 
 # File paths
-file_1 = '../data/TCGA-COAD-L4/tmp/metadata/41592_2013_BFnmeth2650_MOESM330_ESM.csv'
-file_2 = '../data/TCGA-COAD-L4/tmp/metadata/TRUE_L4_MAPPING.csv'
+XLSX_mapping_file = '../data/TCGA-COAD-L4/tmp/metadata/41592_2013_BFnmeth2650_MOESM330_ESM.csv'
+L4_to_XLSX = '../data/TCGA-COAD-L4/tmp/metadata/TRUE_L4_MAPPING.csv'
 
 # Function to add 'Gene Name' column to TRUE_L4_MAPPING.csv using the correspondence in the first file
 def add_gene_name_column(file_1_path, file_2_path):
@@ -123,40 +123,44 @@ def add_gene_name_column(file_1_path, file_2_path):
     return df2
 
 # Adding 'Gene Name' column
-updated_df2 = add_gene_name_column(file_1, file_2)
+L4_to_XLSX_PROT_to_GENE = add_gene_name_column(XLSX_mapping_file, L4_to_XLSX)
+
+# # print number of unique entries for of the 3 columns separately
+# print(len(L4_to_XLSX_PROT_to_GENE['L4 Original Name'].unique()))
+# print(len(L4_to_XLSX_PROT_to_GENE['XLSX Original Name'].unique()))
+# print(len(L4_to_XLSX_PROT_to_GENE['Gene Name'].unique()))
 
 # !!!THIS REMOVES AKT2 AND AKT3 split entries of 'Gene Name' column at spaces and take the first word
-updated_df2['Gene Name'] = updated_df2['Gene Name'].str.split().str[0]
+# STRATEGY: If downstream analysis reveals significant genes, check if they share antibodies with other genes (treat collectively)
+L4_to_XLSX_PROT_to_GENE['Gene Name'] = L4_to_XLSX_PROT_to_GENE['Gene Name'].str.split().str[0]
 
-# # check overlap between updated_df2['L4 Original Name'] and RPPA_data['Sample_ID'] column
-overlap = set(updated_df2['L4 Original Name']).intersection(set(RPPA_data.index))
-print(len(overlap))
+# # # check overlap between updated_df2['L4 Original Name'] and RPPA_data['Sample_ID'] column
+# overlap = set(L4_to_XLSX_PROT_to_GENE['L4 Original Name']).intersection(set(RPPA_data.index))
+# print(len(overlap))
 
 # Creating a mapping from 'L4 Original Name' to 'Gene Name' in updated_df2
-l4_to_gene_map = dict(zip(updated_df2['L4 Original Name'], updated_df2['Gene Name']))
+l4_to_gene_map = dict(zip(L4_to_XLSX_PROT_to_GENE['L4 Original Name'], L4_to_XLSX_PROT_to_GENE['Gene Name']))
 
 # Adding a 'Gene Name' column to RPPA_data using the mapping, aligning with the corresponding indexes
 RPPA_data['Gene Name'] = RPPA_data.index.map(l4_to_gene_map)
 
-# Displaying the updated RPPA_data head
-RPPA_data['Gene Name'].head(30)
-# Make the ['AB Name'] column from the index
-RPPA_data['AB Name'] = RPPA_data.index
-# Set 'Gene Name' as the index
+# # print length of unique values in 'Gene Name' column
+# print(len(RPPA_data['Gene Name'].unique()))
+
+
+# # Set 'Gene Name' as the index
 RPPA_data.set_index('Gene Name', inplace=True)
 # convert to numeric
 RPPA_data = RPPA_data.apply(pd.to_numeric, errors='coerce')
 # # average values for duplicate indices
 RPPA_data = RPPA_data.groupby(RPPA_data.index).mean()
 
-# write to csv
 
 # Split columns on '-', keep first 4 items and rejoin with '-'
 RPPA_data.columns = RPPA_data.columns.str.split('-').str[:4].str.join('-')
 
 RPPA_data.to_csv('../data/TCGA-COAD-L4/tmp/RPPA_data_with_gene_name.csv')
 
-RPPA_data.columns
 
 
 
@@ -165,117 +169,117 @@ RPPA_data.columns
 
 
 
-# %% DATA PIPELINE FOR SELECTING THE RNA FILES FROM FOLDERS
-# Setup logging
-logging.basicConfig(filename='../data/data_processing.log', level=logging.DEBUG)
+# # %% DATA PIPELINE FOR SELECTING THE RNA FILES FROM FOLDERS
+# # Setup logging
+# logging.basicConfig(filename='../data/data_processing.log', level=logging.DEBUG)
 
-# Define file paths
-sample_sheet_path = '../data/gdc_sample_sheet_850_samples.tsv'
-zipped_folder_path = '../data/850_P_R_samples.zip'
+# # Define file paths
+# sample_sheet_path = '../data/gdc_sample_sheet_850_samples.tsv'
+# zipped_folder_path = '../data/850_P_R_samples.zip'
 
-# Load the sample sheet
-sample_sheet = pd.read_csv(sample_sheet_path, sep='\t')
+# # Load the sample sheet
+# sample_sheet = pd.read_csv(sample_sheet_path, sep='\t')
 
-# Filter the sample sheet to include only 'Gene Expression Quantification' entries
-gene_expression_sample_sheet = sample_sheet[sample_sheet['Data Type'] == 'Gene Expression Quantification']
+# # Filter the sample sheet to include only 'Gene Expression Quantification' entries
+# gene_expression_sample_sheet = sample_sheet[sample_sheet['Data Type'] == 'Gene Expression Quantification']
 
-# Extract file IDs from the filtered sample sheet
-file_ids = set(gene_expression_sample_sheet['File ID'])
+# # Extract file IDs from the filtered sample sheet
+# file_ids = set(gene_expression_sample_sheet['File ID'])
 
-# Initialize a dictionary to store the gene data
-gene_data = {}
+# # Initialize a dictionary to store the gene data
+# gene_data = {}
 
-# Process each file in the zip archive with batching
-batch_size = 50
-current_batch = 0
+# # Process each file in the zip archive with batching
+# batch_size = 50
+# current_batch = 0
 
-try:
-    with zipfile.ZipFile(zipped_folder_path, 'r') as zipped_folder:
-        all_files = [file for file in zipped_folder.namelist() if file.endswith('.tsv')]
+# try:
+#     with zipfile.ZipFile(zipped_folder_path, 'r') as zipped_folder:
+#         all_files = [file for file in zipped_folder.namelist() if file.endswith('.tsv')]
         
-        # Process files in batches
-        for i in range(0, len(all_files), batch_size):
-            batch_files = all_files[i:i + batch_size]
-            current_batch += 1
+#         # Process files in batches
+#         for i in range(0, len(all_files), batch_size):
+#             batch_files = all_files[i:i + batch_size]
+#             current_batch += 1
 
-            for file in batch_files:
-                folder_name = file.split('/')[1]  # Adjusted to match the observed folder structure
+#             for file in batch_files:
+#                 folder_name = file.split('/')[1]  # Adjusted to match the observed folder structure
 
-                if folder_name in file_ids:
-                    # Extract and read the .tsv file
-                    with zipped_folder.open(file) as tsv_file:
-                        # Skip the first line (comment) and read the second line for headers
-                        next(tsv_file)
-                        tsv_df = pd.read_csv(tsv_file, sep='\t', comment='#')
+#                 if folder_name in file_ids:
+#                     # Extract and read the .tsv file
+#                     with zipped_folder.open(file) as tsv_file:
+#                         # Skip the first line (comment) and read the second line for headers
+#                         next(tsv_file)
+#                         tsv_df = pd.read_csv(tsv_file, sep='\t', comment='#')
 
-                        # Select only 'gene_name' and 'unstranded' columns
-                        if 'gene_name' in tsv_df.columns and 'unstranded' in tsv_df.columns:
-                            gene_data[folder_name] = tsv_df[['gene_name', 'unstranded']].set_index('gene_name')
+#                         # Select only 'gene_name' and 'unstranded' columns
+#                         if 'gene_name' in tsv_df.columns and 'unstranded' in tsv_df.columns:
+#                             gene_data[folder_name] = tsv_df[['gene_name', 'unstranded']].set_index('gene_name')
 
-            logging.info(f"Processed batch {current_batch} containing {len(batch_files)} files.")
+#             logging.info(f"Processed batch {current_batch} containing {len(batch_files)} files.")
 
-except Exception as e:
-    logging.error(f"Error occurred during batch {current_batch}: {e}")
+# except Exception as e:
+#     logging.error(f"Error occurred during batch {current_batch}: {e}")
 
-# Create an empty DataFrame for aggregating the data
-aggregated_data = pd.DataFrame()
+# # Create an empty DataFrame for aggregating the data
+# aggregated_data = pd.DataFrame()
 
-# Map File IDs to Sample IDs from the sample sheet
-file_id_to_sample_id = gene_expression_sample_sheet.set_index('File ID')['Sample ID'].to_dict()
+# # Map File IDs to Sample IDs from the sample sheet
+# file_id_to_sample_id = gene_expression_sample_sheet.set_index('File ID')['Sample ID'].to_dict()
 
-# Aggregate the data
-for file_id, data in gene_data.items():
-    data_clean = data.dropna().copy()
-    sample_id = file_id_to_sample_id.get(file_id, None)
+# # Aggregate the data
+# for file_id, data in gene_data.items():
+#     data_clean = data.dropna().copy()
+#     sample_id = file_id_to_sample_id.get(file_id, None)
 
-    if sample_id:
-        data_clean.rename(columns={'unstranded': sample_id}, inplace=True)
-        aggregated_data = pd.concat([aggregated_data, data_clean], axis=1)
+#     if sample_id:
+#         data_clean.rename(columns={'unstranded': sample_id}, inplace=True)
+#         aggregated_data = pd.concat([aggregated_data, data_clean], axis=1)
 
-# Path for logging file
-log_file_path = '../data/data_processing.log'
-
-
+# # Path for logging file
+# log_file_path = '../data/data_processing.log'
 
 
-# %%
-aggregated_data.shape
-
-# remove rows with all 0s
-aggregated_data = aggregated_data.loc[(aggregated_data!=0).any(axis=1)]
-
-# write to file
-aggregated_data.to_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA.csv')
 
 
-# %% 
-# Load aggregated data
-aggregated_data = pd.read_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA.csv', index_col=0)
+# # %%
+# aggregated_data.shape
 
-# print value of aggregated data at row index 'ACACA' and sample index 'TCGA-A6-6780-01A'
-print(aggregated_data.loc['ACACA', 'TCGA-A6-6780-01A'])
+# # remove rows with all 0s
+# aggregated_data = aggregated_data.loc[(aggregated_data!=0).any(axis=1)]
 
-# center and scale, row-wise
-aggregated_data = aggregated_data.apply(lambda x: (x - x.mean()) / x.std(), axis=1)
+# # write to file
+# aggregated_data.to_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA.csv')
 
-print(aggregated_data.loc['ACACA', 'TCGA-A6-6780-01A'])
 
-# %%
-# remove first 4 rows
-aggregated_data = aggregated_data.iloc[4:, :]
+# # %% 
+# # Load aggregated data
+# aggregated_data = pd.read_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA.csv', index_col=0)
 
-# remove duplicates by averaging
-aggregated_data = aggregated_data.groupby(aggregated_data.index).mean()
+# # print value of aggregated data at row index 'ACACA' and sample index 'TCGA-A6-6780-01A'
+# print(aggregated_data.loc['ACACA', 'TCGA-A6-6780-01A'])
 
-# remove rows with all 0s or all NaNs
-aggregated_data = aggregated_data.loc[(aggregated_data!=0).any(axis=1)]
-aggregated_data = aggregated_data.dropna(axis=0, how='all')
+# # center and scale, row-wise
+# aggregated_data = aggregated_data.apply(lambda x: (x - x.mean()) / x.std(), axis=1)
 
-#print value of row with index 'ACACA'
-print(aggregated_data.loc['ACACA'])
+# print(aggregated_data.loc['ACACA', 'TCGA-A6-6780-01A'])
 
-# write to file
-aggregated_data.to_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA_scaled.tsv', sep='\t')
+# # %%
+# # remove first 4 rows
+# aggregated_data = aggregated_data.iloc[4:, :]
+
+# # remove duplicates by averaging
+# aggregated_data = aggregated_data.groupby(aggregated_data.index).mean()
+
+# # remove rows with all 0s or all NaNs
+# aggregated_data = aggregated_data.loc[(aggregated_data!=0).any(axis=1)]
+# aggregated_data = aggregated_data.dropna(axis=0, how='all')
+
+# #print value of row with index 'ACACA'
+# print(aggregated_data.loc['ACACA'])
+
+# # write to file
+# aggregated_data.to_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA_scaled.tsv', sep='\t')
 
 
 
@@ -346,16 +350,7 @@ rppa_with_labels = add_labels_to_expression(rppa_df, labels_df)
 rna_with_labels = add_labels_to_expression(rna_df, labels_df)
 
 # %%
-
-# MATCHING VARIABLES BETWEEN RNA AND PROT
-# print value of the 'TCGA-A6-6780-01A' column, at row index 'ACACA'
-
-# THIS MATCHES THE RPPA VARIABLES TO THE RNA AND VICE VERSA
-# # select rows in aggregated_data that are also in RPPA_data
-# rna_with_labels = rna_with_labels.loc[rna_with_labels.index.isin(rppa_with_labels.index)]
-
-# # select rows in RPPA_data that are also in aggregated_data
-# rppa_with_labels = rppa_with_labels.loc[rppa_with_labels.index.isin(rna_with_labels.index)]
+# ATTACHING LABELS TO BOTH RPPA NAD RNA DATA
 
 # keep only columns with 'CMS1', 'CMS2', 'CMS3' in the first row
 rna_with_labels_123 = rna_with_labels.loc[:, rna_with_labels.iloc[0].isin(['CMS1', 'CMS2', 'CMS3'])]
@@ -368,11 +363,6 @@ rppa_with_labels_123T = rppa_with_labels_123.transpose()
 rna_with_labelsT = rna_with_labels.transpose()
 rppa_with_labelsT = rppa_with_labels.transpose()
 
-# # THIS COLUMN WAS DUPLICATE
-# # print values of row with index 'TCGA-A6-6780-01A'
-# print(rna_with_labelsT.loc['TCGA-A6-6780-01A'])
-
-
 
 # write to file
 rna_with_labels_123T.to_csv('../data/TCGA-COAD-L4/tmp/RNA_for_RPPA_scaled_labels_123T.csv')
@@ -380,6 +370,9 @@ rppa_with_labels_123T.to_csv('../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_123
 
 rna_with_labelsT.to_csv('../data/TCGA-COAD-L4/tmp/RNA_for_RPPA_scaled_labels_ALLT.csv')
 rppa_with_labelsT.to_csv('../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.csv')
+
+
+
 
 
 
@@ -418,26 +411,75 @@ expression_df = expression_df.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
 rppa_df_123 = rppa_df_123.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
 expression_df_123 = expression_df_123.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
 
-# set random seed
-# select random column from rppa_df as data
-data = rppa_df.iloc[:, np.random.randint(0, rppa_df.shape[1])]
+dataframe_names = ['rppa_df', 'expression_df', 'rppa_df_123', 'expression_df_123']
+# OUTLIER SAMPLE REMOV
+for i, data_to_trim in enumerate([rppa_df, expression_df, rppa_df_123, expression_df_123]):
+    # Initialize a Series to store the count of outlier occurrences for each sample
+    outlier_counts = pd.Series(0, index=data_to_trim.index)
+    # Loop over each column to calculate IQR and identify outliers
+    for column in data_to_trim.columns:
+        data = data_to_trim[column]
+        Q1 = data.quantile(0.25)
+        Q3 = data.quantile(0.75)
+        IQR = Q3 - Q1
+        outlier_mask = (data < (Q1 - 3 * IQR)) | (data > (Q3 + 3 * IQR))
+        outlier_counts += outlier_mask.astype(int)
 
-# Generate QQ-plot
-(fig, ax) = plt.subplots()
-stats.probplot(data, dist="norm", plot=ax)
-ax.get_lines()[1].set_color('r')  # Optional: change the color of the QQ-plot line
+    print('--------------------------------------------------------------\n')
+    print(f'results for {dataframe_names[i]}\n')
+    # Now outlier_counts contains the number of times each sample was an outlier across all columns
+    print(f'Number of samples that are outliers in at least one gene: {outlier_counts[outlier_counts > 0].shape[0]}')
+    filtered_df = data_to_trim[outlier_counts == 0]
+    print(f'Original number of samples: {data_to_trim.shape[0]}')
+    print(f'Number of samples after removing outliers: {filtered_df.shape[0]}\n')
 
-# # Add 45-degree line for reference
-# ax.plot([np.min(data), np.max(data)], [np.min(data), np.max(data)], 'k--')
+    # Set a significance level
+    alpha = 0.05
+    # Initialize a list to store columns and their test statistics
+    significant_results = []
+    p_vals = []
 
-plt.title('QQ-plot with Reference Line')
-plt.show()
+    for column in data_to_trim.columns:
+        data = data_to_trim[column].dropna()
+        if data.nunique() > 1 and len(data) > 3:
+            # Calculate mean and standard deviation for the normal distribution comparison
+            mean, std = data.mean(), data.std()
+            # Perform the Kolmogorov-Smirnov test
+            stat, p = stats.kstest(data, 'norm', args=(mean, std))
+            if p < alpha:
+                significant_results.append((column, stat))  # Store column name and test statistic
+                p_vals.append(p)
+
+    # Sort the list by W value in ascending order
+    significant_results.sort(key=lambda x: x[1])
+    if len(significant_results) > 0:
+        print(f'Number of significant Kolmogorov smirnoffcolumns: {len(significant_results)}')
+        print(f'percentage of total columns: {len(significant_results)/len(data_to_trim.columns)}\n')
+
+    print('--------------------------------------------------------------\n')
+
+# # Now significant_results contains columns and their W values, sorted by deviation from normality
+# for column, w in significant_results:
+#     print(f'{column} - W: {w} - p: {p_vals[significant_results.index((column, w))]}')
+
+    # # Create QQ-plots for each column, starting with the most deviant
+    # for column, _ in significant_results:
+    #     data = filtered_df[column].dropna()
+    #     (fig, ax) = plt.subplots()
+    #     stats.probplot(data, dist="norm", plot=ax)
+    #     ax.set_title(f'QQ-plot for {column} (W: {round(_, 3)}, p: {p_vals[significant_results.index((column, _))]}')
+    #     plt.show()
+
+
+blacklist_expression = ['BRAF', 'PEA15', 'EIF4G1', 'WWTR1', 'SERPINE1', 'CHECK1', 'IGFB2', 'NRAS']
+# blacklist_rppa
 
 # check shape of all dataframes
-print(f'expression_df shape: {expression_df.shape}')
+print(f'\nexpression_df shape: {expression_df.shape}')
 print(f'rppa_df shape: {rppa_df.shape}')
 print(f'expression_df_123 shape: {expression_df_123.shape}')
 print(f'rppa_df_123 shape: {rppa_df_123.shape}')
+
 
 
 # write to csv
@@ -448,7 +490,32 @@ rppa_df_123.to_csv('../Diffusion/data/RPPA_for_pig_123.csv')
 expression_df_123.to_csv('../Diffusion/data/Expression_for_pig_123.csv')
 
 
+# %%
+import numpy as np
+import scipy.stats as stats
+# Create a dataset that is a skewed normal distribution
 
+data = stats.skewnorm.rvs(7, size=1000)
+
+# skew in oposite direction
+data = -data
+
+
+# Plot the histogram
+fig, ax = plt.subplots()
+ax.hist(data, bins=50)
+ax.set_title('Skewed normal distribution')
+plt.show()
+
+# Perform the Shapiro-Wilk test
+stat, p = stats.shapiro(data)
+print(f'Statistic: {stat}, p-value: {p}')
+
+# QQ-plot
+fig, ax = plt.subplots()
+stats.probplot(data, dist="norm", plot=ax)
+ax.set_title(f'QQ-plot (W: {round(stat, 3)})')
+plt.show()
 
 
 

@@ -16,15 +16,30 @@ import os
 # import h5py
 from tqdm import tqdm
 import argparse
+import sys
 
 # %%
+# Check if the script is running in an environment with predefined sys.argv (like Jupyter or certain HPC environments)
+if 'ipykernel_launcher.py' in sys.argv[0] or 'mpirun' in sys.argv[0]:
+    # Create a list to hold the arguments you want to parse
+    args_to_parse = []
+
+    # Iterate through the system arguments
+    for arg in sys.argv:
+        # Add only your specified arguments to args_to_parse
+        if '--koh' in arg or '--kob' in arg or '--cms' in arg:
+            args_to_parse.extend(arg.split('='))
+else:
+    args_to_parse = sys.argv[1:]  # Exclude the script name
+
 # Command Line Arguments
 parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
 parser.add_argument('--koh', type=int, default=5, help='Number of hub nodes to knock out')
 parser.add_argument('--kob', type=int, default=5, help='Number of bottom nodes to knock out')
+parser.add_argument('--red_range', type=str, default='0.05,0.9,9', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 
-args = parser.parse_args()
+args = parser.parse_args(args_to_parse)
 
 
 # MPI setup
@@ -285,7 +300,11 @@ if rank == 0:
     print(f'anti-hubs nodes: {low_nodes}')
 
 t_values = np.linspace(0.01, 10, 500)
-reduction_factors = np.linspace(0.01, 0.5, 9)
+
+# get args.red_range and convert to list
+red_range = args.red_range.split(',')
+red_range = [float(i) for i in red_range]
+reduction_factors = np.linspace(red_range[0], red_range[1], red_range[2])
 
 
 nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
@@ -350,17 +369,19 @@ for node_base in nodes_subset:
 
         local_results[node_base][reduction] = {
             'gdd_values': gdd_values,
-            'diff_kernel_orig': diff_kernel_orig,
-            'diff_kernel_knock': diff_kernel_knock
+            'max_gdd': np.max(gdd_values)
+            # 'diff_kernel_orig': diff_kernel_orig,
+            # 'diff_kernel_knock': diff_kernel_knock
         }
 
 # get the end time
 end_time = time.time()
+print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time}')
+
+all_results = comm.gather(local_results, root=0)
 
 # Post-processing on the root processor
 if rank == 0 and "SLURM_JOB_ID" in os.environ:
-    all_results = comm.gather(local_results, root=0)
-
     # Initialize a master dictionary to combine results
     combined_results = {}
 
@@ -373,15 +394,15 @@ if rank == 0 and "SLURM_JOB_ID" in os.environ:
         pkl.dump(combined_results, f)
     
     os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
+    print('Saving has finished.')
 
-    # # Finalize MPI
-    # MPI.Finalize()
+    MPI.Finalize()
+
 else:
     with open(f'diff_results/GDDs_and_Kernels_{cms}_{str(weighted_graph_use)}.pkl', 'wb') as f:
         pkl.dump(local_results, f)
 
 
-print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time}')
 
 
 
@@ -392,6 +413,8 @@ print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time
 
 
 # %% LOAD RESULTS
+cms = 'cmsALL'
+
 if not "SLURM_JOB_ID" in os.environ:
     with open(f'diff_results/GDDs_and_Kernels_{cms}_{str(weighted_graph_use)}.pkl', 'rb') as f:
         GDDs_and_Kernels = pkl.load(f)
@@ -415,7 +438,7 @@ if not "SLURM_JOB_ID" in os.environ:
     ax1.legend()
     ax1.grid(True)
 
-    # Choose a reduction factor randomly from the list of reductions
+    # Choose a reduction factor from the list of reductions
     selected_reduction = reduction_factors[1]
 
     max_gdds = {}
@@ -428,14 +451,15 @@ if not "SLURM_JOB_ID" in os.environ:
     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
     ax2.set_xlabel('Time')
     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-    ax2.legend()
+    # ax2.legend()
+    ax2.set_xlim([0, 2])
     ax2.grid(True)
 
     plt.show()
     # print(max_gdds)
-    max_GDD_1 = max_gdds['1']
-    max_GDD_2 = max_gdds['2']
-    print(max_GDD_1 - max_GDD_2)
+    # max_GDD_1 = max_gdds['1']
+    # max_GDD_2 = max_gdds['2']
+    # print(max_GDD_1 - max_GDD_2)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
 
@@ -454,14 +478,27 @@ if not "SLURM_JOB_ID" in os.environ:
     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
     ax2.set_xlabel('Time')
     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-    ax2.legend()
+    # ax2.legend()
+    ax2.set_xlim([0, 2])
     ax2.grid(True)
 
     plt.show()
     # print(max_gdds)
-    max_GDD_1 = max_gdds['1']
-    max_GDD_2 = max_gdds['2']
-    print(max_GDD_1 - max_GDD_2)
+    # max_GDD_1 = max_gdds['1']
+    # max_GDD_2 = max_gdds['2']
+    # print(max_GDD_1 - max_GDD_2)
+
+selected_reduction = reduction_factors[-1]
+# order nodes by max GDD
+max_gdds = {}
+for node_base in GDDs_and_Kernels.keys():
+    max_gdds[node_base] = np.max(GDDs_and_Kernels[node_base][selected_reduction]['gdd_values'])
+
+sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+
+# get the nodes with the highest GDD
+highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
+highest_gdd_nodes
 
 # %%
 # def separate_subgraph_layout(G, set1, set2, separation_vector):
@@ -561,97 +598,6 @@ if not "SLURM_JOB_ID" in os.environ:
 #                                            t_values, start_node=seed_node, node_to_isolate=node_to_isolate)
 
 
-
-
-
-# %%
-import proplot as plt, cmasher as cmr, pandas as pd, numpy as np, os, sys, networkx as nx, warnings
-
-
-def multilayer_layout(
-    G: nx.Graph,
-    subset_key="layer",
-    layout=nx.spring_layout,
-    separation: float = 10.0,
-) -> dict:
-    # set positions
-    layers = {}
-    for node, layer in nx.get_node_attributes(G, subset_key).items():
-        layers[layer] = layers.get(layer, []) + [node]
-
-    # set layout within each layer
-    pos = {}
-    for layer, nodes in layers.items():
-        subgraph = G.subgraph(nodes)
-        layer_pos = {
-            node: node_pos + separation * np.array([0, int(layer)])
-            for node, node_pos in layout(subgraph).items()
-        }
-        pos.update(layer_pos)
-    return pos
-
-
-def draw_multilayer_layout(
-    G,
-    subset_key="layer",
-    ax=None,
-    layout=nx.spring_layout,
-    separation=2.0,
-    node_kwargs=dict(node_size=12),
-    within_edge_kwargs=dict(style="solid", alpha=0.05, edge_color="lightgray"),
-    between_edge_kwargs=dict(style="dashed", alpha=0.65, edge_color="gray"),
-    cmap=plt.Colormap("Spectral"),
-):
-    # get the layout
-    pos = multilayer_layout(
-        G,
-        subset_key=subset_key,
-        layout=layout,
-        separation=separation,
-    )
-
-    # find connections between and plot them differently
-    connectors = set()
-    others = set()
-    for node in G.nodes():
-        for neighbor in G.neighbors(node):
-            if G.nodes[node][subset_key] != G.nodes[neighbor][subset_key]:
-                connectors.add((node, neighbor))
-            else:
-                norm = mcolors.Normalize(vmin=min(heat_values), vmax=max(heat_values), clip=True)
-
-#             # norm = mcolors.Normalize(vmin=min(heat_values), vmax=max(heat_values), clip=True)
-#             mapper = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis)
-
-#             nx.draw_networkx_edges(G, layout, alpha=0.2, ax=axes[i, j])
-#             nx.draw_networkx_nodes(G, layout, node_size=200,
-#                                    node_color=[mapper.to_rgba(value) for value in heat_values],
-#                                    ax=axes[i, j])
-#             nx.draw_networkx_labels(G, label_layout, font_size=20, ax=axes[i, j])
-#             nx.draw_networkx_nodes(G, layout, nodelist=[node_to_isolate, start_node], node_size=300,
-#                                node_color=['blue', 'red'],  # Example: red color
-#                                ax=axes[i, j])
-#             axes[i, j].set_title(f"Graph {i+1}, t={round(t, 2)}", fontsize=20)
-#             axes[i, j].axis('off')
-
-#     plt.colorbar(mapper, ax=axes[1, 2], shrink=0.7, aspect=20, pad=0.02)
-#     plt.tight_layout()
-#     plt.show()
-
-# # Example usage
-# fixed_reduction_index = np.where(np.isclose(reduction_factors, fixed_reduction))[0][0]
-# t_values = [0.1, max_gdd_times[fixed_reduction_index], 10]
-
-# weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
-# weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
-# knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduction_factor=fixed_reduction)
-
-# seed_node = node_to_isolate + 1
-
-# # Example usage with 3 graphs and their Laplacians for 9 different times
-# plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph], 
-#                                            [weighted_lap_use, knockdown_laplacian], set_1, set_2,
-#                                            t_values, start_node=seed_node, node_to_isolate=node_to_isolate)
 
 
 

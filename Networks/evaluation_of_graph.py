@@ -60,7 +60,7 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
 
     prior_matrix = prior_matrix.astype(int)
 
-    print(f'Number of prior edges: {np.sum(prior_matrix == 1) / 2}')
+    print(f'Number of prior edges (lower triangular): {np.sum(prior_matrix == 1) / 2}')
 
     # Assign penalties based on the prior matrix
     penalty_matrix[prior_matrix == 1] = lambda_wp
@@ -93,7 +93,7 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
         else:
             precision_matrix = np.array(result.rx('precision_matrix')[0])
             np.fill_diagonal(precision_matrix, 0)
-            edge_counts = np.sum((np.abs(precision_matrix) > 1e-5).astype(int)) / 2
+            edge_counts = np.sum((np.abs(precision_matrix) > 1e-5).astype(int)) / 2 # EDGE_DIVIDER
             density = edge_counts / complete_graph_edges
             return precision_matrix, edge_counts, density
     except Exception as e:

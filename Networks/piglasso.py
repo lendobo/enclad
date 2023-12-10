@@ -20,6 +20,7 @@ import pickle
 import warnings
 import os
 import argparse
+from scipy.stats import skewnorm
 
 
 # Activate the automatic conversion of numpy objects to R objects
@@ -71,40 +72,44 @@ class QJSweeper:
         self.subsample_indices = self.get_subsamples_indices(self.n, b, Q, rank, size)
 
     @staticmethod
-    def generate_synth_data(p, n, min_fn_perc, fp_perc):
+    def generate_synth_data(p, n, fp_fn_chance, skew, density=0.03, seed=42):
+        random.seed(seed)
+        np.random.seed(seed)
 
-        random.seed(42)
-        np.random.seed(42)
+        density_params = {
+        0.02: [(100, 1), (300, 3), (500, 5), (750, 8), (1000, 10)],
+        0.03: [(100, 2), (300, 5), (500, 8), (750, 11), (1000, 15)],
+        0.04: [(100, 2), (300, 6), (500, 10), (750, 15), (1000, 20)],
+        0.1: [(100, 5), (300, 15), (500, 25), (750, 38), (1000, 50)],
+        0.2: [(100, 10), (300, 30), (500, 50), (750, 75), (1000, 100)]
+    }
 
-        if p <= 100:
-            m = random.choice([1,2,2])
-        elif 100 < p <= 300:
-            m = random.choice([3,5,6])
-        elif 300 < p <= 500:
-            m = random.choice([5,8,10])
-        elif 500 < p <= 1000:
-            m = random.choice([10,15,20])
-        else:
-            m = 20
+        # Determine m based on p and the desired density
+        m = 20  # Default value if p > 1000
+        closest_distance = float('inf')
+        for size_limit, m_value in density_params[density]:
+            distance = abs(p - size_limit)
+            if distance < closest_distance:
+                closest_distance = distance
+                m = m_value
+        
 
         # TRUE NETWORK
-        G = nx.barabasi_albert_graph(p, m, seed=42)
+        G = nx.barabasi_albert_graph(p, m, seed=seed)
         adj_matrix = nx.to_numpy_array(G)
 
         
         # PRECISION MATRIX
-        precision_matrix = -0.5 * adj_matrix
+        precision_matrix = adj_matrix
 
-        # Add to the diagonal to ensure positive definiteness
-        # Set each diagonal entry to be larger than the sum of the absolute values of the off-diagonal elements
-        # in the corresponding row
-        diagonal_values = 2 * np.abs(precision_matrix).sum(axis=1)
-        np.fill_diagonal(precision_matrix, diagonal_values)
-
-        # Check if the precision matrix is positive definite
-        # A simple check is to see if all eigenvalues are positive
-        eigenvalues = np.linalg.eigh(precision_matrix)[0]
-        is_positive_definite = np.all(eigenvalues > 0)
+        # Try adding a small constant to the diagonal until the matrix is positive definite
+        small_constant = 0.01
+        is_positive_definite = False
+        while not is_positive_definite:
+            np.fill_diagonal(precision_matrix, precision_matrix.diagonal() + small_constant)
+            eigenvalues = np.linalg.eigh(precision_matrix)[0]
+            is_positive_definite = np.all(eigenvalues > 0)
+            small_constant += 0.01  # Increment the constant
 
         # Compute the scaling factors for each variable (square root of the diagonal of the precision matrix)
         scaling_factors = np.sqrt(np.diag(precision_matrix))
@@ -117,10 +122,10 @@ class QJSweeper:
         prior_matrix = np.zeros((p, p))
         for i in range(p):
             for j in range(i, p):
-                if adj_matrix[i, j] != 0 and np.random.rand() < min_fn_perc :
+                if adj_matrix[i, j] != 0 and np.random.rand() < (1 - fp_fn_chance):
                     prior_matrix[i, j] = 1
                     prior_matrix[j, i] = 1
-                elif adj_matrix[i, j] == 0 and np.random.rand() < fp_perc:
+                elif adj_matrix[i, j] == 0 and np.random.rand() < fp_fn_chance:
                     prior_matrix[i, j] = 1
                     prior_matrix[j, i] = 1
         np.fill_diagonal(prior_matrix, 0)
@@ -128,6 +133,19 @@ class QJSweeper:
 
         # DATA MATRIX
         data = multivariate_normal(mean=np.zeros(G.number_of_nodes()), cov=covariance_mat, size=n)
+
+        if skew != 0:
+            print('APPLYING SKEW: ', skew)
+            # Determining which columns to skew
+            columns_to_skew = np.random.choice(data.shape[1], size=int(0.2 * data.shape[1]), replace=False)
+            left_skew_columns = columns_to_skew[:len(columns_to_skew) // 2]
+            right_skew_columns = columns_to_skew[len(columns_to_skew) // 2:]
+
+            # Applying skewness
+            for col in left_skew_columns:
+                data[:, col] += skewnorm.rvs(-skew, size=n)  # Left skew
+            for col in right_skew_columns:
+                data[:, col] += skewnorm.rvs(skew, size=n)  # Right skew
 
         return data, prior_matrix, adj_matrix
     
@@ -259,7 +277,7 @@ def main(rank, size, machine='local'):
 
     if args.run_type == 'synthetic':
         # Synthetic run
-        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.min_fn_perc, args.fp_perc)
+        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.fp_fn, args.skew, args.dens)
         synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
 
         edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
@@ -313,8 +331,9 @@ if __name__ == "__main__":
     parser.add_argument('--data_file', type=str, default=None, help='omics data file (Protein / RNA))')
     parser.add_argument('--prior_file', type=str, default=None, help='adjacency matrix for prior')
     parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS type to run for omics run')
-    parser.add_argument('--min_fn_perc', type=float, default=1, help='(1 - probability of false negative) for prior')
-    parser.add_argument('--fp_perc', type=float, default=0, help='probability of false positive for prior')
+    parser.add_argument('--fp_fn', type=float, default=0, help='Chance of getting a false negative or a false positive')
+    parser.add_argument('--skew', type=float, default=0, help='Skewness of the data')
+    parser.add_argument('--dens', type=float, default=0.03, help='Density of the synthetic network')
 
     args = parser.parse_args()
 
@@ -342,7 +361,7 @@ if __name__ == "__main__":
 
 
             # Save combined results
-            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
+            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
 
             # Transfer results to $HOME
@@ -354,7 +373,7 @@ if __name__ == "__main__":
         print(edge_counts.dtype)
 
         # Save results to a pickle file
-        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_{args.min_fn_perc}{args.fp_perc}.pkl', 'wb') as f:
+        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_dens{args.dens}.pkl', 'wb') as f:
             pickle.dump(edge_counts)
 
 
