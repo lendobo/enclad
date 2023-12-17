@@ -46,10 +46,12 @@ def analysis(data,
 
     # LAMBDAS
     lambda_np, theta_mat = estimate_lambda_np(select_edge_counts_all, Q, select_lambda_range)
-    man= False
-    if man:
-        lambda_np =  0.136
-        print(f'manual Lambda_np: {man}')
+    man = False
+    if run_type == 'OMICS':
+        man= False
+        if man:
+            lambda_np =  0.29
+            print(f'manual Lambda_np: {man}')
     print('lambda_np: ', lambda_np)
     if prior_bool == True:
         lambda_wp, tau_tr, mus = estimate_lambda_wp(select_edge_counts_all, Q, select_lambda_range, prior_matrix)
@@ -66,38 +68,53 @@ def analysis(data,
     print('Number of edges of inferred network (lower triangular): ', edge_counts)
     print('Density: ', density)
 
+    if plot == True:
+        scalar_edges = np.sum(edge_counts_all, axis=(0, 1))
+        scalar_select_edges = np.sum(select_edge_counts_all, axis=(0, 1))
+
+        if False: 
+            # create a 1 x 2 multiplot. on the left, plot both scalar aedes and scalar_select edges. On the right, just scalar_select_edges
+            plt.figure(figsize=(12, 5))
+            plt.subplot(1, 2, 1)
+            plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
+            plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
+            plt.title(f'#edges vs lambda for {run_type} data,p={p},n={n}')
+            plt.xlabel('Lambda')
+            plt.ylabel('Number of edges')
+            plt.ylim(0, 8000)
+            plt.grid()
+            ax = plt.gca()
+            ax.grid(alpha=0.2)
+
+            plt.subplot(1, 2, 2)
+            plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
+            plt.title(f'Number of edges vs lambda for {run_type} data')
+            plt.xlabel('Lambda')
+            plt.ylabel('Number of edges')
+            plt.grid()
+            ax = plt.gca()
+            ax.grid(alpha=0.2)
+            plt.tight_layout()
+            plt.show()
+        if True:
+            plt.figure(figsize=(8, 6), dpi=300)
+            plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
+            plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
+            plt.title(rf'Edge Counts vs $\lambda$')
+            plt.xlabel(r'$ \lambda$', fontsize=15)
+            plt.ylabel('Edge Counts', fontsize=12)
+            plt.ylim(0, 8000)
+            plt.grid(alpha=0.2)
+            plt.tight_layout()
+            plt.show()
+    
     if run_type == 'SYNTHETIC':
         # RECONSTRUCTION
         evaluation_metrics = evaluate_reconstruction(adj_matrix, precision_matrix)
         print('Evaluation metrics: ', evaluation_metrics)
         print('\n\n\n')
 
-    if plot == True:
-        scalar_edges = np.sum(edge_counts_all, axis=(0, 1))
-        scalar_select_edges = np.sum(select_edge_counts_all, axis=(0, 1))
-
-        # create a 1 x 2 multiplot. on the left, plot both scalar aedes and scalar_select edges. On the right, just scalar_select_edges
-        plt.figure(figsize=(12, 5))
-        plt.subplot(1, 2, 1)
-        plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
-        plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
-        plt.title(f'#edges vs lambda for {run_type} data,p={p},n={n}')
-        plt.xlabel('Lambda')
-        plt.ylabel('Number of edges')
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-
-        plt.subplot(1, 2, 2)
-        plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
-        plt.title(f'Number of edges vs lambda for {run_type} data')
-        plt.xlabel('Lambda')
-        plt.ylabel('Number of edges')
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-        plt.tight_layout()
-        plt.show()
+        return precision_matrix, edge_counts, density, lambda_np, lambda_wp, evaluation_metrics
     
     return precision_matrix, edge_counts, density, lambda_np, lambda_wp
     
@@ -109,45 +126,45 @@ rank=1
 size=1
 # ################################################# SYNTHETIC PART #################################################
 
-################################################## VARYING N #################################
-if False:
-    # Parameters
-    p = 150             # number of variables (nodes)
-    n = 500             # number of samples
-    b = int(0.8 * n)   # size of sub-samples
-    Q = 1000             # number of sub-samples
+# ################################################## VARYING N #################################
+# if False:
+#     # Parameters
+#     p = 150             # number of variables (nodes)
+#     n = 500             # number of samples
+#     b = int(0.8 * n)   # size of sub-samples
+#     Q = 1000             # number of sub-samples
 
-    lowerbound = 0.01
-    upperbound = 0.4
-    granularity = 80
-    lambda_range = np.linspace(lowerbound, upperbound, granularity)
+#     lowerbound = 0.01
+#     upperbound = 0.4
+#     granularity = 80
+#     lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
-    n = 69
-    p_values = [50, 100, 200, 400]
+#     n = 69
+#     p_values = [50, 100, 200, 400]
 
-    for p in p_values:
-        print(f'NETWORK SIZE for samples: {n} and variables: {p}')
-        filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}.pkl'
-        with open(filename_edges, 'rb') as f:
-            synth_edge_counts_all = pickle.load(f)
-        # divide each value in edge_counts_all by 2*Q
-        synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
+#     for p in p_values:
+#         print(f'NETWORK SIZE for samples: {n} and variables: {p}')
+#         filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}.pkl'
+#         with open(filename_edges, 'rb') as f:
+#             synth_edge_counts_all = pickle.load(f)
+#         # divide each value in edge_counts_all by 2*Q
+#         synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
 
-        # # Generate synthetic data and prior matrix
-        synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density)
-        ## REsults for synthetic data
-        # print(f'SYNTHETIC NET SIZE: {p} RESULTS\n-------------------\n')
+#         # # Generate synthetic data and prior matrix
+#         synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density)
+#         ## REsults for synthetic data
+#         # print(f'SYNTHETIC NET SIZE: {p} RESULTS\n-------------------\n')
 
-        analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
-        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
+#         analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
+#         synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
     
 if True:
     ################################################# VARYING SAMPLE SIZE for fixed network #################################################
     p = 137
-    n_values = [500] #[100, 200, 400, 600, 800]
+    n_values = [750] # [50, 100, 200, 400, 750, 1000, 2000]
     b_perc = 0.6
     b = [int(b_perc * n) for n in n_values]   # size of sub-samples
-    Q = 1200             # number of sub-samples
+    Q = 1200          # number of sub-samples
 
     lowerbound = 0.01
     upperbound = 0.5
@@ -157,21 +174,58 @@ if True:
     fp_fn = 0.0
     skew = 0
     density = 0.03
+    seed = 42
 
+    evalu = {}
     for n,b in zip(n_values, b):
         print(f'NETWORK SIZE for samples: {n} and variables: {p} and b: {b}')
-        filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}.pkl'
+        filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
         with open(filename_edges, 'rb') as f:
             synth_edge_counts_all = pickle.load(f)
         # divide each value in edge_counts_all by 2*Q
         synth_edge_counts_all = synth_edge_counts_all / (2 * Q)  # EDGE_DIVIDER
 
+        # filename_prior = f'Networks/net_results/prior_mat_synthetic_cmsALL_{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
+        # with open(filename_prior, 'rb') as f:
+        #     synth_prior_matrix = pickle.load(f)
+
         # # Generate synthetic data and prior matrix
-        synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density)
+        synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density, seed=seed)
         # synth_prior_matrix = synth_prior_matrix * 0
 
-        analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
-        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
+        _, _, _, _, _, temp_evalu = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
+        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=True)
+
+        evalu[n] = temp_evalu
+
+    if False:
+        # make plot of evaluation metrics vs n
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(n_values, [evalu[n]['f1_score'] for n in n_values], color='red', alpha=0.8)
+        plt.scatter(n_values, [evalu[n]['f1_score'] for n in n_values], color='red', alpha=0.8)
+        plt.title(f'F1-Score vs N for synthetic data')
+        plt.xlabel('Sample Size N', fontsize=12)
+        plt.ylabel('F1-Score', fontsize=12)
+        plt.ylim(0.3, 1.1)
+        plt.grid()
+        ax = plt.gca()
+        ax.grid(alpha=0.2)
+
+        plt.subplot(1, 2, 2)
+        plt.plot(n_values, [evalu[n]['recall'] for n in n_values], color='red', alpha=0.8)
+        plt.scatter(n_values, [evalu[n]['recall'] for n in n_values], color='red', alpha=0.8)
+        plt.title(f'Recall vs N for synthetic data', fontsize=12)
+        plt.xlabel('Sample Size N', fontsize=12)
+        plt.ylabel('Recall', fontsize=12)
+        plt.ylim(0.3, 1.1)
+        plt.grid()
+        ax = plt.gca()
+        ax.grid(alpha=0.2)
+        plt.tight_layout()
+        plt.show()
+
+
 
 
         
@@ -180,16 +234,26 @@ if True:
 
 ################################################## OMICS DATA PART #################################################
 if False:
+    # for cms_type in ['cmsALL', 'cms123']:
+    #     for omics_type in ['t', 'p']:
     # Parameters
-    p = 137
-    Q = 800             # number of sub-samples
+    p = 136
+    b_perc = 0.6
+    n = 1337             # nnot actual samples, just filename requirements
+    Q = 5000             # number of sub-samples
 
     lowerbound = 0.01
-    upperbound = 0.8
-    granman = 100
+    upperbound = 0.9
+    granularity = 150
 
-    o_t = 'p'
-    cms = 'cmsALL' #cmsALL
+    fp_fn = 0.0
+    skew = 0.0
+    density = 0.03
+
+    o_t =  'p' # omics_type
+    cms = 'cms123'
+    end_slice = 30
+
 
     if o_t == 'p':
         prior_bool = True
@@ -200,31 +264,21 @@ if False:
 
 
     # Load omics edge counts
-    file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ150_200_1000_{lowerbound}_{upperbound}_{granman}_10.pkl'
+    file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}.pkl'
 
     with open(file_, 'rb') as f:
         omics_edge_counts_all = pickle.load(f)
 
     # divide each value in edge_counts_all by 2*Q
-    omics_edge_counts_all = omics_edge_counts_all / (2)
-
-    # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
-    granularity = omics_edge_counts_all.shape[2]
-    lambda_range = np.linspace(lowerbound, upperbound, granularity)
+    omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
 
 
     # Load Omics Data
+    cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
+    cms_filename = 'Diffusion/data/transcriptomics_for_pig_ALL.csv'
     cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
 
     cms_array = cms_data.values
-
-    print(f'Number of samples: {cms_array.shape[0]}')
-
-
-    # remove rows if they contain values outside of 3 standard deviations
-    cms_array = cms_array[(np.abs(stats.zscore(cms_array)) < 5).all(axis=1)]
-
-    print(f'Number of samples: {cms_array.shape[0]}')
 
 
 
@@ -244,23 +298,72 @@ if False:
 
     p = cms_array.shape[1]
     n = cms_array.shape[0]
-    b = int(0.8 * n)
+    b = int(0.6 * n)
 
     # scale and center 
     cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
+
 
     print(f'{str.upper(omics_type)}, {cms} RESULTS\n-------------------\n')
 
 
     print(f'Number of samples: {n}')
+    print(f'Number of sub-samples: {Q}')
     print(f'Number of variables: {p}\n')
 
-    print(f'Granularity of full lambda range: {granularity}')
+    # print(f'Granularity of sliced lambda range: {new_granularity}')
 
-    # # RUN ANALYSIS
-    kpa = 0                                                                                                        # HERE
-    precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                lowerbound, upperbound, granularity, omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+    # # RUN ANALYSIS for multiple END SLICES
+    if False:
+        densities = []
+        no_end_slices = 75
+        i = 0
+        for end_slice in range(1, no_end_slices):
+            i += 1
+            print(i)
+            sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
+
+            # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
+            new_granularity = sliced_omics_edge_counts_all.shape[2]
+            new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
+            lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
+
+            kpa = 0                                                                                                        # HERE
+            precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+                        lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+
+            densities.append(density)
+            
+        # plot density against end slice value
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(range(1, no_end_slices), densities, color='red', alpha=0.8)
+        plt.scatter(range(1, no_end_slices), densities, color='red', alpha=0.8)
+        plt.title(f'Density vs end slice value for {omics_type} data, Q = {Q}')
+        plt.xlabel('End slice value', fontsize=12)
+        plt.ylabel('Density', fontsize=12)
+        # plt.ylim(0.0, 0.5)
+        plt.grid()
+        ax = plt.gca()
+        ax.grid(alpha=0.2)
+        plt.tight_layout()
+
+        # save plot image to file
+        plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/density_vs_end_slice_{omics_type}_{cms}_Q{Q}.png')
+
+        # plt.show()
+    
+    else:
+        sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
+
+        # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
+        new_granularity = sliced_omics_edge_counts_all.shape[2]
+        new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
+        lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
+
+        kpa = 0                                                                                                        # HERE
+        precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+                    lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
 
 
     # get adjacency from precision matrix
@@ -269,7 +372,7 @@ if False:
     adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
 
     # save adjacency matrix
-    adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_np{lambda_np}.csv')
+    adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_lowenddensity.csv')
 
     # # draw the network
     # G = nx.from_pandas_adjacency(cms_omics_prior)

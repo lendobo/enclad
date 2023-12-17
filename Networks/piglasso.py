@@ -92,7 +92,7 @@ class QJSweeper:
             if distance < closest_distance:
                 closest_distance = distance
                 m = m_value
-        
+                
 
         # TRUE NETWORK
         G = nx.barabasi_albert_graph(p, m, seed=seed)
@@ -301,7 +301,6 @@ def main(rank, size, machine='local'):
         b = int(args.b_perc * n)
 
         print(f'Variables, Samples: {p, n}')
-        print(cms_array[1])
 
         # scale and center 
         cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
@@ -310,7 +309,7 @@ def main(rank, size, machine='local'):
 
         edge_counts_all, success_counts = omics_QJ.run_subsample_optimization(lambda_range)
 
-    return edge_counts_all, p, n, Q
+    return edge_counts_all, p, n, Q, prior_matrix
 
 if __name__ == "__main__":
     # Initialize MPI communicator, rank, and size
@@ -340,7 +339,7 @@ if __name__ == "__main__":
 
     # Check if running in SLURM environment
     if "SLURM_JOB_ID" in os.environ:
-        edge_counts, p, n, Q = main(rank=rank, size=size, machine='hpc')
+        edge_counts, p, n, Q, prior_matrix = main(rank=rank, size=size, machine='hpc')
 
         num_elements = p * p * args.lamlen
         sendcounts = np.array([num_elements] * size)
@@ -362,8 +361,12 @@ if __name__ == "__main__":
 
 
             # Save combined results
-            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}.pkl', 'wb') as f:
+            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
+
+            # saving the prior matrix
+            with open(f'net_results/prior_mat_{args.run_type}_{args.cms}_{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
+                pickle.dump(prior_matrix, f)
 
             # Transfer results to $HOME
             os.system("cp -r net_results/ $HOME/thesis_code/Networks/")
@@ -374,7 +377,7 @@ if __name__ == "__main__":
         print(edge_counts.dtype)
 
         # Save results to a pickle file
-        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_dens{args.dens}.pkl', 'wb') as f:
+        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
             pickle.dump(edge_counts)
 
 

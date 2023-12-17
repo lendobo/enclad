@@ -17,8 +17,8 @@ import os
 from tqdm import tqdm
 import argparse
 import sys
-import csv
 
+# %%
 # Check if the script is running in an environment with predefined sys.argv (like Jupyter or certain HPC environments)
 if 'ipykernel_launcher.py' in sys.argv[0] or 'mpirun' in sys.argv[0]:
     # Create a list to hold the arguments you want to parse
@@ -36,12 +36,9 @@ else:
 parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
 parser.add_argument('--koh', type=int, default=5, help='Number of hub nodes to knock out')
 parser.add_argument('--kob', type=int, default=5, help='Number of bottom nodes to knock out')
-parser.add_argument('--red_range', type=str, default='0.05,0.9,3', help='Range of reduction factors to investigate')
+parser.add_argument('--red_range', type=str, default='0.05,0.05,1', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
-parser.add_argument('--pathway', type=bool, default=False, help='Boolean for Pathway Knockout')
-parser.add_argument('--test_net', type=bool, default=False, help='Boolean for testing network')
-parser.add_argument('--pathway_indiv', type=bool, default=False, help='Boolean for individual pathway knockout')
 
 args = parser.parse_args(args_to_parse)
 
@@ -132,47 +129,6 @@ def knockdown_node_both_layers(G, node_to_isolate_base, reduction_factor=0.3):
     new_laplacian = weighted_laplacian_matrix(modified_graph)
     return modified_graph, new_laplacian
 
-def knockdown_pathway_nodes(G, pathway_description, reduction_factor=0.3):
-    """
-    Reduces the weights of all edges connected to the nodes in a pathway in both layers of the graph.
-
-    :param G: NetworkX graph
-    :param pathway_description: Description of the pathway whose nodes will be reduced in both layers
-    :param reduction_factor: Factor to reduce edge weights by, defaults to 0.3
-    :return: Tuple containing the modified graph and its weighted Laplacian matrix
-    """
-
-    # Find rows where 'description' column contains the given string
-    rows = pathway_df[pathway_df['description'].str.contains(pathway_description)]
-    
-    # Initialize a list to store the base node names
-    base_node_names = []
-
-    # Iterate over the found rows
-    for _, row in rows.iterrows():
-        # Split the 'genes' column into individual genes and add them to the list
-        base_node_names.extend(row['genes'].split('|'))
-
-    modified_graph = G.copy()
-    
-    # Iterate over the base node names
-    for node_to_isolate_base in base_node_names:
-        # Add layer suffixes to the base node name
-        node_to_isolate_proteomics = f"{node_to_isolate_base}.p"
-        node_to_isolate_transcriptomics = f"{node_to_isolate_base}.t"
-        
-        # Reduce the weight of all edges to and from this node in both layers
-        for node_to_isolate in [node_to_isolate_proteomics, node_to_isolate_transcriptomics]:
-            if node_to_isolate in G:
-                for neighbor in G[node_to_isolate]:
-                    modified_graph[node_to_isolate][neighbor]['weight'] = reduction_factor
-                    modified_graph[neighbor][node_to_isolate]['weight'] = reduction_factor
-    
-    # Compute the weighted Laplacian matrix for the modified graph
-    new_laplacian = weighted_laplacian_matrix(modified_graph)
-
-    return modified_graph, new_laplacian
-
 
 # %%                  ############################################# double5 DEMO NET#########################
 
@@ -213,6 +169,13 @@ def double5_demonet(inter_layer_weight=1.0):
 
     return weighted_G, adj, lap
 
+# double5_net, double5_adj, double5_lap = double5_demonet()
+# # get degrees
+# degrees = [val for (node, val) in double5_net.degree()]
+# knockdown_double5_g, knockdown_double5_lap = knockdown_node_both_layers(double5_net, '1', reduction_factor=0.5)
+# double5_lap
+
+
 def create_multiplex_graph(num_nodes, inter_layer_weight=1.0):
     """
     Creates a multiplex graph with two layers, each having the specified number of nodes.
@@ -240,7 +203,6 @@ def create_multiplex_graph(num_nodes, inter_layer_weight=1.0):
         G.add_edge(nodes_layer_p[i], nodes_layer_t[i], weight=inter_layer_weight)
 
     return G
-
 
 ###############################################################################
 # %% OMICS GRAPH
@@ -343,8 +305,8 @@ def weighted_multi_omics_graph(cms, plot=False):
 #     num_edges = G_multiplex.number_of_edges()
 #     num_nodes, num_edges
 
-weighted_G_cms_123 = weighted_multi_omics_graph('cms123', plot=False)
-weighted_G_cms_ALL = weighted_multi_omics_graph('cmsALL', plot=False)
+weighted_G_cms_123 = weighted_multi_omics_graph('cms123', plot=True)
+weighted_G_cms_ALL = weighted_multi_omics_graph('cmsALL', plot=True)
 
 # CHOOSING GRAPH #############################################################
 # CHOOSING GRAPH #############################################################
@@ -371,18 +333,15 @@ if rank == 0:
 t_values = np.linspace(0.01, 10, 500)
 
 # get args.red_range and convert to list
-# red_range = [float(i) for i in red_range]
 red_range = args.red_range.split(',')
-red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
+# red_range = [float(i) for i in red_range]
+red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
 
 
 
 nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
-if args.koh == 0:
-    nodes_to_investigate_bases = [node.split('.')[0] for node in weighted_G_cms_ALL.nodes()] # FOR FIXED REDUCTION, NODE COMPARISON
 
-if args.pathway:
-    pathways = ['Angiogenesis', 'Regulation of angiogenesis', 'Positive regulation of angiogenesis', 'Sprouting angiogenesis', 'Regulation of cell migration involved in sprouting angiogenesis', 'TGF-beta signaling pathway', 'Wnt signaling pathway and pluripotency']
+
 
 # %% RUNS                                               ### MPI PARALLELIZATION ###
 # Function to distribute nodes across ranks
@@ -401,150 +360,143 @@ def distribute_nodes(nodes, rank, size):
     return nodes[start_index:end_index]
 
 
-# Function to distribute pathways across ranks
-def distribute_pathways(pathways, rank, size):
-    num_pathways = len(pathways)
-    pathways_per_proc = num_pathways // size
-    remainder = num_pathways % size
-
-    if rank < remainder:
-        start_index = rank * (pathways_per_proc + 1)
-        end_index = start_index + pathways_per_proc + 1
-    else:
-        start_index = remainder * (pathways_per_proc + 1) + (rank - remainder) * pathways_per_proc
-        end_index = start_index + pathways_per_proc
-
-    return pathways[start_index:end_index]
-
-
 if "SLURM_JOB_ID" in os.environ:
-    if args.pathway:
-        pathway_df = pd.read_csv('/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info.csv')
-        pathways_subset = distribute_pathways(pathways, rank, size)
-        print(f'pathways for rank {rank}: {pathways_subset}')
-    else:
-        nodes_subset = distribute_nodes(nodes_to_investigate_bases, rank, size)
-        print(f'nodes for rank {rank}: {nodes_subset}')
-else: #Otherwise, if run locally
-    if args.pathway:
-        pathway_df = pd.read_csv('data/Pathway_Enrichment_Info.csv')
-        pathways_subset = pathways
-        print(f'pathways for rank {rank}: {pathways_subset}')
-    else:
-        nodes_subset = nodes_to_investigate_bases
-        print(f'nodes for rank {rank}: {nodes_subset}')
+    nodes_subset = distribute_nodes(nodes_to_investigate_bases, rank, size)
+    print(f'nodes for rank {rank}: {nodes_subset}')
+else:
     rank = 0
     size = 1
+    nodes_subset = nodes_to_investigate_bases
+
+
+# # Initialize containers for results
+# orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
+# orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
+# orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
+
+# local_results = {'original_gdds': orig_gdd_values, 'original_maxx_gdd': np.max(orig_gdd_values)}
+
+
 
 # %%
-if "SLURM_JOB_ID" not in os.environ and args.test_net:
-    t_values = np.linspace(0.01, 10, 500)
-    # Create two multiplex graphs FOR TESTING
-    weighted_G_cms_123 = create_multiplex_graph(12)
-    weighted_G_cms_ALL = create_multiplex_graph(12)
+# original_non_mesenchyme_G = copy.deepcopy(weighted_G_cms_123)
+# weighted_lap_non_mesench = weighted_laplacian_matrix(original_non_mesenchyme_G)
 
-    # Example nodes subset
-    nodes_subset_with_suffix = list(weighted_G_cms_123.nodes())
-    nodes_subset = list(set([node.split('.')[0] for node in nodes_subset_with_suffix]))
-    print(f'nodes subset: {nodes_subset}')
+# original_pan_G = copy.deepcopy(weighted_G_cms_ALL)
+# weighted_lap_pan = weighted_laplacian_matrix(original_pan_G)
 
-    # Initialize containers for results
-    orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
-    orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
-    orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
-else:
-    # Initialize containers for results
-    orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
-    orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
-    orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
+t_values = np.linspace(0.01, 10, 500)
 
 
-weighted_lap_pan = weighted_laplacian_matrix(weighted_G_cms_ALL)
-diff_kernel_pan = [laplacian_exponential_kernel_eigendecomp(weighted_lap_pan, t) for t in t_values]
+# Create two multiplex graphs FOR TESTING
+weighted_G_cms_123 = create_multiplex_graph(20)
+weighted_G_cms_ALL = create_multiplex_graph(20)
 
-local_results = {}
+# Example nodes subset
+nodes_subset_with_suffix = list(weighted_G_cms_123.nodes())
+nodes_subset = list(set([node.split('.')[0] for node in nodes_subset_with_suffix]))
+print(f'nodes subset: {nodes_subset}')
+
+# Initialize containers for results
+orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
+orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
+orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
+local_results = {'original_gdds': orig_gdd_values, 'original_maxx_gdd': np.max(orig_gdd_values)}
+# print original max GDD
+print(f'original max GDD: {np.max(orig_gdd_values)}')
+
+
+# Initialize variables
+knocked_out_nodes = []
+global_min_gdds = [np.max(orig_gdd_values)]
+stop_criteria_met = False
+iteration_count = 0
 
 # get the start time
 start_time = time.time()
 
-if not args.pathway:
+starting_max_gdd = np.max(orig_gdd_values)
+reduction = 0.05
+
+current_non_mesenchyme_G = copy.deepcopy(weighted_G_cms_123)
+current_pan_G = copy.deepcopy(weighted_G_cms_ALL)
+
+iteration_count = 0
+while not stop_criteria_met and nodes_subset:
+    print(f'iteration {iteration_count}')
+    local_min_gdd = float('inf')
+    local_best_node = None
+
+    # Perform node knockout for each node in the subset
     for node_base in nodes_subset:
         local_results[node_base] = {}
-        for reduction in tqdm(red_range):
-            # NODE KNOCKOUT
-            # Remove the node and recompute the Laplacian matrix
-            knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(weighted_G_cms_ALL, node_base, 
-                                                                                            reduction_factor=reduction)
+        # NODE KNOCKOUT
+        # Remove the node and recompute the Laplacian matrix
+        knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(weighted_G_cms_ALL, node_base, 
+                                                                                        reduction_factor=reduction)
 
-            knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(weighted_G_cms_123, node_base,
-                                                                                            reduction_factor=reduction)
+        knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(weighted_G_cms_123, node_base,
+                                                                                        reduction_factor=reduction)
 
-            # diff_kernel_non_mesench = [laplacian_exponential_kernel_eigendecomp(weighted_lap_non_mesench, t) for t in t_values]
+        # diff_kernel_non_mesench = [laplacian_exponential_kernel_eigendecomp(weighted_lap_non_mesench, t) for t in t_values]
+        # diff_kernel_pan = [laplacian_exponential_kernel_eigendecomp(weighted_lap_pan, t) for t in t_values]
+        diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
+        diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
 
-            diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-            diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+        # CALCULATE GDD
+        # Compute the Frobenius norm of the difference between the kernels for each t
+        gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
 
-            # CALCULATE GDD
-            # Compute the Frobenius norm of the difference between the kernels for each t
-            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+        max_gdd_trans = np.max(gdd_values_trans)
 
-            gdd_values_disrupt = np.linalg.norm(np.array(diff_kernel_pan) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+        # Update local best node if a lower max GDD is found
+        if max_gdd_trans < local_min_gdd:
+            local_min_gdd = max_gdd_trans
+            local_best_node = node_base
+            print(f'local best! {local_min_gdd}')
 
-            local_results[node_base][reduction] = {
-                'gdd_values_trans': gdd_values_trans,
-                'max_gdd_trans': np.max(gdd_values_trans),
+    # Gather results at the root rank
+    all_min_gdds = comm.gather(local_min_gdd, root=0)
+    all_best_nodes = comm.gather(local_best_node, root=0)
 
-                'gdd_values_disrupt': gdd_values_disrupt,
-                'max_gdd_disrupt': np.max(gdd_values_disrupt),
+    # Root rank selects the global best node for knockout
+    if rank == 0:
+        global_min_gdd = min(all_min_gdds)
+        global_best_node = all_best_nodes[all_min_gdds.index(global_min_gdd)]
 
-                'gdd_values_orig': orig_gdd_values, 
-                'max_gdd_orig': np.max(orig_gdd_values)
+        current_non_mesenchyme_G, _ = knockdown_node_both_layers(current_non_mesenchyme_G, global_best_node, reduction)
+        current_pan_G, _ = knockdown_node_both_layers(current_pan_G, global_best_node, reduction)
 
-                # 'diff_kernel_orig': diff_kernel_orig,
-                # 'diff_kernel_knock': diff_kernel_knock
-            }
-else:
-    # Pathway knockouts
-    for pathway in pathways_subset:
-        local_results[pathway] = {}
-        for reduction in tqdm(red_range):
-            # Knockout all nodes in the pathway and recompute the Laplacian matrix
-            if args.pathway_indiv:
-                for node_base in pathway:
-                    knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(weighted_G_cms_ALL, node_base, reduction_factor=reduction)
-                    knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(weighted_G_cms_123, node_base, reduction_factor=reduction)
-                    # ... results currently not being captured, should refactor to function
-            else:
-                # Knockout the pathway
-                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_pathway_nodes(weighted_G_cms_ALL, pathway, reduction_factor=reduction)
-                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_pathway_nodes(weighted_G_cms_123, pathway, reduction_factor=reduction)
+        # Early stopping criterion
+        if iteration_count > 0 and global_min_gdd > global_min_gdds[-1]:
+            print(f'current min_gdd: {global_min_gdd}, previous: {global_min_gdds[-1]}')
+            stop_criteria_met = True
+        else:
+            global_min_gdds.append(global_min_gdd)
+            if rank == 0:
+                knocked_out_nodes.append(global_best_node)
 
-                diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-                diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+        # Prepare data for broadcasting (this may vary based on your graph structure)
+        updated_graph_data = {
+            'global_best_node': global_best_node,
+            'reduction_factor': reduction,
+        }
 
-                # CALCULATE GDD
-                # Compute the Frobenius norm of the difference between the kernels for each t
-                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+    # Broadcast decision to all ranks
+    global_best_node = comm.bcast(global_best_node, root=0)
+    stop_criteria_met = comm.bcast(stop_criteria_met, root=0)
+    updated_graph_data = comm.bcast(updated_graph_data if rank == 0 else None, root=0)
 
-                gdd_values_disrupt = np.linalg.norm(np.array(diff_kernel_pan) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+    if rank != 0:
+        # Apply the same knockout changes to the local graphs on each rank
+        current_non_mesenchyme_G, _ = knockdown_node_both_layers(current_non_mesenchyme_G, updated_graph_data['global_best_node'], updated_graph_data['reduction_factor'])
+        current_pan_G, _ = knockdown_node_both_layers(current_pan_G, updated_graph_data['global_best_node'], updated_graph_data['reduction_factor'])
 
-                local_results[pathway][reduction] = {
-                    'gdd_values_trans': gdd_values_trans,
-                    'max_gdd_trans': np.max(gdd_values_trans),
-
-                    'gdd_values_disrupt': gdd_values_disrupt,
-                    'max_gdd_disrupt': np.max(gdd_values_disrupt),
-
-                    'gdd_values_orig': orig_gdd_values, 
-                    'max_gdd_orig': np.max(orig_gdd_values)
-                }
-
-                # # get pandas adjacency of knockdown_laplacian_aggro
-                # adj = nx.to_pandas_adjacency(knockdown_graph_aggro)
-                # # write to csv
-                # adj.to_csv(f'diff_results/Laplacian_Pathway_{pathway}_{str(reduction)}.csv')
-
-
+    # Update nodes_subset and iteration count
+    if not stop_criteria_met:
+        nodes_subset.remove(global_best_node)
+        iteration_count += 1
+        nodes_subset = distribute_nodes(nodes_subset, rank, size)
 
 # get the end time
 end_time = time.time()
@@ -552,28 +504,34 @@ print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time
 
 all_results = comm.gather(local_results, root=0)
 
-# Post-processing on the root processor
-if rank == 0 and "SLURM_JOB_ID" in os.environ:
-    # Initialize a master dictionary to combine results
-    combined_results = {}
+print(f'knocked out nodes: {knocked_out_nodes}')
+print(f'global min gdds: {global_min_gdds}')
 
-    # Combine the results from each process
-    for process_results in all_results:
-        for key, value in process_results.items():
-            combined_results[key] = value
+with open('diff_results/knocked_out_nodes.pkl', 'wb') as f:
+        pkl.dump(knocked_out_nodes, f)
+with open('diff_results/global_min_gdd.pkl', 'wb') as f:
+    pkl.dump(global_min_gdd, f)
 
-    with open(f'diff_results/Pathway_{args.pathway}_GDDs_and_Kernels_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
-        pkl.dump(combined_results, f)
+# # Post-processing on the root processor
+# if rank == 0 and "SLURM_JOB_ID" in os.environ:
+#     # Initialize a master dictionary to combine results
+#     combined_results = {}
+
+#     # Combine the results from each process
+#     for process_results in all_results:
+#         for key, value in process_results.items():
+#             combined_results[key] = value
+
+#     with open(f'diff_results/GDDs_and_Kernels_{str(diff_kernel_knock[0].shape[0])}.pkl', 'wb') as f:
+#         pkl.dump(combined_results, f)
     
-    os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
-    print('Saving has finished.')
+#     os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
+#     print('Saving has finished.')
 
 
-else:
-    with open(f'diff_results/Pathway_{args.pathway}_GDDs_and_Kernels_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
-        pkl.dump(local_results, f)
-
-
+# else:
+#     with open(f'diff_results/GDDs_and_Kernels_{str(diff_kernel_knock[0].shape[0])}.pkl', 'wb') as f:
+#         pkl.dump(local_results, f)
 
 
 MPI.Finalize()
@@ -586,191 +544,151 @@ MPI.Finalize()
 
 
 
-
-# %%
-# t_values = np.linspace(0.01, 10, 500)
-# red_range = red_args.split(',')
-# # red_range = [float(i) for i in red_range]
-# red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
-kernel_size = 272
-Pathway = True
-
-t_values = np.linspace(0.01, 10, 500)
-red_range = args.red_range.split(',')
-red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
-
-filename = f'diff_results/Pathway_{Pathway}_GDDs_and_Kernels_{kernel_size}.pkl'
-
+# %% LOAD RESULTS
+cms = 'cmsALL'
 
 if not "SLURM_JOB_ID" in os.environ:
-    with open(filename, 'rb') as f:
+    with open(f'diff_results/GDDs_and_Kernels_268.pkl', 'rb') as f:
         GDDs_and_Kernels = pkl.load(f)
 
-    first_key_outer = next(iter(GDDs_and_Kernels))
-    first_key_inner = next(iter(GDDs_and_Kernels[first_key_outer]))
+    print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
+    print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
 
-    print(GDDs_and_Kernels[first_key_outer][first_key_inner].keys())
+    # Choose the node and t_values for plotting
+    selected_node = np.random.choice(list(GDDs_and_Kernels.keys()))
 
-    orig_max_gdd = GDDs_and_Kernels[first_key_outer][first_key_inner]['max_gdd_orig']
-    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+
+    # Left plot: GDD values over time for various reductions (single node)
+    for reduction in GDDs_and_Kernels[selected_node].keys():
+        gdd_values = GDDs_and_Kernels[selected_node][reduction]['gdd_values']
+        ax1.plot(t_values, gdd_values, label=f'Reduction {reduction}')
+
+    ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
+    ax1.set_xlabel('Time')
+    ax1.set_ylabel('GDD Value')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Choose a reduction factor from the list of reductions
+    selected_reduction = red_range[1]
+
+    max_gdds = {}
+    # Right plot: GDD values over time for a single reduction (all nodes)
+    for node_base in GDDs_and_Kernels.keys():
+        gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
+        ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+        max_gdds[node_base] = np.max(gdd_values)
+
+    ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+    ax2.set_xlabel('Time')
+    # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+    # ax2.legend()
+    ax2.set_xlim([0, 2])
+    ax2.grid(True)
+
+    plt.show()
+    # print(max_gdds)
+    # max_GDD_1 = max_gdds['1']
+    # max_GDD_2 = max_gdds['2']
+    # print(max_GDD_1 - max_GDD_2)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+
+    # PLOT 2 (WEAKER KNOCKDOWN)
+    # make another plot as ax2 but for reduction factor = 0.8
+    selected_reduction = red_range[-1]
+
+    max_gdds = {}
+    # Right plot: GDD values over time for a single reduction (all nodes)
+    for node_base in GDDs_and_Kernels.keys():
+        gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
+        ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+        max_gdds[node_base] = np.max(gdd_values)
+
+
+    ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+    ax2.set_xlabel('Time')
+    # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+    # ax2.legend()
+    ax2.set_xlim([0, 2])
+    ax2.grid(True)
+
+    plt.show()
+    # print(max_gdds)
+    # max_GDD_1 = max_gdds['1']
+    # max_GDD_2 = max_gdds['2']
+    # print(max_GDD_1 - max_GDD_2)
+
+selected_reduction = red_range[-1]
+# order nodes by max GDD
+max_gdds = {}
+for node_base in GDDs_and_Kernels.keys():
+    max_gdds[node_base] = np.max(GDDs_and_Kernels[node_base][selected_reduction]['gdd_values'])
+
+sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+
+# get the nodes with the highest GDD
+highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
+highest_gdd_nodes
+
+
+
+# %%
+t_values = np.linspace(0.01, 10, 500)
+red_args = '0.05,0.05,1'
+red_range = red_args.split(',')
+# red_range = [float(i) for i in red_range]
+red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
+
+if not "SLURM_JOB_ID" in os.environ:
+    with open(f'diff_results/GDDs_and_Kernels_268.pkl', 'rb') as f:
+        GDDs_and_Kernels = pkl.load(f)
+
     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
     # Choose a reduction factor from the list of reductions
     selected_reduction = red_range[1]
 
-    # Calculate max GDDs for each target (node or pathway) and sort them
-    max_gdds_trans = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']) for target in GDDs_and_Kernels}
-    max_gdds_disrupt = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']) for target in GDDs_and_Kernels}
+    # Calculate max GDDs for each node and sort them
+    max_gdds_trans = {node: np.max(GDDs_and_Kernels[node][selected_reduction]['gdd_values_trans']) for node in GDDs_and_Kernels}
+    max_gdds_disrupt = {node: np.max(GDDs_and_Kernels[node][selected_reduction]['gdd_values_disrupt']) for node in GDDs_and_Kernels}
 
     sorted_max_gdds_trans = sorted(max_gdds_trans.items(), key=lambda item: item[1])
-    sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1], reverse=True)
+    sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1])
 
-    # Calculate the percentage of the original max GDD for each sorted max GDD
-    max_gdds_trans_percent = {target: (value / orig_max_gdd) * 100 for target, value in sorted_max_gdds_trans}
-    max_gdds_disrupt_percent = {target: 'N/A' for target, value in sorted_max_gdds_disrupt}
-
-    half_point = int(len(sorted_max_gdds_disrupt) / 2)
-    targets_to_show = 3
-
-    # Select top 3 and bottom 3 targets for each case
-    top_3_trans = [target for target, _ in sorted_max_gdds_trans[-targets_to_show:]]
-    bottom_3_trans = [target for target, _ in sorted_max_gdds_trans[:targets_to_show]]
-    top_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[-targets_to_show:]]
-    bottom_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[:targets_to_show]]
+    # Select top 3 and bottom 3 nodes for each case
+    top_3_trans = [node for node, _ in sorted_max_gdds_trans[-3:]]
+    bottom_3_trans = [node for node, _ in sorted_max_gdds_trans[:3]]
+    top_3_disrupt = [node for node, _ in sorted_max_gdds_disrupt[-3:]]
+    bottom_3_disrupt = [node for node, _ in sorted_max_gdds_disrupt[:3]]
 
     fig, axes = plt.subplots(2, 2, figsize=(20, 12), dpi=300)  # Creating 4 plots
     (ax1, ax2), (ax3, ax4) = axes
 
-    # Plot GDD values for top 3 and bottom 3 targets (Trans)
-    for target in top_3_trans + bottom_3_trans:
-        gdd_values_trans = GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']
-        ax1.plot(t_values, gdd_values_trans, label=f'target {target}')
+    # Plot GDD values for top 3 and bottom 3 nodes (Trans)
+    for node in top_3_trans + bottom_3_trans:
+        gdd_values_trans = GDDs_and_Kernels[node][selected_reduction]['gdd_values_trans']
+        ax1.plot(t_values, gdd_values_trans, label=f'Node {node}')
 
-    # Plot GDD values for top 3 and bottom 3 targets (Disrupt)
-    for target in top_3_disrupt + bottom_3_disrupt:
-        gdd_values_disrupt = GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']
-        ax3.plot(t_values, gdd_values_disrupt, label=f'target {target}')
+    # Plot GDD values for top 3 and bottom 3 nodes (Disrupt)
+    for node in top_3_disrupt + bottom_3_disrupt:
+        gdd_values_disrupt = GDDs_and_Kernels[node][selected_reduction]['gdd_values_disrupt']
+        ax3.plot(t_values, gdd_values_disrupt, label=f'Node {node}')
 
-    ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 targets')
+    ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 Nodes')
     ax1.set_xlabel('Time')
     ax1.set_ylabel('GDD Value (Trans)')
     ax1.legend()
     ax1.grid(True)
 
-    ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 targets')
+    ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 Nodes')
     ax3.set_xlabel('Time')
     ax3.set_ylabel('GDD Value (Disrupt)')
     ax3.legend()
     ax3.grid(True)
 
     plt.show()
-
-def write_to_csv(data, percent_data, filename):
-    """
-    Writes the data to a CSV file with three columns.
-    :param data: List of tuples, where each tuple contains two elements (key, value)
-    :param percent_data: Dictionary with the percentage values
-    :param filename: Name of the CSV file to be written
-    """
-    with open(filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        for key, value in data:
-            writer.writerow([key, value, percent_data[key]])
-
-# Write to CSV files
-write_to_csv(sorted_max_gdds_trans, max_gdds_trans_percent, f'diff_results/max_gdds_trans_Pathway_{Pathway}_{kernel_size}.csv')
-write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/max_gdds_disrupt_Pathway_{Pathway}_{kernel_size}.csv')
-
-
-
-# %%
-# cms = 'cmsALL'
-# kernel_size = 20
-
-# if not "SLURM_JOB_ID" in os.environ:
-#     with open(f'diff_results/GDDs_and_Kernels_268.pkl', 'rb') as f:
-#         GDDs_and_Kernels = pkl.load(f)
-
-#     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
-#     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
-
-#     # Choose the node and t_values for plotting
-#     selected_node = np.random.choice(list(GDDs_and_Kernels.keys()))
-
-#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
-
-#     # Left plot: GDD values over time for various reductions (single node)
-#     for reduction in GDDs_and_Kernels[selected_node].keys():
-#         gdd_values = GDDs_and_Kernels[selected_node][reduction]['gdd_values']
-#         ax1.plot(t_values, gdd_values, label=f'Reduction {reduction}')
-
-#     ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
-#     ax1.set_xlabel('Time')
-#     ax1.set_ylabel('GDD Value')
-#     ax1.legend()
-#     ax1.grid(True)
-
-#     # Choose a reduction factor from the list of reductions
-#     selected_reduction = red_range[1]
-
-#     max_gdds = {}
-#     # Right plot: GDD values over time for a single reduction (all nodes)
-#     for node_base in GDDs_and_Kernels.keys():
-#         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
-#         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-#         max_gdds[node_base] = np.max(gdd_values)
-
-#     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-#     ax2.set_xlabel('Time')
-#     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-#     # ax2.legend()
-#     ax2.set_xlim([0, 2])
-#     ax2.grid(True)
-
-#     plt.show()
-#     # print(max_gdds)
-#     # max_GDD_1 = max_gdds['1']
-#     # max_GDD_2 = max_gdds['2']
-#     # print(max_GDD_1 - max_GDD_2)
-
-#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
-
-#     # PLOT 2 (WEAKER KNOCKDOWN)
-#     # make another plot as ax2 but for reduction factor = 0.8
-#     selected_reduction = red_range[-1]
-
-#     max_gdds = {}
-#     # Right plot: GDD values over time for a single reduction (all nodes)
-#     for node_base in GDDs_and_Kernels.keys():
-#         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
-#         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-#         max_gdds[node_base] = np.max(gdd_values)
-
-
-#     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-#     ax2.set_xlabel('Time')
-#     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-#     # ax2.legend()
-#     ax2.set_xlim([0, 2])
-#     ax2.grid(True)
-
-#     plt.show()
-#     # print(max_gdds)
-#     # max_GDD_1 = max_gdds['1']
-#     # max_GDD_2 = max_gdds['2']
-#     # print(max_GDD_1 - max_GDD_2)
-
-# selected_reduction = red_range[-1]
-# # order nodes by max GDD
-# max_gdds = {}
-# for node_base in GDDs_and_Kernels.keys():
-#     max_gdds[node_base] = np.max(GDDs_and_Kernels[node_base][selected_reduction]['gdd_values'])
-
-# sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
-
-# # get the nodes with the highest GDD
-# highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
-# highest_gdd_nodes
 
 # %%
 # def separate_subgraph_layout(G, set1, set2, separation_vector):

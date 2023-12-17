@@ -11,6 +11,9 @@ import logging
 
 from scipy import stats
 import scipy.stats as stats
+from scipy.stats.mstats import winsorize
+
+from sklearn.preprocessing import PowerTransformer
 
 import statsmodels
 
@@ -314,7 +317,7 @@ rppa_df = pd.read_csv('../data/TCGA-COAD-L4/tmp/RPPA_data_with_gene_name.csv')
 rna_df = pd.read_csv('../data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA_scaled.tsv', sep='\t')
 
 
-def add_labels_to_expression(expression_df, labels_df):
+def add_labels_to_expression(expr_df, labels_df):
     """
     Correctly add labels as the first row of the RPPA data.
 
@@ -326,7 +329,7 @@ def add_labels_to_expression(expression_df, labels_df):
     labels_transposed = labels_df.transpose()
 
     # Create a new DataFrame for labels with the same columns as the RPPA data
-    labels_row = pd.DataFrame(columns=expression_df.columns)
+    labels_row = pd.DataFrame(columns=expr_df.columns)
     
     # Fill the new DataFrame with labels, aligning the columns
     for col in labels_row.columns:
@@ -336,7 +339,7 @@ def add_labels_to_expression(expression_df, labels_df):
             labels_row.at[0, col] = None
 
     # Concatenate the labels row with the RPPA data
-    rppa_with_labels = pd.concat([labels_row, expression_df], ignore_index=True)
+    rppa_with_labels = pd.concat([labels_row, expr_df], ignore_index=True)
 
     # set fist column as index
     rppa_with_labels.set_index(rppa_with_labels.columns[0], inplace=True)
@@ -389,162 +392,256 @@ rppa_with_labelsT.to_csv('../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.cs
 
 # %% CHECK TO SEE IF EXPRESSION FROM GUINNEY DATA MATCHES THE RPPA DATA
 
+def apply_yeo_johnson(column):
+    transformer = PowerTransformer(method='yeo-johnson')
+    # Reshape data for transformation (needs to be 2D)
+    column_reshaped = column.values.reshape(-1, 1)
+    transformed_column = transformer.fit_transform(column_reshaped)
+    # Flatten the array to 1D
+    return transformed_column.flatten()
+
+def filter_dataframes(df1, df2):
+    # check overlap between df1.columns and df2.columns
+    overlap = set(df1.columns).intersection(set(df2.columns))
+    print('total number of variables in df2: {}'.format(len(df2.columns)))
+    print(f'variables both in df1 and df2: {len(overlap)}')
+
+    # keep only columns that are in overlap
+    df1 = df1.loc[:, df1.columns.isin(overlap)]
+    df2 = df2.loc[:, df2.columns.isin(overlap)]
+
+    return df1, df2
+
+def center_and_scale(df, axis=0):
+    # center and scale across columns
+    df = df.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
+    return df
+
 expression_file = '../data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_ALL_labelled.csv'
+# expression_file = '../data/TCGA-COAD-L4/tmp/RNA_for_RPPA_scaled_labels_ALLT.csv'
 rppa_file = '../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.csv'
 
-
-expression_df = pd.read_csv(expression_file, index_col=0)
+expr_df = pd.read_csv(expression_file, index_col=0)
 rppa_df = pd.read_csv(rppa_file, index_col=0)
-
-expression_df_123 = expression_df.loc[expression_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
-rppa_df_123 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
-
-# check overlap between expression_df.columns and rppa_df.columns
-overlap = set(expression_df.columns).intersection(set(rppa_df.columns))
-print('total number of variables in rppa: {}'.format(len(rppa_df.columns)))
-print(f'variables both in guinney expression and rppa: {len(overlap)}')
 
 # split index of rppa_df on '-' and keep first 3 items and rejoin with '-'
 rppa_df.index = rppa_df.index.str.split('-').str[:3].str.join('-')
 
-# keep only columns that are in ovlerlap
-rppa_df = rppa_df.loc[:, rppa_df.columns.isin(overlap)]
-expression_df = expression_df.loc[:, expression_df.columns.isin(overlap)]
+expr_df_4_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
+rppa_df_4_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
 
-rppa_df_123 = rppa_df_123.loc[:, rppa_df_123.columns.isin(overlap)]
-expression_df_123 = expression_df_123.loc[:, expression_df_123.columns.isin(overlap)]
+expr_df_2_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
+rppa_df_2_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
+
+# Specific DFs with only CMS2 and CMS4
+expr_df_2 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS2'])]
+rppa_df_2 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS2'])]
+
+expr_df_4 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS4'])]
+rppa_df_4 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS4'])]
+
+
+# check overlap between expr_df.columns and rppa_df.columns
+overlap = set(expr_df.columns).intersection(set(rppa_df.columns))
+print('total number of variables in rppa: {}'.format(len(rppa_df.columns)))
+print(f'variables both in guinney expression and rppa: {len(overlap)}')
+
+# keep only columns that are in ovlerlap
+rppa_df, expr_df = filter_dataframes(rppa_df, expr_df)
+rppa_df_2_13, expr_df_2_13 = filter_dataframes(rppa_df_2_13, expr_df_2_13)
+rppa_df_2, expr_df_2 = filter_dataframes(rppa_df_2, expr_df_2)
+rppa_df_4, expr_df_4 = filter_dataframes(rppa_df_4, expr_df_4)
+
 
 
 # center and scale across columns
-rppa_df = rppa_df.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
-expression_df = expression_df.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
+rppa_df_sc = center_and_scale(rppa_df)
+expr_df_sc = center_and_scale(expr_df)
+rppa_df_2_13_sc = center_and_scale(rppa_df_2_13)
+expr_df_2_13_sc = center_and_scale(expr_df_2_13)
+rppa_df_2_sc = center_and_scale(rppa_df_2)
+expr_df_2_sc = center_and_scale(expr_df_2)
+rppa_df_4_sc = center_and_scale(rppa_df_4)
+expr_df_4_sc = center_and_scale(expr_df_4)
 
-rppa_df_123 = rppa_df_123.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
-expression_df_123 = expression_df_123.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
 
-dataframe_names = ['rppa_df', 'expression_df', 'rppa_df_123', 'expression_df_123']
-# OUTLIER SAMPLE REMOV
-for i, data_to_trim in enumerate([rppa_df, expression_df, rppa_df_123, expression_df_123]):
-    # Initialize a Series to store the count of outlier occurrences for each sample
-    outlier_counts = pd.Series(0, index=data_to_trim.index)
-    # Loop over each column to calculate IQR and identify outliers
-    for column in data_to_trim.columns:
-        data = data_to_trim[column]
-        Q1 = data.quantile(0.25)
-        Q3 = data.quantile(0.75)
-        IQR = Q3 - Q1
-        outlier_mask = (data < (Q1 - 3 * IQR)) | (data > (Q3 + 3 * IQR))
-        outlier_counts += outlier_mask.astype(int)
-
+def transform_and_test(data_to_trim, dataframe_name):
     print('--------------------------------------------------------------')
-    print(f'results for {dataframe_names[i]}\n')
-    # Now outlier_counts contains the number of times each sample was an outlier across all columns
-    print(f'Number of samples that are outliers in at least one gene: {outlier_counts[outlier_counts > 0].shape[0]}')
-    filtered_df = data_to_trim[outlier_counts == 0]
-    print(f'Original number of samples: {data_to_trim.shape[0]}')
-    print(f'Number of samples after removing outliers: {filtered_df.shape[0]}\n')
+    print(f'Initial results for {dataframe_name}')
+    
+    # Winsorize
+    data_to_trim = data_to_trim.apply(lambda x: winsorize(x, limits=[0.01, 0.01]), axis=0)
 
-    # Set a significance level
     alpha = 0.05
-    # Initialize a list to store columns and their test statistics
-    significant_results = []
-    p_vals = []
+    original_ks_results = {}
 
+    # Perform initial K-S test and store results
     for column in data_to_trim.columns:
         data = data_to_trim[column].dropna()
         if data.nunique() > 1 and len(data) > 3:
-            # Calculate mean and standard deviation for the normal distribution comparison
-            mean, std = data.mean(), data.std()
-            # Perform the Kolmogorov-Smirnov test
-            stat, p = stats.kstest(data, 'norm', args=(mean, std))
+            stat, p = stats.kstest(data, 'norm', args=(data.mean(), data.std()))
+            original_ks_results[column] = (stat, p)
             if p < alpha:
-                significant_results.append((column, stat))  # Store column name and test statistic
-                p_vals.append(p)
+                # Apply Yeo-Johnson transformation
+                data_to_trim[column] = apply_yeo_johnson(data_to_trim[column])
 
-    # Sort the list by W value in ascending order
-    significant_results.sort(key=lambda x: x[1])
-    if len(significant_results) > 0:
-        print(f'Number of significant Kolmogorov smirnoffcolumns: {len(significant_results)}')
-        print(f'percentage of total columns: {len(significant_results)/len(data_to_trim.columns)}')
+    # Perform K-S test again on transformed columns and compare
+    for column, (original_stat, original_p) in original_ks_results.items():
+        if original_p < alpha:
+            transformed_data = data_to_trim[column].dropna()
+            new_stat, new_p = stats.kstest(transformed_data, 'norm', args=(transformed_data.mean(), transformed_data.std()))
+            if new_p < alpha:
+                print(f'Column: {column}')
+                print(f'  Original K-S Statistic: {original_stat}, p-value: {original_p}')
+                print(f'  Transformed K-S Statistic: {new_stat}, p-value: {new_p}')
+                print('--------------------------------------------------------------\n')
+
+                # make QQ-plot for these columns
+                (fig, ax) = plt.subplots()
+                stats.probplot(transformed_data, dist="norm", plot=ax)
+                ax.set_title(f'QQ-plot for {column} (W: {round(new_stat, 3)}, p: {new_p}')
+                plt.show()
+    
+    return data_to_trim
+
+# Apply transformations and tests to each dataframe
+rppa_df_transformed = transform_and_test(rppa_df, 'rppa_df')
+expr_df_transformed = transform_and_test(expr_df, 'expr_df')
+rppa_df_2_13_transformed = transform_and_test(rppa_df_2_13, 'rppa_df_2_13')
+expr_df_2_13_transformed = transform_and_test(expr_df_2_13, 'expr_df_2_13')
 
 
-    # # Now significant_results contains columns and their W values, sorted by deviation from normality
-    # for column, w in significant_results:
-    #     print(f'{column} - W: {w} - p: {p_vals[significant_results.index((column, w))]}')
-
-    # # Create QQ-plots for each column, starting with the most deviant
-    # for column, _ in significant_results:
-    #     data = filtered_df[column].dropna()
-    #     (fig, ax) = plt.subplots()
-    #     stats.probplot(data, dist="norm", plot=ax)
-    #     ax.set_title(f'QQ-plot for {column} (W: {round(_, 3)}, p: {p_vals[significant_results.index((column, _))]}')
-    #     plt.show()
-
-    print('--------------------------------------------------------------\n')
-
-
-
-blacklist = ['PEA15', 'EIF4G1', 'WWTR1', 'SERPINE1', 'CHEK1', 'IGFB2', 'NRAS', 'ESR1, PEA15', 'EEF2']
 whitelist = ['VEGFR2', 'CDH1', 'BRAF', 'BAP1', 'TP53', 'CASP7', 'PRKCD', 'RAB11A', 'YAP1', 'CTNNB1', 'CCNB1', 'CCNE1', 
              'CCNE2', 'HSPA1A', 'ARID1A', 'ASNS', 'CHEK2', 'PCNA', 'ITGA2', 'MAPK1', 'ANXA1', 'CLDN7', 'COL6A1', 'FN1', 
              'MYH11','TP53BP1', 'EIF4EBP1', 'EEF2K', 'EIF4G1', 'FRAP1', 'RICTOR', 'RPS6', 'TSC1', 'RPS6KA1', 'ACACA',
              'AR', 'KIT', 'EGFR', 'FASN', 'ERBB3', 'IGFBP2', 'CDKN1A', 'CDKN1B', 'SQSTM1', 'PEA15', 'RB1', 'ACVRL1'
              'SMAD1', 'FOXM1', 'FOXO3', 'CAV1', 'PARK7', 'SERPINE1', 'RBM15', 'WWTR1', 'TGM2']
+blacklist = ['AR']
 
-# remove columns in blacklist, if they are not in whitelist
-rppa_df = rppa_df.loc[:, ~rppa_df.columns.isin(blacklist) | rppa_df.columns.isin(whitelist)]
-expression_df = expression_df.loc[:, ~expression_df.columns.isin(blacklist) | expression_df.columns.isin(whitelist)]
-
-rppa_df_123 = rppa_df_123.loc[:, ~rppa_df_123.columns.isin(blacklist) | rppa_df_123.columns.isin(whitelist)]
-expression_df_123 = expression_df_123.loc[:, ~expression_df_123.columns.isin(blacklist) | expression_df_123.columns.isin(whitelist)]
+# remove columns in blacklist
+rppa_df_transformed = rppa_df_transformed.loc[:, ~rppa_df_transformed.columns.isin(blacklist)]
+expr_df_transformed = expr_df_transformed.loc[:, ~expr_df_transformed.columns.isin(blacklist)]
+rppa_df_2_13_transformed = rppa_df_2_13_transformed.loc[:, ~rppa_df_2_13_transformed.columns.isin(blacklist)]
+expr_df_2_13_transformed = expr_df_2_13_transformed.loc[:, ~expr_df_2_13_transformed.columns.isin(blacklist)]
 
 # check shape of all dataframes
-print(f'\nexpression_df shape: {expression_df.shape}')
-print(f'rppa_df shape: {rppa_df.shape}')
-print(f'expression_df_123 shape: {expression_df_123.shape}')
-print(f'rppa_df_123 shape: {rppa_df_123.shape}')
+print(f'\nexpr_df shape: {expr_df_transformed.shape}')
+print(f'rppa_df shape: {rppa_df_transformed.shape}')
+print(f'expr_df_2_13 shape: {expr_df_2_13_transformed.shape}')
+print(f'rppa_df_2_13 shape: {rppa_df_2_13_transformed.shape}')
 
 
 
 # write to csv
-rppa_df.to_csv('../Diffusion/data/RPPA_for_pig_ALL.csv')
-expression_df.to_csv('../Diffusion/data/Expression_for_pig_ALL.csv')
+rppa_df_transformed.to_csv('../Diffusion/data/proteomics_for_pig_cmsALL.csv')
+expr_df_transformed.to_csv('../Diffusion/data/transcriptomics_for_pig_cmsALL.csv')
 
-rppa_df_123.to_csv('../Diffusion/data/RPPA_for_pig_123.csv')
-expression_df_123.to_csv('../Diffusion/data/Expression_for_pig_123.csv')
+rppa_df_2_13_transformed.to_csv('../Diffusion/data/proteomics_for_pig_cms123.csv')
+expr_df_2_13_transformed.to_csv('../Diffusion/data/transcriptomics_for_pig_cms123.csv')
 
 # write column names to .txt file
 with open('../Diffusion/data/VAR_NAMES_GENELIST.txt', 'w') as f:
-    for item in rppa_df.columns:
+    for item in rppa_df_transformed.columns:
         f.write("%s\n" % item)
 
 
 # %%
-import numpy as np
-import scipy.stats as stats
-# Create a dataset that is a skewed normal distribution
+# center and scale across columns
+expr_df_2 = center_and_scale(expr_df_2, axis=1)
+expr_df_4 = center_and_scale(expr_df_4, axis=1)
 
-data = stats.skewnorm.rvs(7, size=1000)
+# sum column-wise
+rppa_df_2_flat = rppa_df_2.sum(axis=0)
+rppa_df_4_flat = rppa_df_4.sum(axis=0)
 
-# skew in oposite direction
-data = -data
+expr_df_2_flat = expr_df_2.sum(axis=0)
+expr_df_4_flat = expr_df_4.sum(axis=0)
 
 
-# Plot the histogram
-fig, ax = plt.subplots()
-ax.hist(data, bins=50)
-ax.set_title('Skewed normal distribution')
+# Create a figure and a set of subplots
+fig, axs = plt.subplots(2)
+
+# Plot bar chart for rppa_df_2_flat
+axs[0].bar(expr_df_2_flat.index, expr_df_2_flat)
+axs[0].set_title('df_2_flat')
+axs[0].set_xticks([])  # Hide x-axis labels for clarity
+
+# Plot bar chart for rppa_df_4_flat
+axs[1].bar(expr_df_4_flat.index, expr_df_4_flat)
+axs[1].set_title('df_4_flat')
+axs[1].set_xticks([])  # Hide x-axis labels for clarity
+
+# Display the plot
+plt.tight_layout()
 plt.show()
 
-# Perform the Shapiro-Wilk test
-stat, p = stats.shapiro(data)
-print(f'Statistic: {stat}, p-value: {p}')
+# Load the CSV file
+pathway_df = pd.read_csv('../Diffusion/data/Pathway_Enrichment_Info.csv')
 
-# QQ-plot
-fig, ax = plt.subplots()
-stats.probplot(data, dist="norm", plot=ax)
-ax.set_title(f'QQ-plot (W: {round(stat, 3)})')
-plt.show()
+def get_gene_values(description, df_2_flat, df_4_flat):
+    # Find rows where 'description' column contains the given string
+    rows = pathway_df[pathway_df['description'].str.contains(description)]
+    
+    # Initialize dictionaries to store the results
+    gene_values_2 = {}
+    gene_values_4 = {}
+
+    # Iterate over the found rows
+    for _, row in rows.iterrows():
+        # Split the 'genes' column into individual genes
+        genes = row['genes'].split('|')
+        
+        # For each gene, get the value from rppa_df_2_flat and rppa_df_4_flat
+        for gene in genes:
+            if gene in df_2_flat.index:
+                gene_values_2[gene] = df_2_flat[gene]
+            if gene in df_4_flat.index:
+                gene_values_4[gene] = df_4_flat[gene]
+
+    return gene_values_2, gene_values_4
+
+tgf_values_2, tgf_values_4 = get_gene_values('Angiogenesis', expr_df_2_flat, expr_df_4_flat)
+
+# Initialize a list to store the subtraction results
+subtraction_results = []
+
+# Iterate over the keys in gene_values_2
+for gene in tgf_values_2.keys():
+    # If the gene is also in gene_values_4, subtract the values
+    if gene in tgf_values_4:
+        subtraction_results.append(tgf_values_4[gene] - tgf_values_2[gene])
+
+# Calculate the percentage of positive results
+percentage_positive = (sum(i > 0 for i in subtraction_results) / len(subtraction_results)) * 100
+
+print(f'Percentage of positive values: {percentage_positive}%')
+
+# # %%
+# import numpy as np
+# import scipy.stats as stats
+# # Create a dataset that is a skewed normal distribution
+
+# data = stats.skewnorm.rvs(0, size=1000)
+
+# # skew in oposite direction
+# data = -data
+
+
+# # Plot the histogram
+# fig, ax = plt.subplots()
+# ax.hist(data, bins=50)
+# ax.set_title('Skewed normal distribution')
+# plt.show()
+
+# # Perform the Shapiro-Wilk test
+# stat, p = stats.shapiro(data)
+# print(f'Statistic: {stat}, p-value: {p}')
+
+# # QQ-plot
+# fig, ax = plt.subplots()
+# stats.probplot(data, dist="norm", plot=ax)
+# ax.set_title(f'QQ-plot (W: {round(stat, 3)})')
+# plt.show()
 
 
 
@@ -579,6 +676,8 @@ for i in range(len(k)):
 
 plt.tight_layout()
 plt.show()
+
+
 # %%
 
 k = [2,5]

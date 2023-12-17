@@ -43,6 +43,24 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     N_k_matrix = np.sum(edge_counts_all, axis=2)
     p_k_matrix = N_k_matrix / (Q * J)
 
+    # check for NaNs or Infs in p_k_matrix
+    if np.isnan(p_k_matrix[:,:,None]).any():
+        print('NaNs in p_k_matrix')
+    if np.isinf(p_k_matrix[:,:,None]).any():
+        print('Infs in p_k_matrix')
+    # check for NaNs or Infs in  comb(Q, edge_counts_all)
+    if np.isnan(comb(Q, edge_counts_all)).any():
+        print('NaNs in comb(Q, edge_counts_all)')
+    p, _, J = edge_counts_all.shape
+    bad_i = 0
+    for i in range(p):
+        for j in range(p):
+            for k in range(J):
+                if np.isinf(comb(Q, edge_counts_all[i, j, k])):
+                    if  i!= bad_i:
+                        print(f"Inf found at edge_counts_all[{i}, {j}, {k}] with value {edge_counts_all[i, j, k]}")
+                        bad_i = i
+    
     # Compute theta_lj_matrix, f_k_lj_matrix, and g_l_matrix for all lambdas simultaneously
     theta_matrix = comb(Q, edge_counts_all) * (p_k_matrix[:, :, None] ** edge_counts_all) * ((1 - p_k_matrix[:, :, None]) ** (Q - edge_counts_all))
     f_k_lj_matrix = edge_counts_all / Q
@@ -60,7 +78,12 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     
     return lambda_np, theta_matrix
 
-
+def find_invalid_values(arr):
+    if np.any(np.isnan(arr)):
+        return "NaN found", arr[np.isnan(arr)]
+    if np.any(np.isinf(arr)):
+        return "Inf found", arr[np.isinf(arr)]
+    return "No invalid values found"
 
 def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     """
@@ -91,6 +114,18 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     mus : array-like, shape (p, p)
         The mean of the prior distribution.
     """
+    # Check for NaN or infinite values in input arrays
+    if np.any(np.isnan(edge_counts_all)) or np.any(np.isinf(edge_counts_all)):
+        raise ValueError("edge_counts_all contains NaN or infinite values")
+
+    if np.any(np.isnan(prior_matrix)) or np.any(np.isinf(prior_matrix)):
+        raise ValueError("prior_matrix contains NaN or infinite values")
+
+    # Ensure Q is not zero or very close to zero
+    if Q == 0 or np.isclose(Q, 0):
+        raise ValueError("Q is zero or very close to zero, which may lead to division by zero")
+
+
     p, _, _ = edge_counts_all.shape
     J = len(lambda_range)
 
@@ -106,6 +141,7 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     for i, p_k in enumerate(p_k_vec):
         if p_k < 1e-5:
             p_k_vec[i] = 1e-5
+    
 
     count_mat = np.zeros((J, len(wp_tr_idx))) # Stores counts for each edge across lambdas (shape: lambdas x edges)
     for l in range(J):
@@ -127,6 +163,9 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     # tau_tr (=SD of the prior distribution)
     tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr_idx) # NOTE: eq. 12 alternatively, divide by np.sum(np.abs(wp_tr))
 
+    # Ensure that tau_tr is not 0 or very close to 0
+    variances = np.clip(variances, 1e-10, np.inf)
+    tau_tr = np.clip(tau_tr, 1e-10, np.inf)
 
     ######## POSTERIOR DISTRIBUTION ######################################################################
     # Vectorized computation of post_mu and post_var
@@ -139,6 +178,10 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
 
     z_scores_plus = (count_mat + epsilon - post_mus[None, :]) / np.sqrt(post_var)[None, :]
     z_scores_minus = (count_mat - epsilon - post_mus[None, :]) / np.sqrt(post_var)[None, :]
+
+    # Ensure the inputs to erf are within a valid range
+    z_scores_plus = np.clip(z_scores_plus, -np.inf, np.inf)
+    z_scores_minus = np.clip(z_scores_minus, -np.inf, np.inf)
     
     # Compute CDF values using the error function
     # By subtracting 2 values of the CDF, the 1s cancel 
@@ -228,24 +271,25 @@ def find_all_knee_points(lambda_range, edge_counts_all):
 # Main code
 if __name__ == "__main__":
     #### Main code ####
-    p = 150             # number of variables (nodes)
-    n = 2000
-    b_perc = 0.75             # number of samples
-    b = int(b_perc * n)   # size of sub-samples
-    Q = 1200             # number of sub-samples
-
-    omics_type = 'proteomics'
-    cms = 'cmsALL'
+    p = 137
+    n = 750 # [50, 100, 200, 400, 750, 1000, 2000]
+    b_perc = 0.6
+    b = b_perc * n   # size of sub-samples
+    Q = 1200          # number of sub-samples
 
     lowerbound = 0.01
-    upperbound = 0.4
+    upperbound = 0.5
     granularity = 100
     lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
-    min_fn_perc = 1
-    fp_perc = 0
+    fp_fn = 0.0
+    skew = 0
+    density = 0.03
+    seed = 42
 
-    filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_{min_fn_perc}{fp_perc}_nuPRECISION.pkl'
+    typer = 'synthetic'
+
+    filename_edges = f'Networks/net_results/{typer}_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
     with open(filename_edges, 'rb') as f:
         edge_counts_all = pickle.load(f)
 
@@ -262,8 +306,8 @@ if __name__ == "__main__":
     # Sum the edge counts across all nodes
     edge_counts_all = np.sum(edge_counts_all, axis=(0, 1))
 
-    plt.figure(figsize=(14, 7))
-    plt.plot(lambda_range, edge_counts_all, 'bo', label='Edge Counts', alpha = 0.5)
+    plt.figure(figsize=(8, 6), dpi=300)
+    plt.scatter(lambda_range, edge_counts_all, color='grey', label='Edge Counts', alpha = 0.4)
 
     # Fit and plot the lines for the left knee point
     left_data = lambda_range[:left_knee_point_index+1]
@@ -273,20 +317,20 @@ if __name__ == "__main__":
     # Fit and plot the line between the left knee point and the main knee point (right red line)
     left_knee_to_main_data = lambda_range[left_knee_point_index:knee_point_index+1]
     left_knee_to_main_fit_params, _ = curve_fit(linear_func, left_knee_to_main_data, edge_counts_all[left_knee_point_index:knee_point_index+1])
-    plt.plot(left_knee_to_main_data, linear_func(left_knee_to_main_data, *left_knee_to_main_fit_params), 'r--', label='Right of Left Knee Fit')
+    plt.plot(left_knee_to_main_data, linear_func(left_knee_to_main_data, *left_knee_to_main_fit_params), 'r-')
 
     # Fit and plot the lines for the main knee point
     main_left_data = lambda_range[:knee_point_index]
     main_right_data = lambda_range[knee_point_index:]
     main_left_fit_params, _ = curve_fit(linear_func, main_left_data, edge_counts_all[:knee_point_index])
     main_right_fit_params, _ = curve_fit(linear_func, main_right_data, edge_counts_all[knee_point_index:])
-    plt.plot(main_left_data, linear_func(main_left_data, *main_left_fit_params), 'g-', label='Main Left Fit')
-    plt.plot(main_right_data, linear_func(main_right_data, *main_right_fit_params), 'g-', label='Main Right Fit')
+    plt.plot(main_left_data, linear_func(main_left_data, *main_left_fit_params), 'g-', label='Main Fit')
+    plt.plot(main_right_data, linear_func(main_right_data, *main_right_fit_params), 'g-')
 
     # Fit and plot the line between the main knee point and the right knee point (left magenta line)
     main_to_right_knee_data = lambda_range[knee_point_index:right_knee_point_index+1]
     main_to_right_knee_fit_params, _ = curve_fit(linear_func, main_to_right_knee_data, edge_counts_all[knee_point_index:right_knee_point_index+1])
-    plt.plot(main_to_right_knee_data, linear_func(main_to_right_knee_data, *main_to_right_knee_fit_params), 'm--', label='Left of Right Knee Fit')
+    plt.plot(main_to_right_knee_data, linear_func(main_to_right_knee_data, *main_to_right_knee_fit_params), 'm-')
 
     # Fit and plot the lines for the right knee point
     right_data = lambda_range[right_knee_point_index:]
@@ -294,15 +338,17 @@ if __name__ == "__main__":
     plt.plot(right_data, linear_func(right_data, *right_fit_params), 'm-', label='Right Fit')
 
     # Mark the knee points on the plot
-    plt.axvline(x=left_knee_point, color='r', linestyle='--', label='Left Knee Point')
-    plt.axvline(x=main_knee_point, color='g', linestyle='--', label='Main Knee Point')
-    plt.axvline(x=right_knee_point, color='m', linestyle='--', label='Right Knee Point')
+    plt.axvline(x=left_knee_point, color='r', linestyle='--', label='Left Knee Point', alpha = 0.5)
+    plt.axvline(x=main_knee_point, color='g', linestyle='--', label='Main Knee Point', alpha = 0.5)
+    plt.axvline(x=right_knee_point, color='m', linestyle='--', label='Right Knee Point', alpha = 0.5)
 
-    plt.xlabel('Lambda')
-    plt.ylabel('Edge Counts')
+    plt.xlabel(r'$ \lambda$', fontsize=15)
+    plt.ylabel('Edge Counts', fontsize=12)
     plt.title('Knee Points and Fitted Lines')
+    plt.ylim(0, 8000)
     plt.legend()
-    plt.grid()
+    plt.grid(alpha=0.2)
+    plt.tight_layout()
     plt.show()
 
 
