@@ -503,18 +503,11 @@ if not args.pathway:
                 # 'diff_kernel_orig': diff_kernel_orig,
                 # 'diff_kernel_knock': diff_kernel_knock
             }
-else:
-    # Pathway knockouts
-    for pathway in pathways_subset:
-        local_results[pathway] = {}
-        for reduction in tqdm(red_range):
-            # Knockout all nodes in the pathway and recompute the Laplacian matrix
-            if args.pathway_indiv:
-                for node_base in pathway:
-                    knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(weighted_G_cms_ALL, node_base, reduction_factor=reduction)
-                    knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(weighted_G_cms_123, node_base, reduction_factor=reduction)
-                    # ... results currently not being captured, should refactor to function
-            else:
+    else:
+        # Pathway knockouts
+        for pathway in pathways_subset:
+            local_results[pathway] = {}
+            for reduction in tqdm(red_range):
                 # Knockout the pathway
                 knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_pathway_nodes(weighted_G_cms_ALL, pathway, reduction_factor=reduction)
                 knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_pathway_nodes(weighted_G_cms_123, pathway, reduction_factor=reduction)
