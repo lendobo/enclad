@@ -41,7 +41,6 @@ parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms
 parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
 parser.add_argument('--pathway', type=bool, default=False, help='Boolean for Pathway Knockout')
 parser.add_argument('--test_net', type=bool, default=False, help='Boolean for testing network')
-parser.add_argument('--pathway_indiv', type=bool, default=False, help='Boolean for individual pathway knockout')
 
 args = parser.parse_args(args_to_parse)
 
@@ -213,7 +212,7 @@ def double5_demonet(inter_layer_weight=1.0):
 
     return weighted_G, adj, lap
 
-def create_multiplex_graph(num_nodes, inter_layer_weight=1.0):
+def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
     """
     Creates a multiplex graph with two layers, each having the specified number of nodes.
     """
@@ -376,13 +375,14 @@ red_range = args.red_range.split(',')
 red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
 
 
-
-nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
 if args.koh == 0:
     nodes_to_investigate_bases = [node.split('.')[0] for node in weighted_G_cms_ALL.nodes()] # FOR FIXED REDUCTION, NODE COMPARISON
+else:
+    nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
 
 if args.pathway:
     pathways = ['Angiogenesis', 'Regulation of angiogenesis', 'Positive regulation of angiogenesis', 'Sprouting angiogenesis', 'Regulation of cell migration involved in sprouting angiogenesis', 'TGF-beta signaling pathway', 'Wnt signaling pathway and pluripotency']
+
 
 # %% RUNS                                               ### MPI PARALLELIZATION ###
 # Function to distribute nodes across ranks
@@ -417,11 +417,21 @@ def distribute_pathways(pathways, rank, size):
     return pathways[start_index:end_index]
 
 
+
 if "SLURM_JOB_ID" in os.environ:
     if args.pathway:
         pathway_df = pd.read_csv('/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info.csv')
         pathways_subset = distribute_pathways(pathways, rank, size)
+
+        # random pathway length distribution
+        matches = pathway_df['description'].str.contains('|'.join(pathways))
+        # Filter the pathway_df based on the matches
+        interest_pathway_df = pathway_df[matches]
+        # Calculate the lengths of the pathways in the interest_pathway_df
+        pathway_lengths = [len(row['genes'].split('|')) for _, row in interest_pathway_df.iterrows()]
+        rand_lengths_subset = distribute_pathways(pathway_lengths, rank, size)
         print(f'pathways for rank {rank}: {pathways_subset}')
+        print(f'random pathways for rank {rank}: {rand_lengths_subset}')
     else:
         nodes_subset = distribute_nodes(nodes_to_investigate_bases, rank, size)
         print(f'nodes for rank {rank}: {nodes_subset}')
@@ -429,6 +439,12 @@ else: #Otherwise, if run locally
     if args.pathway:
         pathway_df = pd.read_csv('data/Pathway_Enrichment_Info.csv')
         pathways_subset = pathways
+        # random pathway length distribution
+        matches = pathway_df['description'].str.contains('|'.join(pathways))
+        # Filter the pathway_df based on the matches
+        interest_pathway_df = pathway_df[matches]
+        # Calculate the lengths of the pathways in the interest_pathway_df
+        rand_lengths_subset = [len(row['genes'].split('|')) for _, row in interest_pathway_df.iterrows()]
         print(f'pathways for rank {rank}: {pathways_subset}')
     else:
         nodes_subset = nodes_to_investigate_bases
@@ -440,8 +456,8 @@ else: #Otherwise, if run locally
 if "SLURM_JOB_ID" not in os.environ and args.test_net:
     t_values = np.linspace(0.01, 10, 500)
     # Create two multiplex graphs FOR TESTING
-    weighted_G_cms_123 = create_multiplex_graph(12)
-    weighted_G_cms_ALL = create_multiplex_graph(12)
+    weighted_G_cms_123 = create_multiplex_test(12)
+    weighted_G_cms_ALL = create_multiplex_test(12)
 
     # Example nodes subset
     nodes_subset_with_suffix = list(weighted_G_cms_123.nodes())
@@ -462,123 +478,122 @@ else:
 weighted_lap_pan = weighted_laplacian_matrix(weighted_G_cms_ALL)
 diff_kernel_pan = [laplacian_exponential_kernel_eigendecomp(weighted_lap_pan, t) for t in t_values]
 
-local_results = {}
+# %%
+def run_knockout_analysis(G_aggro, 
+                          G_stable, 
+                          knockout_type, 
+                          knockout_targets, 
+                          reduction_factor, 
+                          red_range, 
+                          t_values, 
+                          orig_diff_kernel_pan, 
+                          orig_gdd_values, 
+                          pathway_df):
+    results = {}
 
+    if knockout_type == 'runtype_node':
+        target_list = [knockout_targets]
+    elif knockout_type == 'runtype_pathway':
+        rows = pathway_df[pathway_df['description'].str.contains(knockout_targets)]
+        target_list = []
+        for _, row in rows.iterrows():
+            target_list.extend(row['genes'].split('|'))
+    elif knockout_type == 'runtype_random':
+        all_nodes = list(set([node.split('.')[0] for node in G_aggro.nodes()]))
+        target_list = random.sample(all_nodes, knockout_targets)
+
+    for target in target_list:
+        results[target] = {}
+        for reduction in tqdm(red_range, desc=f"Processing {target} with reduction factor"):
+            # Perform the knockout
+            if knockout_type == 'runtype_node':
+                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(G_aggro, target, reduction_factor=reduction)
+                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(G_stable, target, reduction_factor=reduction)
+            else:  # Pathway or random
+                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_pathway_nodes(G_aggro, target, reduction_factor=reduction)
+                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_pathway_nodes(G_stable, target, reduction_factor=reduction)
+
+            # Calculate diffusion kernels and GDD
+            diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
+            diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+
+            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+            gdd_values_disrupt = np.linalg.norm(np.array(orig_diff_kernel_pan) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+
+            results[target][reduction] = {
+                'gdd_values_trans': gdd_values_trans,
+                'max_gdd_trans': np.max(gdd_values_trans),
+                'gdd_values_disrupt': gdd_values_disrupt,
+                'max_gdd_disrupt': np.max(gdd_values_disrupt),
+                'gdd_values_orig': orig_gdd_values,
+                'max_gdd_orig': np.max(orig_gdd_values)
+            }
+
+    return results
+
+
+
+# %% 
 # get the start time
 start_time = time.time()
 
 if not args.pathway:
-    for node_base in nodes_subset:
-        local_results[node_base] = {}
-        for reduction in tqdm(red_range):
-            # NODE KNOCKOUT
-            # Remove the node and recompute the Laplacian matrix
-            knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(weighted_G_cms_ALL, node_base, 
-                                                                                            reduction_factor=reduction)
+    for node in tqdm(nodes_subset):
+        # TESTING the knockout analysis function
+        local_target_results = perform_knockout_analysis(G_all, G_subset, 'runtype_node', node, reduction_factor, red_range, t_values, orig_diff_kernel_pan, orig_gdd_values, pathway_df)
 
-            knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(weighted_G_cms_123, node_base,
-                                                                                            reduction_factor=reduction)
+else:
+    # PATHWAY KNOCKOUTS
+    for pathway in tqdm(pathways_subset):
+        local_target_results = perform_knockout_analysis(G_all, G_subset, 'runtype_pathway', pathway, reduction_factor, red_range, t_values, orig_diff_kernel_pan, orig_gdd_values, pathway_df)
 
-            # diff_kernel_non_mesench = [laplacian_exponential_kernel_eigendecomp(weighted_lap_non_mesench, t) for t in t_values]
+    # RANDOM PATHWAY KNOCKOUTS (for permutation analysis)
+    # Create a boolean series where each element is True if the 'description' column contains any of the pathway descriptions
 
-            diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-            diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+    for random_pathway_size in tqdm(rand_lengths_subset):
+        local_rand_results = perform_knockout_analysis(G_all, G_subset, 'runtype_random', random_pathway_size, reduction_factor, red_range, t_values, orig_diff_kernel_pan, orig_gdd_values, pathway_df)
 
-            # CALCULATE GDD
-            # Compute the Frobenius norm of the difference between the kernels for each t
-            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
 
-            gdd_values_disrupt = np.linalg.norm(np.array(diff_kernel_pan) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+# GATHERING RESULTS
+all_target_results = comm.gather(local_target_results, root=0)
+if args.pathway:
+    all_rand_results = comm.gather(local_rand_results, root=0)
+    all_results_list = [all_target_results, all_rand_results]
+    filename_identifiers = ['target', 'random']
+else:
+    all_results_list = [all_target_results]
+    filename_identifiers = ['target']
 
-            local_results[node_base][reduction] = {
-                'gdd_values_trans': gdd_values_trans,
-                'max_gdd_trans': np.max(gdd_values_trans),
+for i, all_results in enumerate(all_results_list):
+    # Post-processing on the root processor
+    if rank == 0 and "SLURM_JOB_ID" in os.environ:
+        # Initialize a master dictionary to combine results
+        combined_results = {}
 
-                'gdd_values_disrupt': gdd_values_disrupt,
-                'max_gdd_disrupt': np.max(gdd_values_disrupt),
+        # Combine the results from each process
+        for process_results in all_results:
+            for key, value in process_results.items():
+                combined_results[key] = value
 
-                'gdd_values_orig': orig_gdd_values, 
-                'max_gdd_orig': np.max(orig_gdd_values)
+        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_GDDs_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
+            pkl.dump(combined_results, f)
+        
+        os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
+        print('Saving has finished.')
 
-                # 'diff_kernel_orig': diff_kernel_orig,
-                # 'diff_kernel_knock': diff_kernel_knock
-            }
-    else:
-        # Pathway knockouts
-        for pathway in pathways_subset:
-            local_results[pathway] = {}
-            for reduction in tqdm(red_range):
-                # Knockout the pathway
-                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_pathway_nodes(weighted_G_cms_ALL, pathway, reduction_factor=reduction)
-                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_pathway_nodes(weighted_G_cms_123, pathway, reduction_factor=reduction)
 
-                diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-                diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
-
-                # CALCULATE GDD
-                # Compute the Frobenius norm of the difference between the kernels for each t
-                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
-
-                gdd_values_disrupt = np.linalg.norm(np.array(diff_kernel_pan) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
-
-                local_results[pathway][reduction] = {
-                    'gdd_values_trans': gdd_values_trans,
-                    'max_gdd_trans': np.max(gdd_values_trans),
-
-                    'gdd_values_disrupt': gdd_values_disrupt,
-                    'max_gdd_disrupt': np.max(gdd_values_disrupt),
-
-                    'gdd_values_orig': orig_gdd_values, 
-                    'max_gdd_orig': np.max(orig_gdd_values)
-                }
-
-                # # get pandas adjacency of knockdown_laplacian_aggro
-                # adj = nx.to_pandas_adjacency(knockdown_graph_aggro)
-                # # write to csv
-                # adj.to_csv(f'diff_results/Laplacian_Pathway_{pathway}_{str(reduction)}.csv')
-
+    elif rank == 0 and "SLURM_JOB_ID" not in os.environ:
+        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_GDDs_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
+            pkl.dump(local_results, f)
 
 
 # get the end time
 end_time = time.time()
 print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time}')
 
-all_results = comm.gather(local_results, root=0)
-
-# Post-processing on the root processor
-if rank == 0 and "SLURM_JOB_ID" in os.environ:
-    # Initialize a master dictionary to combine results
-    combined_results = {}
-
-    # Combine the results from each process
-    for process_results in all_results:
-        for key, value in process_results.items():
-            combined_results[key] = value
-
-    with open(f'diff_results/Pathway_{args.pathway}_GDDs_and_Kernels_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
-        pkl.dump(combined_results, f)
-    
-    os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
-    print('Saving has finished.')
-
-
-else:
-    with open(f'diff_results/Pathway_{args.pathway}_GDDs_and_Kernels_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
-        pkl.dump(local_results, f)
-
-
 
 
 MPI.Finalize()
-
-
-
-
-
-
-
-
-
 
 # %%
 # t_values = np.linspace(0.01, 10, 500)
@@ -592,7 +607,7 @@ t_values = np.linspace(0.01, 10, 500)
 red_range = args.red_range.split(',')
 red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
 
-filename = f'diff_results/Pathway_{Pathway}_GDDs_and_Kernels_{kernel_size}.pkl'
+filename = f'diff_results/Pathway_{Pathway}_GDDs_{kernel_size}.pkl'
 
 
 if not "SLURM_JOB_ID" in os.environ:
