@@ -1,0 +1,96 @@
+hub nodes: []
+anti-hubs nodes: ['BCL2L11.p', 'CDKN1B.p', 'PDK1.p', 'ASNS.t', 'IGFBP2.t', 'LCK.t', 'NDRG1.t', 'NRG1.t', 'SQSTM1.t', 'SYK.t', 'IGFBP2.p', 'SQSTM1.p', 'XBP1.p', 'BAD.t', 'CCNE1.t', 'NFKB1.t', 'RAF1.t', 'BECN1.p', 'BIRC2.p', 'KIT.p', 'RAF1.p', 'STAT3.p', 'CDH3.t', 'CDKN1A.t', 'CTNNB1.t', 'MYC.t', 'STAT3.t', 'TP53.t', 'BAX.p', 'GATA3.p', 'INPP4B.p', 'ITGA2.p', 'MAPK9.p', 'CCND1.t', 'FOXM1.t', 'INPP4B.t', 'PCNA.t', 'PRKCA.t', 'SMAD3.t']
+pathways for rank 2: ['Regulation of receptor signaling pathway via JAK-STAT']
+random pathway size for rank 2: [9, 12]
+pathways for rank 3: ['Abnormal spleen morphology']
+random pathway size for rank 3: [18, 19]
+pathways for rank 4: ['Erythrocyte development']
+random pathway size for rank 4: [9, 8]
+pathways for rank 6: ['Homologous chromosome segregation']
+random pathway size for rank 6: [5]
+pathways for rank 7: ['Hepatobiliary disease']
+random pathway size for rank 7: [9]
+pathways for rank 13: ['Bone cyst']
+random pathway size for rank 13: [2]
+pathways for rank 14: ['Negative regulation of cell death']
+random pathway size for rank 14: [2]
+pathways for rank 0: ['Negative regulation of nucleobase-containing compound metabolic process']
+random pathway size for rank 0: [48]
+pathways for rank 1: ['Abdominal symptom']
+random pathway size for rank 1: [40, 37]
+pathways for rank 5: ['Pulmonary arteriovenous malformation']
+random pathway size for rank 5: [21, 21]
+pathways for rank 15: ['Long penis']
+random pathway size for rank 15: [3]
+pathways for rank 8: ['Muscle cell differentiation']
+random pathway size for rank 8: [5]
+pathways for rank 9: ['Fc epsilon receptor (FCERI) signaling']
+random pathway size for rank 9: [3]
+pathways for rank 10: ['Sprouting angiogenesis']
+random pathway size for rank 10: [4]
+pathways for rank 11: ['Serine/threonine protein kinase complex']
+random pathway size for rank 11: [12]
+pathways for rank 12: ['Regulation of protein phosphorylation']
+random pathway size for rank 12: [5]
+Gene count in Bone cyst: 4
+
+Gene count in Negative regulation of cell death: 58
+
+Processing Bone cyst with reduction factor: 0.05
+Processing Negative regulation of cell death with reduction factor: 0.05
+Gene count in Erythrocyte development: 3
+
+Processing Erythrocyte development with reduction factor: 0.05
+Gene count in Long penis: 2
+
+Processing Long penis with reduction factor: 0.05
+Gene count in Hepatobiliary disease: 25
+
+Processing Hepatobiliary disease with reduction factor: 0.05
+Gene count in Pulmonary arteriovenous malformation: 2
+
+Processing Pulmonary arteriovenous malformation with reduction factor: 0.05
+Gene count in Homologous chromosome segregation: 4
+
+Processing Homologous chromosome segregation with reduction factor: 0.05
+Gene count in Regulation of protein phosphorylation: 60
+
+Processing Regulation of protein phosphorylation with reduction factor: 0.05
+Gene count in Negative regulation of nucleobase-containing compound metabolic process: 43
+
+Processing Negative regulation of nucleobase-containing compound metabolic process with reduction factor: 0.05
+Gene count in Regulation of receptor signaling pathway via JAK-STAT: 4
+
+Processing Regulation of receptor signaling pathway via JAK-STAT with reduction factor: 0.05
+Gene count in Abnormal spleen morphology: 16
+
+Processing Abnormal spleen morphology with reduction factor: 0.05
+Gene count in Abdominal symptom: 37
+
+Processing Abdominal symptom with reduction factor: 0.05
+Gene count in Muscle cell differentiation: 11
+
+Processing Muscle cell differentiation with reduction factor: 0.05
+Gene count in Fc epsilon receptor (FCERI) signaling: 0
+
+Processing Fc epsilon receptor (FCERI) signaling with reduction factor: 0.05
+Gene count in Sprouting angiogenesis: 4
+
+Processing Sprouting angiogenesis with reduction factor: 0.05
+Gene count in Serine/threonine protein kinase complex: 21
+
+Processing Serine/threonine protein kinase complex with reduction factor: 0.05
+
+JOB STATISTICS
+==============
+Job ID: 4689216
+Cluster: snellius
+User/Group: mbarylli/mbarylli
+State: OUT_OF_MEMORY (exit code 0)
+Nodes: 1
+Cores per node: 16
+CPU Utilized: 00:03:51
+CPU Efficiency: 22.56% of 00:17:04 core-walltime
+Job Wall-clock time: 00:01:04
+Memory Utilized: 10.07 GB
+Memory Efficiency: 35.96% of 28.00 GB

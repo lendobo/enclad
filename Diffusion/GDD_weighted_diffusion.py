@@ -18,6 +18,8 @@ from tqdm import tqdm
 import argparse
 import sys
 import csv
+from scipy.stats import percentileofscore
+from statsmodels.stats.multitest import multipletests
 
 # Check if the script is running in an environment with predefined sys.argv (like Jupyter or certain HPC environments)
 if 'ipykernel_launcher.py' in sys.argv[0] or 'mpirun' in sys.argv[0]:
@@ -39,8 +41,9 @@ parser.add_argument('--kob', type=int, default=5, help='Number of bottom nodes t
 parser.add_argument('--red_range', type=str, default='0.05,0.9,3', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
-parser.add_argument('--pathway', type=bool, default=False, help='Boolean for Pathway Knockout')
+parser.add_argument('--pathway', type=bool, default=True, help='Boolean for Pathway Knockout')
 parser.add_argument('--test_net', type=bool, default=False, help='Boolean for testing network')
+parser.add_argument('--permu_runs', type=int, default=30, help='Number of runs for permutation random pathway knockout')
 
 args = parser.parse_args(args_to_parse)
 
@@ -104,14 +107,14 @@ def knockout_node(G, node_to_isolate):
 
     return modified_graph, new_laplacian
 
-def knockdown_node_both_layers(G, node_to_isolate_base, reduction_factor=0.3):
+def knockdown_node_both_layers(G, node_to_isolate_base, reduced_weight=0.3):
     """
     Reduces the weights of all edges connected to a node in both layers of the graph.
 
     :param G: NetworkX graph
     :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
     :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
-    :param reduction_factor: Factor to reduce edge weights by, defaults to 0.5
+    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.5
     :return: Tuple containing the modified graph and its weighted Laplacian matrix
     """
 
@@ -124,20 +127,20 @@ def knockdown_node_both_layers(G, node_to_isolate_base, reduction_factor=0.3):
     # Reduce the weight of all edges to and from this node in both layers
     for node_to_isolate in [node_to_isolate_proteomics, node_to_isolate_transcriptomics]:
         for neighbor in G[node_to_isolate]:
-            modified_graph[node_to_isolate][neighbor]['weight'] = reduction_factor
-            modified_graph[neighbor][node_to_isolate]['weight'] = reduction_factor
+            modified_graph[node_to_isolate][neighbor]['weight'] = reduced_weight
+            modified_graph[neighbor][node_to_isolate]['weight'] = reduced_weight
     
     # Compute the weighted Laplacian matrix for the modified graph
     new_laplacian = weighted_laplacian_matrix(modified_graph)
     return modified_graph, new_laplacian
 
-def knockdown_pathway_nodes(G, pathway_description, reduction_factor=0.3):
+def knockdown_pathway_nodes(G, pathway_description, reduced_weight=0.3):
     """
     Reduces the weights of all edges connected to the nodes in a pathway in both layers of the graph.
 
     :param G: NetworkX graph
     :param pathway_description: Description of the pathway whose nodes will be reduced in both layers
-    :param reduction_factor: Factor to reduce edge weights by, defaults to 0.3
+    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.3
     :return: Tuple containing the modified graph and its weighted Laplacian matrix
     """
 
@@ -164,13 +167,44 @@ def knockdown_pathway_nodes(G, pathway_description, reduction_factor=0.3):
         for node_to_isolate in [node_to_isolate_proteomics, node_to_isolate_transcriptomics]:
             if node_to_isolate in G:
                 for neighbor in G[node_to_isolate]:
-                    modified_graph[node_to_isolate][neighbor]['weight'] = reduction_factor
-                    modified_graph[neighbor][node_to_isolate]['weight'] = reduction_factor
+                    modified_graph[node_to_isolate][neighbor]['weight'] = reduced_weight
+                    modified_graph[neighbor][node_to_isolate]['weight'] = reduced_weight
     
     # Compute the weighted Laplacian matrix for the modified graph
     new_laplacian = weighted_laplacian_matrix(modified_graph)
 
     return modified_graph, new_laplacian
+
+
+def knockdown_random_nodes(G, nodes, reduced_weight=0.3):
+    """
+    Reduces the weights of all edges connected to the nodes in a pathway or a list of nodes in both layers of the graph.
+
+    :param G: NetworkX graph
+    :param nodes: List of nodes whose edges will be reduced in both layers
+    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.3
+    :return: Tuple containing the modified graph and its weighted Laplacian matrix
+    """
+    modified_graph = G.copy()
+    
+    # Iterate over the node names
+    for node_to_isolate_base in nodes:
+        # Add layer suffixes to the base node name
+        node_to_isolate_proteomics = f"{node_to_isolate_base}.p"
+        node_to_isolate_transcriptomics = f"{node_to_isolate_base}.t"
+        
+        # Reduce the weight of all edges to and from this node in both layers
+        for node_to_isolate in [node_to_isolate_proteomics, node_to_isolate_transcriptomics]:
+            if node_to_isolate in G:
+                for neighbor in G[node_to_isolate]:
+                    modified_graph[node_to_isolate][neighbor]['weight'] = reduced_weight
+                    modified_graph[neighbor][node_to_isolate]['weight'] = reduced_weight
+    
+    # Compute the weighted Laplacian matrix for the modified graph
+    new_laplacian = weighted_laplacian_matrix(modified_graph)
+
+    return modified_graph, new_laplacian
+
 
 
 # %%                  ############################################# double5 DEMO NET#########################
@@ -380,10 +414,6 @@ if args.koh == 0:
 else:
     nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
 
-if args.pathway:
-    pathways = ['Angiogenesis', 'Regulation of angiogenesis', 'Positive regulation of angiogenesis', 'Sprouting angiogenesis', 'Regulation of cell migration involved in sprouting angiogenesis', 'TGF-beta signaling pathway', 'Wnt signaling pathway and pluripotency']
-
-
 # %% RUNS                                               ### MPI PARALLELIZATION ###
 # Function to distribute nodes across ranks
 def distribute_nodes(nodes, rank, size):
@@ -417,43 +447,143 @@ def distribute_pathways(pathways, rank, size):
     return pathways[start_index:end_index]
 
 
+def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df, num_runs=30):
+    results = {}
+
+    if knockout_type == 'runtype_node' or knockout_type == 'runtype_pathway':
+
+        if knockout_type == 'runtype_pathway':
+            target_list = pathway_df[pathway_df['description'].str.contains(knockout_target)]['genes'].str.split('|').explode().tolist()
+            num_genes = len(target_list)  # Number of genes in the pathway
+            print(f"Gene count in {knockout_target}: {num_genes}\n")
+
+
+        results[knockout_target] = {}
+        for reduction in tqdm(red_range):
+            print(f"Processing {knockout_target} with reduction factor: {reduction}")
+            # Perform the knockout
+            knockdown_func = knockdown_node_both_layers if knockout_type == 'runtype_node' else knockdown_pathway_nodes
+            knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_func(G_aggro, knockout_target, reduced_weight=reduction)
+            knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_func(G_stable, knockout_target, reduced_weight=reduction)
+
+            # Calculate diffusion kernels and GDD
+            diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
+            diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+
+            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+            gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+
+            results[knockout_target][reduction] = {
+                'gdd_values_trans': gdd_values_trans,
+                'gdd_values_disrupt': gdd_values_disrupt,
+                'max_gdd_trans': np.max(gdd_values_trans),
+                'max_gdd_disrupt': np.max(gdd_values_disrupt)
+            }
+
+    elif knockout_type == 'runtype_random':
+        all_nodes = list(set([node.split('.')[0] for node in G_aggro.nodes()]))
+
+        for _ in range(num_runs):
+            random.seed(_)
+            random_nodes = random.sample(all_nodes, knockout_target)
+            max_gdd_trans_run, max_gdd_disrupt_run = [], []
+
+            results[f'random_{knockout_target}_run_{_}'] = {}
+            for reduction in tqdm(red_range):
+                # print(f"Random Pathway Knockout: size {knockout_target}, run {_} with reduction factor: {reduction}")
+                # Perform the knockout
+                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_random_nodes(G_aggro, random_nodes, reduced_weight=reduction)
+                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_random_nodes(G_stable, random_nodes, reduced_weight=reduction)
+
+                # Calculate diffusion kernels and GDD
+                diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
+                diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+
+                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+                gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+
+                max_gdd_trans_run.append(np.max(gdd_values_trans))
+                max_gdd_disrupt_run.append(np.max(gdd_values_disrupt))
+
+                results[f'random_{knockout_target}_run_{_}'][reduction] = {
+                    'max_gdd_trans': max(max_gdd_trans_run),
+                    'max_gdd_disrupt': max(max_gdd_disrupt_run)
+                }
+
+    return results
+
+
+# %%
+crit_paths = ['Angiogenesis', 'Regulation of angiogenesis', 'Positive regulation of angiogenesis', 'Sprouting angiogenesis', 
+                      'Regulation of cell migration involved in sprouting angiogenesis', 'TGF-beta signaling pathway', 'TGF-beta receptor signaling'
+                      'TGF-beta signaling in thyroid cells for epithelial-mesenchymal transition', 'Wnt signaling pathway and pluripotency',
+                      'Signaling by TGFB family members', 'Canonical and non-canonical TGF-B signaling', 'Transforming growth factor beta receptor signaling pathway',
+                      'Cellular response to transforming growth factor beta stimulus', 'Regulation of transforming growth factor beta2 production',
+                      'Regulation of transforming growth factor beta receptor signaling pathway', 'Negative regulation of transforming growth factor beta receptor signaling pathway']
+pathways = crit_paths
 
 if "SLURM_JOB_ID" in os.environ:
     if args.pathway:
         pathway_df = pd.read_csv('/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info.csv')
+        pathway_df = pathway_df.drop_duplicates(subset='description', keep='first')
+
+        # Filter the dataframe to include only pathways with '# genes' between 1 and 25
+        filtered_pathway_df = pathway_df[(pathway_df['# genes'] >= 10) & (pathway_df['# genes'] <= 25)]
+        # only keep first X
+        filtered_pathway_df = filtered_pathway_df.head(args.koh)
+        # Start with critical pathways
+
+        # Add unique pathways from the filtered list until you reach args.koh
+        for pathway in filtered_pathway_df['description'].tolist():
+            if len(pathways) >= args.koh:
+                break
+            if pathway not in pathways:
+                pathways.append(pathway)
+
+        # Distribute pathways across ranks
         pathways_subset = distribute_pathways(pathways, rank, size)
 
         # random pathway length distribution
-        matches = pathway_df['description'].str.contains('|'.join(pathways))
-        # Filter the pathway_df based on the matches
+        matches = pathway_df['description'].isin(pathways)
         interest_pathway_df = pathway_df[matches]
-        # Calculate the lengths of the pathways in the interest_pathway_df
         pathway_lengths = [len(row['genes'].split('|')) for _, row in interest_pathway_df.iterrows()]
         rand_lengths_subset = distribute_pathways(pathway_lengths, rank, size)
+
         print(f'pathways for rank {rank}: {pathways_subset}')
-        print(f'random pathways for rank {rank}: {rand_lengths_subset}')
+        print(f'random pathway size for rank {rank}: {rand_lengths_subset}')
     else:
         nodes_subset = distribute_nodes(nodes_to_investigate_bases, rank, size)
         print(f'nodes for rank {rank}: {nodes_subset}')
 else: #Otherwise, if run locally
     if args.pathway:
         pathway_df = pd.read_csv('data/Pathway_Enrichment_Info.csv')
-        pathways_subset = pathways
-        # random pathway length distribution
-        matches = pathway_df['description'].str.contains('|'.join(pathways))
-        # Filter the pathway_df based on the matches
+        pathway_df = pathway_df.drop_duplicates(subset='description', keep='first')
+        # Filter the dataframe to include only pathways with '# genes' between 1 and 25
+        filtered_pathway_df = pathway_df[(pathway_df['# genes'] >= 10) & (pathway_df['# genes'] <= 25)]
+        # only keep first X
+        filtered_pathway_df = filtered_pathway_df.head(args.koh)
+
+        # Add unique pathways from the filtered list until you reach args.koh
+        for pathway in filtered_pathway_df['description'].tolist():
+            if len(pathways) >= args.koh:
+                break
+            if pathway not in pathways:
+                pathways.append(pathway)
+
+        # random pathway length distribution (no distribution in case of local run)
+        matches = pathway_df['description'].isin(pathways)
         interest_pathway_df = pathway_df[matches]
-        # Calculate the lengths of the pathways in the interest_pathway_df
         rand_lengths_subset = [len(row['genes'].split('|')) for _, row in interest_pathway_df.iterrows()]
-        print(f'pathways for rank {rank}: {pathways_subset}')
+
+        print(f'rand pathways for rank {rank}: {rand_lengths_subset}')
     else:
         nodes_subset = nodes_to_investigate_bases
         print(f'nodes for rank {rank}: {nodes_subset}')
     rank = 0
     size = 1
 
-# %%
-if "SLURM_JOB_ID" not in os.environ and args.test_net:
+# RUN on test net
+if args.test_net:
     t_values = np.linspace(0.01, 10, 500)
     # Create two multiplex graphs FOR TESTING
     weighted_G_cms_123 = create_multiplex_test(12)
@@ -475,61 +605,9 @@ else:
     orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
 
 
-weighted_lap_pan = weighted_laplacian_matrix(weighted_G_cms_ALL)
-diff_kernel_pan = [laplacian_exponential_kernel_eigendecomp(weighted_lap_pan, t) for t in t_values]
+# orig_weighted_lap_pan = weighted_laplacian_matrix(weighted_G_cms_ALL)
+# orig_diff_kernel_pan = [laplacian_exponential_kernel_eigendecomp(orig_weighted_lap_pan, t) for t in t_values]
 
-# %%
-def run_knockout_analysis(G_aggro, 
-                          G_stable, 
-                          knockout_type, 
-                          knockout_targets, 
-                          reduction_factor, 
-                          red_range, 
-                          t_values, 
-                          orig_diff_kernel_pan, 
-                          orig_gdd_values, 
-                          pathway_df):
-    results = {}
-
-    if knockout_type == 'runtype_node':
-        target_list = [knockout_targets]
-    elif knockout_type == 'runtype_pathway':
-        rows = pathway_df[pathway_df['description'].str.contains(knockout_targets)]
-        target_list = []
-        for _, row in rows.iterrows():
-            target_list.extend(row['genes'].split('|'))
-    elif knockout_type == 'runtype_random':
-        all_nodes = list(set([node.split('.')[0] for node in G_aggro.nodes()]))
-        target_list = random.sample(all_nodes, knockout_targets)
-
-    for target in target_list:
-        results[target] = {}
-        for reduction in tqdm(red_range, desc=f"Processing {target} with reduction factor"):
-            # Perform the knockout
-            if knockout_type == 'runtype_node':
-                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_node_both_layers(G_aggro, target, reduction_factor=reduction)
-                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_node_both_layers(G_stable, target, reduction_factor=reduction)
-            else:  # Pathway or random
-                knockdown_graph_aggro, knockdown_laplacian_aggro = knockdown_pathway_nodes(G_aggro, target, reduction_factor=reduction)
-                knockdown_non_mesench, knockdown_laplacian_non_mesench = knockdown_pathway_nodes(G_stable, target, reduction_factor=reduction)
-
-            # Calculate diffusion kernels and GDD
-            diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-            diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
-
-            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
-            gdd_values_disrupt = np.linalg.norm(np.array(orig_diff_kernel_pan) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
-
-            results[target][reduction] = {
-                'gdd_values_trans': gdd_values_trans,
-                'max_gdd_trans': np.max(gdd_values_trans),
-                'gdd_values_disrupt': gdd_values_disrupt,
-                'max_gdd_disrupt': np.max(gdd_values_disrupt),
-                'gdd_values_orig': orig_gdd_values,
-                'max_gdd_orig': np.max(orig_gdd_values)
-            }
-
-    return results
 
 
 
@@ -537,21 +615,28 @@ def run_knockout_analysis(G_aggro,
 # get the start time
 start_time = time.time()
 
+local_target_results = {}
+
 if not args.pathway:
     for node in tqdm(nodes_subset):
         # TESTING the knockout analysis function
-        local_target_results = perform_knockout_analysis(G_all, G_subset, 'runtype_node', node, reduction_factor, red_range, t_values, orig_diff_kernel_pan, orig_gdd_values, pathway_df)
+        node_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_node', node, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df)
+        local_target_results.update(node_results)
 
 else:
     # PATHWAY KNOCKOUTS
     for pathway in tqdm(pathways_subset):
-        local_target_results = perform_knockout_analysis(G_all, G_subset, 'runtype_pathway', pathway, reduction_factor, red_range, t_values, orig_diff_kernel_pan, orig_gdd_values, pathway_df)
+        pathway_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_pathway', pathway, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df)
+        local_target_results.update(pathway_results)
 
     # RANDOM PATHWAY KNOCKOUTS (for permutation analysis)
+    local_rand_results = {}
     # Create a boolean series where each element is True if the 'description' column contains any of the pathway descriptions
-
     for random_pathway_size in tqdm(rand_lengths_subset):
-        local_rand_results = perform_knockout_analysis(G_all, G_subset, 'runtype_random', random_pathway_size, reduction_factor, red_range, t_values, orig_diff_kernel_pan, orig_gdd_values, pathway_df)
+        rand_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_random', random_pathway_size, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df, num_runs=args.permu_runs)
+        local_rand_results.update(rand_results)
+        
+    print(f'Rank {rank} has finished the target and random pathway runs.')
 
 
 # GATHERING RESULTS
@@ -560,9 +645,18 @@ if args.pathway:
     all_rand_results = comm.gather(local_rand_results, root=0)
     all_results_list = [all_target_results, all_rand_results]
     filename_identifiers = ['target', 'random']
+    
+    # Assuming 'pathways' is a list of strings
+    unique_identifier = ''.join([pathway[0] for pathway in pathways])
+    unique_identifier = unique_identifier[:20]
+
+
 else:
     all_results_list = [all_target_results]
     filename_identifiers = ['target']
+
+    unique_identifier = ''.join([node[0] for node in nodes_to_investigate_bases])
+    unique_identifier = unique_identifier[:20]
 
 for i, all_results in enumerate(all_results_list):
     # Post-processing on the root processor
@@ -575,7 +669,7 @@ for i, all_results in enumerate(all_results_list):
             for key, value in process_results.items():
                 combined_results[key] = value
 
-        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_GDDs_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
+        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}.pkl', 'wb') as f:
             pkl.dump(combined_results, f)
         
         os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
@@ -583,8 +677,10 @@ for i, all_results in enumerate(all_results_list):
 
 
     elif rank == 0 and "SLURM_JOB_ID" not in os.environ:
-        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_GDDs_{str(diff_kernel_knock_aggro[0].shape[0])}.pkl', 'wb') as f:
-            pkl.dump(local_results, f)
+        with open(f'diff_results/Pathway_{args.pathway}_target_node_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}.pkl', 'wb') as f:
+            pkl.dump(local_target_results, f)
+        with open(f'diff_results/Pathway_{args.pathway}_random_node_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}.pkl', 'wb') as f:
+            pkl.dump(local_rand_results, f)
 
 
 # get the end time
@@ -595,99 +691,191 @@ print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time
 
 MPI.Finalize()
 
+
+
+
+# %% SIGNIFICANCE TESTING
+
+# Load results and pathway information
+with open('diff_results/Pathway_True_target_ARPSRTTWSCTCRRNLRPHC_GDDs_ks272.pkl', 'rb') as f:
+    target_results = pkl.load(f)
+with open('diff_results/Pathway_True_random_ARPSRTTWSCTCRRNLRPHC_GDDs_ks272.pkl', 'rb') as f:
+    random_results = pkl.load(f)
+
+def get_pathway_length(pathway_name, df):
+    if pathway_name in df['description'].values:
+        row = df[df['description'] == pathway_name].iloc[0]
+        return len(row['genes'].split('|'))
+    else:
+        # Handle the case where pathway_name is not found in df
+        # For example, return a default value or raise a custom error
+        return None  # or raise ValueError(f"Pathway '{pathway_name}' not found in dataframe")
+
+# Function to parse random results keys
+def parse_random_key(key):
+    parts = key.split('_')
+    return int(parts[1]), int(parts[3])  # length, run_number
+
+# Organize random results by pathway length
+random_results_by_length = {}  # {pathway_length: [list of max_gdd_trans values]}
+for key, result in random_results.items():
+    length, run_number = parse_random_key(key)
+    max_gdd_trans = result[0.05]['max_gdd_trans']
+    if length not in random_results_by_length:
+        random_results_by_length[length] = []
+    random_results_by_length[length].append(max_gdd_trans)
+
+# Calculate p-values
+p_values = {}
+for pathway, result in target_results.items():
+    target_max_gdd_trans = result[0.05]['max_gdd_trans']
+    pathway_length = get_pathway_length(pathway, interest_pathway_df)
+    if pathway_length is not None:
+        random_distribution = random_results_by_length.get(pathway_length, [])
+        if random_distribution:  # Ensure there are random results for this length
+            p_value = percentileofscore(random_distribution, target_max_gdd_trans, kind='weak') / 100
+            p_values[pathway] = p_value
+        else:
+            # Handle case where there are no random results for this length
+            p_values[pathway] = None  # or some other placeholder
+    else:
+        # Handle case where pathway length could not be determined
+        p_values[pathway] = None  # or some other placeholder
+
+
+# Filter out None values from p_values
+filtered_p_values = {k: v for k, v in p_values.items() if v is not None}
+
+# Adjust for multiple testing on the filtered p-values
+adjusted_p_values = multipletests(list(filtered_p_values.values()), method='fdr_bh')[1]
+adjusted_p_values_dict = dict(zip(filtered_p_values.keys(), adjusted_p_values))
+
+# Merge adjusted p-values back with the original set (assigning None where appropriate)
+final_adjusted_p_values = {pathway: adjusted_p_values_dict.get(pathway, None) for pathway in p_values.keys()}
+
+# Interpret results
+significant_pathways = {pathway: adj_p for pathway, adj_p in final_adjusted_p_values.items() if adj_p is not None and adj_p <= 0.05}
+
+# Display significant pathways
+print("Significant Pathways (adjusted p-value ≤ 0.05):")
+for pathway, adj_p in significant_pathways.items():
+    print(f"{pathway}: {adj_p}")
+
 # %%
+# Create a DataFrame for target results
+data = []
+for pathway, result in target_results.items():
+    max_gdd_trans = result[0.05]['max_gdd_trans']
+    p_value = p_values.get(pathway, None)  # Get the p-value, if available
+    data.append([pathway, max_gdd_trans, p_value])
+
+# Creating the DataFrame
+target_df = pd.DataFrame(data, columns=['Pathway', 'Max_GDD_Trans', 'P_Value'])
+
+# Sorting the DataFrame by Max_GDD_Trans in ascending order
+target_df_sorted = target_df.sort_values(by='Max_GDD_Trans', ascending=True)
+
+# Display the first few rows of the sorted DataFrame
+print(target_df_sorted.head())
+
+# write to csv
+target_df_sorted.to_csv('target_df_sorted.csv', index=False)
+
+
+# %% OLD CODE FOR GDD PLOTTING AND MAXIMUM GDD VALUE SORTING
+# # t_values = np.linspace(0.01, 10, 500)
+# # red_range = red_args.split(',')
+# # # red_range = [float(i) for i in red_range]
+# # red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
+
+# kernel_size = 272
+# Pathway = True
+
 # t_values = np.linspace(0.01, 10, 500)
-# red_range = red_args.split(',')
-# # red_range = [float(i) for i in red_range]
-# red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
-kernel_size = 272
-Pathway = True
+# red_range = args.red_range.split(',')
+# red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
 
-t_values = np.linspace(0.01, 10, 500)
-red_range = args.red_range.split(',')
-red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
-
-filename = f'diff_results/Pathway_{Pathway}_GDDs_{kernel_size}.pkl'
+# filename = f'diff_results/Pathway_{Pathway}_GDDs_{kernel_size}.pkl'
 
 
-if not "SLURM_JOB_ID" in os.environ:
-    with open(filename, 'rb') as f:
-        GDDs_and_Kernels = pkl.load(f)
+# if not "SLURM_JOB_ID" in os.environ:
+#     with open(filename, 'rb') as f:
+#         GDDs_and_Kernels = pkl.load(f)
 
-    first_key_outer = next(iter(GDDs_and_Kernels))
-    first_key_inner = next(iter(GDDs_and_Kernels[first_key_outer]))
+#     first_key_outer = next(iter(GDDs_and_Kernels))
+#     first_key_inner = next(iter(GDDs_and_Kernels[first_key_outer]))
 
-    print(GDDs_and_Kernels[first_key_outer][first_key_inner].keys())
+#     print(GDDs_and_Kernels[first_key_outer][first_key_inner].keys())
 
-    orig_max_gdd = GDDs_and_Kernels[first_key_outer][first_key_inner]['max_gdd_orig']
+#     orig_max_gdd = GDDs_and_Kernels[first_key_outer][first_key_inner]['max_gdd_orig']
     
-    print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
-    print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
-    # Choose a reduction factor from the list of reductions
-    selected_reduction = red_range[1]
+#     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
+#     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
+#     # Choose a reduction factor from the list of reductions
+#     selected_reduction = red_range[1]
 
-    # Calculate max GDDs for each target (node or pathway) and sort them
-    max_gdds_trans = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']) for target in GDDs_and_Kernels}
-    max_gdds_disrupt = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']) for target in GDDs_and_Kernels}
+#     # Calculate max GDDs for each target (node or pathway) and sort them
+#     max_gdds_trans = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']) for target in GDDs_and_Kernels}
+#     max_gdds_disrupt = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']) for target in GDDs_and_Kernels}
 
-    sorted_max_gdds_trans = sorted(max_gdds_trans.items(), key=lambda item: item[1])
-    sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1], reverse=True)
+#     sorted_max_gdds_trans = sorted(max_gdds_trans.items(), key=lambda item: item[1])
+#     sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1], reverse=True)
 
-    # Calculate the percentage of the original max GDD for each sorted max GDD
-    max_gdds_trans_percent = {target: (value / orig_max_gdd) * 100 for target, value in sorted_max_gdds_trans}
-    max_gdds_disrupt_percent = {target: 'N/A' for target, value in sorted_max_gdds_disrupt}
+#     # Calculate the percentage of the original max GDD for each sorted max GDD
+#     max_gdds_trans_percent = {target: (value / orig_max_gdd) * 100 for target, value in sorted_max_gdds_trans}
+#     max_gdds_disrupt_percent = {target: 'N/A' for target, value in sorted_max_gdds_disrupt}
 
-    half_point = int(len(sorted_max_gdds_disrupt) / 2)
-    targets_to_show = 3
+#     half_point = int(len(sorted_max_gdds_disrupt) / 2)
+#     targets_to_show = 3
 
-    # Select top 3 and bottom 3 targets for each case
-    top_3_trans = [target for target, _ in sorted_max_gdds_trans[-targets_to_show:]]
-    bottom_3_trans = [target for target, _ in sorted_max_gdds_trans[:targets_to_show]]
-    top_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[-targets_to_show:]]
-    bottom_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[:targets_to_show]]
+#     # Select top 3 and bottom 3 targets for each case
+#     top_3_trans = [target for target, _ in sorted_max_gdds_trans[-targets_to_show:]]
+#     bottom_3_trans = [target for target, _ in sorted_max_gdds_trans[:targets_to_show]]
+#     top_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[-targets_to_show:]]
+#     bottom_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[:targets_to_show]]
 
-    fig, axes = plt.subplots(2, 2, figsize=(20, 12), dpi=300)  # Creating 4 plots
-    (ax1, ax2), (ax3, ax4) = axes
+#     fig, axes = plt.subplots(2, 2, figsize=(20, 12), dpi=300)  # Creating 4 plots
+#     (ax1, ax2), (ax3, ax4) = axes
 
-    # Plot GDD values for top 3 and bottom 3 targets (Trans)
-    for target in top_3_trans + bottom_3_trans:
-        gdd_values_trans = GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']
-        ax1.plot(t_values, gdd_values_trans, label=f'target {target}')
+#     # Plot GDD values for top 3 and bottom 3 targets (Trans)
+#     for target in top_3_trans + bottom_3_trans:
+#         gdd_values_trans = GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']
+#         ax1.plot(t_values, gdd_values_trans, label=f'target {target}')
 
-    # Plot GDD values for top 3 and bottom 3 targets (Disrupt)
-    for target in top_3_disrupt + bottom_3_disrupt:
-        gdd_values_disrupt = GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']
-        ax3.plot(t_values, gdd_values_disrupt, label=f'target {target}')
+#     # Plot GDD values for top 3 and bottom 3 targets (Disrupt)
+#     for target in top_3_disrupt + bottom_3_disrupt:
+#         gdd_values_disrupt = GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']
+#         ax3.plot(t_values, gdd_values_disrupt, label=f'target {target}')
 
-    ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 targets')
-    ax1.set_xlabel('Time')
-    ax1.set_ylabel('GDD Value (Trans)')
-    ax1.legend()
-    ax1.grid(True)
+#     ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 targets')
+#     ax1.set_xlabel('Time')
+#     ax1.set_ylabel('GDD Value (Trans)')
+#     ax1.legend()
+#     ax1.grid(True)
 
-    ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 targets')
-    ax3.set_xlabel('Time')
-    ax3.set_ylabel('GDD Value (Disrupt)')
-    ax3.legend()
-    ax3.grid(True)
+#     ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 targets')
+#     ax3.set_xlabel('Time')
+#     ax3.set_ylabel('GDD Value (Disrupt)')
+#     ax3.legend()
+#     ax3.grid(True)
 
-    plt.show()
+#     plt.show()
 
-def write_to_csv(data, percent_data, filename):
-    """
-    Writes the data to a CSV file with three columns.
-    :param data: List of tuples, where each tuple contains two elements (key, value)
-    :param percent_data: Dictionary with the percentage values
-    :param filename: Name of the CSV file to be written
-    """
-    with open(filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        for key, value in data:
-            writer.writerow([key, value, percent_data[key]])
+# def write_to_csv(data, percent_data, filename):
+#     """
+#     Writes the data to a CSV file with three columns.
+#     :param data: List of tuples, where each tuple contains two elements (key, value)
+#     :param percent_data: Dictionary with the percentage values
+#     :param filename: Name of the CSV file to be written
+#     """
+#     with open(filename, mode='w', newline='') as file:
+#         writer = csv.writer(file)
+#         for key, value in data:
+#             writer.writerow([key, value, percent_data[key]])
 
-# Write to CSV files
-write_to_csv(sorted_max_gdds_trans, max_gdds_trans_percent, f'diff_results/max_gdds_trans_Pathway_{Pathway}_{kernel_size}.csv')
-write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/max_gdds_disrupt_Pathway_{Pathway}_{kernel_size}.csv')
+# # Write to CSV files
+# write_to_csv(sorted_max_gdds_trans, max_gdds_trans_percent, f'diff_results/max_gdds_trans_Pathway_{Pathway}_{kernel_size}.csv')
+# write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/max_gdds_disrupt_Pathway_{Pathway}_{kernel_size}.csv')
 
 
 
@@ -868,7 +1056,7 @@ write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/m
 
 # weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
 # weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
-# knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduction_factor=fixed_reduction)
+# knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduced_weight=fixed_reduction)
 
 # seed_node = node_to_isolate + 1
 

@@ -1,0 +1,121 @@
+hub nodes: []
+anti-hubs nodes: ['BCL2L11.p', 'CDKN1B.p', 'PDK1.p', 'ASNS.t', 'IGFBP2.t', 'LCK.t', 'NDRG1.t', 'NRG1.t', 'SQSTM1.t', 'SYK.t', 'IGFBP2.p', 'SQSTM1.p', 'XBP1.p', 'BAD.t', 'CCNE1.t', 'NFKB1.t', 'RAF1.t', 'BECN1.p', 'BIRC2.p', 'KIT.p', 'RAF1.p', 'STAT3.p', 'CDH3.t', 'CDKN1A.t', 'CTNNB1.t', 'MYC.t', 'STAT3.t', 'TP53.t', 'BAX.p', 'GATA3.p', 'INPP4B.p', 'ITGA2.p', 'MAPK9.p', 'CCND1.t', 'FOXM1.t', 'INPP4B.t', 'PCNA.t', 'PRKCA.t', 'SMAD3.t']
+pathways for rank 7: []
+random pathway size for rank 7: [7]
+pathways for rank 8: []
+random pathway size for rank 8: [4]
+pathways for rank 9: []
+random pathway size for rank 9: [3]
+pathways for rank 10: []
+random pathway size for rank 10: []
+pathways for rank 11: []
+random pathway size for rank 11: []
+pathways for rank 12: []
+random pathway size for rank 12: []
+pathways for rank 13: []
+random pathway size for rank 13: []
+pathways for rank 14: []
+random pathway size for rank 14: []
+pathways for rank 15: []
+random pathway size for rank 15: []
+pathways for rank 0: ['Angiogenesis']
+random pathway size for rank 0: [21]
+pathways for rank 1: ['Regulation of angiogenesis']
+random pathway size for rank 1: [19]
+pathways for rank 2: ['Positive regulation of angiogenesis']
+random pathway size for rank 2: [7]
+pathways for rank 3: ['Sprouting angiogenesis']
+random pathway size for rank 3: [9]
+pathways for rank 4: ['Regulation of cell migration involved in sprouting angiogenesis']
+random pathway size for rank 4: [9]
+pathways for rank 6: ['Wnt signaling pathway and pluripotency']
+random pathway size for rank 6: [10]
+pathways for rank 5: ['TGF-beta signaling pathway']
+random pathway size for rank 5: [6]
+Rank 14 starting target pathway runs.
+Rank 14 starting random pathway runs.
+Rank 14 has finished the target and random pathway runs.
+Rank 15 starting target pathway runs.
+Rank 12 starting target pathway runs.
+Rank 12 starting random pathway runs.
+Rank 12 has finished the target and random pathway runs.
+Rank 15 starting random pathway runs.
+Rank 15 has finished the target and random pathway runs.
+Rank 13 starting target pathway runs.
+Rank 13 starting random pathway runs.
+Rank 13 has finished the target and random pathway runs.
+Rank 8 starting target pathway runs.
+Rank 10 starting target pathway runs.
+Rank 0 starting target pathway runs.
+Rank 3 starting target pathway runs.
+Rank 1 starting target pathway runs.
+Rank 9 starting target pathway runs.
+Rank 8 starting random pathway runs.
+Rank 11 starting target pathway runs.
+Rank 10 starting random pathway runs.
+Rank 10 has finished the target and random pathway runs.
+Rank 9 starting random pathway runs.
+Rank 11 starting random pathway runs.
+Rank 11 has finished the target and random pathway runs.
+Gene count in Sprouting angiogenesis: 4
+
+Processing Sprouting angiogenesis with reduction factor: 0.05
+Rank 2 starting target pathway runs.
+Gene count in Angiogenesis: 35
+
+Processing Angiogenesis with reduction factor: 0.05
+Gene count in Regulation of angiogenesis: 10
+
+Processing Regulation of angiogenesis with reduction factor: 0.05
+Gene count in Positive regulation of angiogenesis: 7
+
+Processing Positive regulation of angiogenesis with reduction factor: 0.05
+Rank 6 starting target pathway runs.
+Rank 4 starting target pathway runs.
+Rank 7 starting target pathway runs.
+Rank 5 starting target pathway runs.
+Gene count in TGF-beta signaling pathway: 27
+
+Processing TGF-beta signaling pathway with reduction factor: 0.05
+Gene count in Wnt signaling pathway and pluripotency: 9
+
+Processing Wnt signaling pathway and pluripotency with reduction factor: 0.05
+Gene count in Regulation of cell migration involved in sprouting angiogenesis: 3
+
+Processing Regulation of cell migration involved in sprouting angiogenesis with reduction factor: 0.05
+Rank 7 starting random pathway runs.
+Processing Sprouting angiogenesis with reduction factor: 0.475
+Processing Angiogenesis with reduction factor: 0.475
+Processing Positive regulation of angiogenesis with reduction factor: 0.475
+Processing Regulation of cell migration involved in sprouting angiogenesis with reduction factor: 0.475
+Processing Regulation of angiogenesis with reduction factor: 0.475
+Processing TGF-beta signaling pathway with reduction factor: 0.475
+Processing Wnt signaling pathway and pluripotency with reduction factor: 0.475
+Processing Sprouting angiogenesis with reduction factor: 0.9
+Processing Regulation of cell migration involved in sprouting angiogenesis with reduction factor: 0.9
+Processing Angiogenesis with reduction factor: 0.9
+Processing Positive regulation of angiogenesis with reduction factor: 0.9
+Processing TGF-beta signaling pathway with reduction factor: 0.9
+Processing Regulation of angiogenesis with reduction factor: 0.9
+Processing Wnt signaling pathway and pluripotency with reduction factor: 0.9
+Rank 4 starting random pathway runs.
+Rank 6 starting random pathway runs.
+Rank 5 starting random pathway runs.
+Rank 3 starting random pathway runs.
+Rank 1 starting random pathway runs.
+Rank 2 starting random pathway runs.
+Rank 0 starting random pathway runs.
+Rank 9 has finished the target and random pathway runs.
+Rank 8 has finished the target and random pathway runs.
+Rank 7 has finished the target and random pathway runs.
+Rank 4 has finished the target and random pathway runs.
+Rank 3 has finished the target and random pathway runs.
+elapsed time (node knockdown calc) (rank 3): 1246.3966660499573
+Rank 5 has finished the target and random pathway runs.
+elapsed time (node knockdown calc) (rank 5): 1246.8463637828827
+Rank 2 has finished the target and random pathway runs.
+elapsed time (node knockdown calc) (rank 2): 1248.0818600654602
+Rank 6 has finished the target and random pathway runs.
+Rank 1 has finished the target and random pathway runs.
+elapsed time (node knockdown calc) (rank 1): 1251.5114982128143
+Rank 0 has finished the target and random pathway runs.
