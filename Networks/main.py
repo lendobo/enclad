@@ -10,6 +10,11 @@ import networkx as nx
 import scipy.stats as stats
 from collections import Counter
 
+from collections import defaultdict
+import os
+
+from tqdm import tqdm
+
 def analysis(data, 
         prior_matrix, 
         p, 
@@ -24,7 +29,8 @@ def analysis(data,
         adj_matrix=None, 
         run_type='SYNTHETIC',
         kneepoint_adder=0,
-        plot=False):
+        plot=False,
+        verbose=False):
 
     # KNEE POINTS
     left_knee_point, main_knee_point, right_knee_point, left_knee_point_index, knee_point_index, right_knee_point_index = find_all_knee_points(lambda_range, edge_counts_all)
@@ -33,16 +39,19 @@ def analysis(data,
     if run_type == 'SYNTHETIC':
         l_hi = right_knee_point_index # set at knee-point index
     else:
-        l_hi = right_knee_point_index + kneepoint_adder                                                                                 
-        print(f'\nADDER (right): +{kneepoint_adder}')
-        print(f'right_knee_point_index: {right_knee_point_index}')
+        l_hi = right_knee_point_index + kneepoint_adder  
+        if verbose:
+            print(f'\nADDER (right): + {kneepoint_adder}')
+            print(f'right_knee_point_index: {right_knee_point_index}')
         # print(f'selected l_hi: {lambda_range[l_hi]}')
     
-    print(f'complete lambda range: {lowerbound, upperbound}')                                                              # HERE
+
     select_lambda_range = lambda_range[l_lo:l_hi]
-    print(f'Selected lambda range: {select_lambda_range[0]} - {select_lambda_range[-1]} \n')
     select_edge_counts_all = edge_counts_all[:, :, l_lo:l_hi]
 
+    if verbose:
+        print(f'complete lambda range: {lowerbound, upperbound}')                                                              # HERE
+        print(f'Selected lambda range: {select_lambda_range[0]} - {select_lambda_range[-1]} \n')
 
     # LAMBDAS
     lambda_np, theta_mat = estimate_lambda_np(select_edge_counts_all, Q, select_lambda_range)
@@ -51,22 +60,28 @@ def analysis(data,
         man= False
         if man:
             lambda_np =  0.29
-            print(f'manual Lambda_np: {man}')
-    print('lambda_np: ', lambda_np)
+            if verbose:
+                # print('manually set lambda_np: ', lambda_np)
+                print(f'manual Lambda_np: {man}')
+    
     if prior_bool == True:
         lambda_wp, tau_tr, mus = estimate_lambda_wp(select_edge_counts_all, Q, select_lambda_range, prior_matrix)
         # lambda_wp = 0.076
-        print('lambda_wp: ', lambda_wp, '\n')
     else:
         lambda_wp = 0
+
+    if verbose:
+        print('lambda_np: ', lambda_np)
         print('lambda_wp: ', lambda_wp, '\n')
+
 
 
     # GRAPH OPTIMIZATION WITH FOUND LAMBDAS
     precision_matrix, edge_counts, density = optimize_graph(data, prior_matrix, lambda_np, lambda_wp)
 
-    print('Number of edges of inferred network (lower triangular): ', edge_counts)
-    print('Density: ', density)
+    if verbose:
+        print('Number of edges of inferred network (lower triangular): ', edge_counts)
+        print('Density: ', density)
 
     if plot == True:
         scalar_edges = np.sum(edge_counts_all, axis=(0, 1))
@@ -111,8 +126,9 @@ def analysis(data,
     if run_type == 'SYNTHETIC':
         # RECONSTRUCTION
         evaluation_metrics = evaluate_reconstruction(adj_matrix, precision_matrix)
-        print('Evaluation metrics: ', evaluation_metrics)
-        print('\n\n\n')
+        if verbose:
+            print('Evaluation metrics: ', evaluation_metrics)
+            print('\n\n\n')
 
         return precision_matrix, edge_counts, density, lambda_np, lambda_wp, evaluation_metrics
     
@@ -125,40 +141,8 @@ def analysis(data,
 rank=1
 size=1
 # ################################################# SYNTHETIC PART #################################################
-
-# ################################################## VARYING N #################################
-# if False:
-#     # Parameters
-#     p = 150             # number of variables (nodes)
-#     n = 500             # number of samples
-#     b = int(0.8 * n)   # size of sub-samples
-#     Q = 1000             # number of sub-samples
-
-#     lowerbound = 0.01
-#     upperbound = 0.4
-#     granularity = 80
-#     lambda_range = np.linspace(lowerbound, upperbound, granularity)
-
-#     n = 69
-#     p_values = [50, 100, 200, 400]
-
-#     for p in p_values:
-#         print(f'NETWORK SIZE for samples: {n} and variables: {p}')
-#         filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}.pkl'
-#         with open(filename_edges, 'rb') as f:
-#             synth_edge_counts_all = pickle.load(f)
-#         # divide each value in edge_counts_all by 2*Q
-#         synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
-
-#         # # Generate synthetic data and prior matrix
-#         synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density)
-#         ## REsults for synthetic data
-#         # print(f'SYNTHETIC NET SIZE: {p} RESULTS\n-------------------\n')
-
-#         analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
-#         synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
     
-if True:
+if False:
     ################################################# VARYING SAMPLE SIZE for fixed network #################################################
     p = 137
     n_values = [750] # [50, 100, 200, 400, 750, 1000, 2000]
@@ -194,7 +178,7 @@ if True:
         # synth_prior_matrix = synth_prior_matrix * 0
 
         _, _, _, _, _, temp_evalu = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
-        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=True)
+        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
 
         evalu[n] = temp_evalu
 
@@ -226,14 +210,207 @@ if True:
         plt.show()
 
 
+if False:
+    # COMPLETE SWEEP
+    # Parameter arrays
+    p_values = [100, 200, 400]
+    n_values = [50, 100, 250, 500, 1000, 2000]
+    fp_fn_values = [0.0, 0.25, 0.5, 0.75, 1]
+    seed_values = [1, 2, 3, 42]
+    dens_values = [0.03, 0.04]
 
 
-        
+    # Fixed parameters
+    Q = 2000
+    llo = 0.01
+    lhi = 0.5
+    lamlen = 100
+    b_perc = 0.6
+    skew = 0
+
+    lambda_range = np.linspace(llo, lhi, lamlen)
+
+    # Initialize a dictionary to hold f1 scores for averaging
+    f1_scores = {}
+    recall_scores = {}
+
+    missing_combinations = []
+    missing_counts = defaultdict(lambda: defaultdict(int)) 
+
+    # Loop over each parameter combination
+    for n in tqdm(n_values):
+        for p in p_values:
+            for fp_fn in fp_fn_values:
+                for seed in seed_values:
+                    for dens in dens_values:
+                        # Calculate the size of sub-samples (b)
+                        b = int(b_perc * n)
+                        
+                        # Construct filename for edge counts
+                        filename_edges = f'Networks/net_results/net_results_sweep/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{llo}_{lhi}_ll{lamlen}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{dens}_s{seed}.pkl'
+                        
+                        # Check if file exists before trying to open it
+                        if not os.path.isfile(filename_edges):
+                            missing_combination = f"p={p}, n={n}, fp_fn={fp_fn}, seed={seed}"
+                            missing_combinations.append(missing_combination)
+
+                            # Increment missing counts
+                            missing_counts['p'][p] += 1
+                            missing_counts['n'][n] += 1
+                            missing_counts['fp_fn'][fp_fn] += 1
+                            missing_counts['seed'][seed] += 1
+
+                            continue  # Skip this file and go to the next one
+                        
+
+                        # Load the edge counts
+                        with open(filename_edges, 'rb') as f:
+                            synth_edge_counts_all = pickle.load(f)
+                        
+                        # Process the edge counts (your specific processing logic here)
+                        synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
+
+                        synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
+                        
+                        if fp_fn == 1:
+                            synth_prior_matrix = synth_prior_matrix * 0
+                        # Assuming you have a way to calculate or retrieve temp_evalu, focusing on 'f1_score'
+                        # For example:
+                        _, _, _, _, _, temp_evalu = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
+                        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False, verbose = False)
+                        
+                        # Extract 'f1_score' and add to f1_scores dictionary
+                        param_key = (p, n, fp_fn, seed, dens)
+                        f1_scores[param_key] = temp_evalu['f1_score']
+                        recall_scores[param_key] = temp_evalu['recall']
+
+    # save to file
+    with open('Networks/net_results/net_results_sweep/f1_scores.pkl', 'wb') as f:
+        pickle.dump(f1_scores, f)
+
+    with open('Networks/net_results/net_results_sweep/recall_scores.pkl', 'wb') as f:
+        pickle.dump(recall_scores, f)
+
+
+    average_f1_scores = {}
+    average_recall_scores = {}
+
+    for p in p_values:
+        for n in n_values:
+            for fp_fn in fp_fn_values:
+                f1_scores_for_average = []
+                recall_scores_for_average = []
+
+                # Collecting all f1 scores for the specific (p, n, fp_fn) across seeds and densities
+                for seed in seed_values:
+                    for dens in dens_values:
+                        key = (p, n, fp_fn, seed, dens)  # Including dens in the key
+                        if key in f1_scores:  # Check if the score exists
+                            f1_scores_for_average.append(f1_scores[key])
+                            recall_scores_for_average.append(recall_scores[key])
+
+                # Calculating the average if there are scores available
+                if f1_scores_for_average:  # Check if there are any scores to average
+                    average_f1_scores[(p, n, fp_fn)] = sum(f1_scores_for_average) / len(f1_scores_for_average)
+                    average_recall_scores[(p, n, fp_fn)] = sum(recall_scores_for_average) / len(recall_scores_for_average)
+                else:
+                    # Handle case where there are no scores (all data for this combination is missing)
+                    average_f1_scores[(p, n, fp_fn)] = None  # or some other indicator of missing data
+                    average_recall_scores[(p, n, fp_fn)] = None  # or some other indicator of missing data
+
+    # Now, average_f1_scores will have an average if there's at least one score, or None if all are missing
+
+    # save to file
+    with open('Networks/net_results/net_results_sweep/average_f1_scores.pkl', 'wb') as f:
+        pickle.dump(average_f1_scores, f)
+    
+    with open('Networks/net_results/net_results_sweep/average_recall_scores.pkl', 'wb') as f:
+        pickle.dump(average_recall_scores, f)
+
+
+    # write missing combinations to file
+    with open('Networks/net_results/net_results_sweep/missing_combinations.txt', 'w') as f:
+        for combination in missing_combinations:
+            f.write(combination + '\n')
+
+    # Identify parameters that are missing in all cases
+    total_combinations = len(p_values) * len(n_values) * len(fp_fn_values) * len(seed_values)
+    consistently_missing_params = {param: val for param, counts in missing_counts.items() for val, count in counts.items() if count == total_combinations}
+
+    # # Print or log the results
+    # print("Missing parameter combinations:", missing_combinations)
+    # print("Consistently missing parameters:", consistently_missing_params)
+
+
+
+
+    # Load average f1 and recall scores from file
+    with open('Networks/net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
+        average_f1_scores = pickle.load(f)
+
+    with open('Networks/net_results/net_results_sweep/average_recall_scores.pkl', 'rb') as f:
+        average_recall_scores = pickle.load(f)
+
+    # Define parameter values from the provided data
+    p_values = [100, 200, 400]
+    n_values = [50, 100, 250, 500, 1000, 2000]
+    fp_fn_values = [0, 0.25, 0.5, 0.75, 1]
+
+    # Create the plots, 3 rows for each p value and 2 columns for F1 and Recall
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12, 12), sharex=True, sharey='row')
+
+    for i, p in enumerate(p_values):
+        for fp_fn in fp_fn_values:
+            # Extracting f1 and recall scores for each n value for the current p and fp_fn setting
+            f1_scores = [average_f1_scores.get((p, n, fp_fn)) for n in n_values]
+            recall_scores = [average_recall_scores.get((p, n, fp_fn)) for n in n_values]
+            
+            # Plotting the lines for the current fp_fn setting in F1 and Recall plots
+            axes[i, 0].plot(n_values, f1_scores, label=f'Prior Overlap={(1 - fp_fn) * 100}%')
+            axes[i, 0].scatter(n_values, f1_scores)  # adding points to indicate actual F1 values
+            
+            axes[i, 1].plot(n_values, recall_scores, label=f'Prior Overlap={(1 - fp_fn) * 100}%')
+            axes[i, 1].scatter(n_values, recall_scores)  # adding points to indicate actual Recall values
+            
+            # Setting titles and labels
+            if i == 0:
+                axes[i, 0].set_title('Average F1 Score')
+                axes[i, 1].set_title('Average Recall Score')
+
+            axes[i, 0].set_ylabel(f'P = {p}', fontsize=12)
+            # make x-xais log2 scale
+            axes[i, 0].set_xscale('log', basex=2)
+            # make the x labels the exponents of 2
+            axes[i, 0].set_xticks(n_values)
+            axes[i, 0].set_xticklabels(n_values, fontsize=12)
+            
+            # axes[i, 1].set_ylabel(f'p = {p}')
+
+    axes[-1, 0].set_xlabel('Sample Size N', fontsize=12)
+    axes[-1, 1].set_xlabel('Sample Size N', fontsize=12)
+    axes[0, 0].legend(loc='upper right')
+    # axes[0, 1].legend(loc='upper right')
+
+    # remove 'fp_fn = 1' from legend
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    handles = handles[:-1]
+    labels = labels[:-1]
+    axes[0, 0].legend(handles, labels, loc='upper left')
+
+    # Adjusting layout
+    plt.tight_layout()
+    # set grid for all subplots
+    for ax in axes.flatten():
+        ax.grid(alpha=0.3)
+    plt.show()
+
+
+
 
 
 
 ################################################## OMICS DATA PART #################################################
-if False:
+if True:
     # for cms_type in ['cmsALL', 'cms123']:
     #     for omics_type in ['t', 'p']:
     # Parameters
@@ -371,8 +548,9 @@ if False:
     # assign columns and indices of prior matrix to adj_matrix
     adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
 
-    # save adjacency matrix
-    adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_lowenddensity.csv')
+    # WRITE ADJACAENCY MATRIX TO FILE
+    # # save adjacency matrix
+    # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_lowenddensity.csv')
 
     # # draw the network
     # G = nx.from_pandas_adjacency(cms_omics_prior)
@@ -383,6 +561,14 @@ if False:
     # #plot the degree distribution
     G = nx.from_pandas_adjacency(adj_matrix)
     degrees = [G.degree(n) for n in G.nodes()]
+
+    # get layout and draw the network
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, with_labels=True)
+    plt.title(f'Network for {omics_type} data')
+    plt.show()
+
+
     # plt.hist(degrees, bins=20)
     # plt.title(f'Degree distribution for {omics_type} data')
     # plt.xlabel('Degree')

@@ -24,7 +24,7 @@ weighted_glasso <- function(data, penalty_matrix, nobs) {
 ''')
 
 
-def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
+def optimize_graph(data, prior_matrix, lambda_np, lambda_wp, verbose=False):
     """
     Optimizes the objective function using the entire data set and the estimated lambda.
 
@@ -60,15 +60,16 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp):
 
     prior_matrix = prior_matrix.astype(int)
 
-    print(f'Number of prior edges (lower triangular): {np.sum(prior_matrix == 1) / 2}')
 
     # Assign penalties based on the prior matrix
     penalty_matrix[prior_matrix == 1] = lambda_wp
     penalty_matrix[prior_matrix == 0] = lambda_np
 
-    print(f'Number of prior penalty edges: {np.sum(penalty_matrix == lambda_wp) / 2}')
-    print(f'Edges in complete graph: {complete_graph_edges}')
-    print(f'Density of prior penalty matrix: {((np.sum(penalty_matrix == lambda_wp) / 2) / complete_graph_edges)}\n')
+    if verbose:
+        print(f'Number of prior edges (lower triangular): {np.sum(prior_matrix == 1) / 2}')
+        print(f'Number of prior penalty edges: {np.sum(penalty_matrix == lambda_wp) / 2}')
+        print(f'Edges in complete graph: {complete_graph_edges}')
+        print(f'Density of prior penalty matrix: {((np.sum(penalty_matrix == lambda_wp) / 2) / complete_graph_edges)}\n')
 
     # # fill diagonal with 0s
     np.fill_diagonal(penalty_matrix, 0)

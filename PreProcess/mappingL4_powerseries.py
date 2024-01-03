@@ -390,6 +390,54 @@ rppa_with_labelsT.to_csv('../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.cs
 
 
 
+
+
+
+
+# %% LINKEDOMICS LINKEDOMICS LINKEDOMICS
+linked_RNA = pd.read_csv('../data/LinkedOmics/linked_rna.cct', sep='\t')
+linked_rppa = pd.read_csv('../data/LinkedOmics/linked_rppa.tsv', sep='\t')
+
+classifier_labels = pd.read_csv('../data/LinkedOmics/TCGACRC_CMS_CLASSIFIER_LABELS.tsv', sep='\t')
+classifier_labels.rename(columns={classifier_labels.columns[0]: 'sample_ID'}, inplace=True)
+
+
+classifier_labels.head()
+
+# Now let's create a dictionary where keys are unique labels and values are dataframes corresponding to those labels.
+# First, we extract the unique labels from the CSV data.
+unique_labels = classifier_labels['SSP.nearestCMS'].unique()
+
+# Create a dictionary to hold the dataframes for each label.
+rna_dataframes = {}
+prot_dataframes = {}
+
+# Loop through each label and create a dataframe for it from the CCT data.
+for label in unique_labels:
+    # Find samples with the current label.
+    samples_with_label = classifier_labels[classifier_labels['SSP.nearestCMS'] == label]['sample_ID']
+    # Select columns in CCT data that match the samples with the current label.
+    rna_df_for_label = linked_RNA.loc[:, linked_RNA.columns.intersection(['attrib_name'] + samples_with_label.tolist())]
+    rppa_df_for_label = linked_rppa.loc[:, linked_rppa.columns.intersection(['attrib_name'] + samples_with_label.tolist())]
+    # Store the dataframe in the dictionary.
+    rna_dataframes[label] = rna_df_for_label
+    prot_dataframes[label] = rppa_df_for_label
+
+# merge CMS 1 2 and 3
+rna_dataframes_cms123 = pd.concat([rna_dataframes['CMS1'], rna_dataframes['CMS2'], rna_dataframes['CMS3']], ignore_index=True)
+prot_dataframes_cms123 = pd.concat([prot_dataframes['CMS1'], prot_dataframes['CMS2'], prot_dataframes['CMS3']], ignore_index=True)
+
+# merge all dataframes
+rna_dataframes_cmsALL = pd.concat([rna_dataframes['CMS1'], rna_dataframes['CMS2'], rna_dataframes['CMS3'], rna_dataframes['CMS4']], ignore_index=True)
+prot_dataframes_cmsALL = pd.concat([prot_dataframes['CMS1'], prot_dataframes['CMS2'], prot_dataframes['CMS3'], prot_dataframes['CMS4']], ignore_index=True)
+
+prot_dataframes_cmsALL.head()
+
+# write to file
+rna_dataframes_cms123.to_csv('../data/LinkedOmics/linked_rna_cms123.csv')
+prot_dataframes_cms123.to_csv('../data/LinkedOmics/linked_rppa_cms123.csv')
+
+
 # %% CHECK TO SEE IF EXPRESSION FROM GUINNEY DATA MATCHES THE RPPA DATA
 
 def apply_yeo_johnson(column):
@@ -424,21 +472,21 @@ rppa_file = '../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.csv'
 expr_df = pd.read_csv(expression_file, index_col=0)
 rppa_df = pd.read_csv(rppa_file, index_col=0)
 
-# split index of rppa_df on '-' and keep first 3 items and rejoin with '-'
-rppa_df.index = rppa_df.index.str.split('-').str[:3].str.join('-')
+# # split index of rppa_df on '-' and keep first 3 items and rejoin with '-'
+# rppa_df.index = rppa_df.index.str.split('-').str[:3].str.join('-')
 
-expr_df_4_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
-rppa_df_4_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
+# expr_df_4_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
+# rppa_df_4_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
 
-expr_df_2_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
-rppa_df_2_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
+# expr_df_2_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
+# rppa_df_2_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
 
-# Specific DFs with only CMS2 and CMS4
-expr_df_2 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS2'])]
-rppa_df_2 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS2'])]
+# # Specific DFs with only CMS2 and CMS4
+# expr_df_2 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS2'])]
+# rppa_df_2 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS2'])]
 
-expr_df_4 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS4'])]
-rppa_df_4 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS4'])]
+# expr_df_4 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS4'])]
+# rppa_df_4 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS4'])]
 
 
 # check overlap between expr_df.columns and rppa_df.columns

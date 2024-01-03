@@ -2,7 +2,7 @@ library(devtools)
 library(CMSclassifier)
 
 
-sampleData <- read.table("data/TCGA-COAD-L4/tmp/RNA_samples_for_RPPA_scaled.tsv", header = T, row.names = 1) # replace with wherever your file is
+sampleData <- read.table("data/LinkedOmics/linked_rna.cct", header = T, row.names = 1) # replace with wherever your file is
 # rownames(sampleData) <- sampleData$gene_name
 
 # print head of rownames(sampleData)
