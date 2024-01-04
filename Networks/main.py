@@ -57,9 +57,9 @@ def analysis(data,
     lambda_np, theta_mat = estimate_lambda_np(select_edge_counts_all, Q, select_lambda_range)
     man = False
     if run_type == 'OMICS':
-        man= False
+        man= True
         if man:
-            lambda_np =  0.29
+            lambda_np =  1
             if verbose:
                 # print('manually set lambda_np: ', lambda_np)
                 print(f'manual Lambda_np: {man}')
@@ -87,7 +87,7 @@ def analysis(data,
         scalar_edges = np.sum(edge_counts_all, axis=(0, 1))
         scalar_select_edges = np.sum(select_edge_counts_all, axis=(0, 1))
 
-        if False: 
+        if False: # PLOTTING THE TOTAL + THE SELECT RANGE
             # create a 1 x 2 multiplot. on the left, plot both scalar aedes and scalar_select edges. On the right, just scalar_select_edges
             plt.figure(figsize=(12, 5))
             plt.subplot(1, 2, 1)
@@ -111,7 +111,7 @@ def analysis(data,
             ax.grid(alpha=0.2)
             plt.tight_layout()
             plt.show()
-        if True:
+        if True: # PLOTTING JUST THE TOTAL (WITH RED)
             plt.figure(figsize=(8, 6), dpi=300)
             plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
             plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
@@ -411,196 +411,277 @@ if False:
 
 ################################################## OMICS DATA PART #################################################
 if True:
-    # for cms_type in ['cmsALL', 'cms123']:
-    #     for omics_type in ['t', 'p']:
-    # Parameters
-    p = 136
-    b_perc = 0.6
-    n = 1337             # nnot actual samples, just filename requirements
-    Q = 5000             # number of sub-samples
+    for o_t in ['p', 't']:
+        for cms in ['cms123', 'cmsALL']:
+            # for cms_type in ['cmsALL', 'cms123']:
+            #     for omics_type in ['t', 'p']:
+            # Parameters
+            p = 154
+            b_perc = 0.6
+            n = 1337             # nnot actual samples, just filename requirements
+            Q = 2000             # number of sub-samples
 
-    lowerbound = 0.01
-    upperbound = 0.9
-    granularity = 150
+            lowerbound = 0.01
+            upperbound = 0.9
+            granularity = 500 
 
-    fp_fn = 0.0
-    skew = 0.0
-    density = 0.03
+            fp_fn = 0
+            skew = 0
+            density = 0.03
+            seed = 42
 
-    o_t =  'p' # omics_type
-    cms = 'cms123'
-    end_slice = 30
-
-
-    if o_t == 'p':
-        prior_bool = True
-        omics_type = 'proteomics'
-    elif o_t == 't':
-        prior_bool = False
-        omics_type = 'transcriptomics'
+            # o_t =  't' # omics_type # commented out for loop
+            # cms = 'cmsALL' # cms_type # commented out for loop
+            # end_slice = 30
 
 
-    # Load omics edge counts
-    file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}.pkl'
+            if o_t == 'p':
+                prior_bool = True
+                omics_type = 'proteomics'
+            elif o_t == 't':
+                prior_bool = True
+                omics_type = 'transcriptomics'
 
-    with open(file_, 'rb') as f:
-        omics_edge_counts_all = pickle.load(f)
+            # Load omics edge counts
+            file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
 
-    # divide each value in edge_counts_all by 2*Q
-    omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
+            with open(file_, 'rb') as f:
+                omics_edge_counts_all = pickle.load(f)
 
-
-    # Load Omics Data
-    cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
-    cms_filename = 'Diffusion/data/transcriptomics_for_pig_ALL.csv'
-    cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
-
-    cms_array = cms_data.values
+            # divide each value in edge_counts_all by 2*Q
+            omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
 
 
 
-    # LOad Omics Prior Matrix
-    if prior_bool == True:
-        cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj.csv', index_col=0)
-    else:
-        cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj.csv', index_col=0)
-        #only keep columns / rows that are in the omics data
-        cms_omics_prior = cms_omics_prior[cms_data.columns]
-        cms_omics_prior = cms_omics_prior.reindex(index=cms_data.columns)
-        cms_omics_prior = cms_omics_prior * 0
+            # Load Omics Data
+            cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
+            cms_filename = 'Diffusion/data/transcriptomics_for_pig_ALL.csv'
+            cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
 
-    cms_omics_prior_matrix = cms_omics_prior.values
-    # # Check if there are any non-zero values in the prior matrix
-    # print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
-
-    p = cms_array.shape[1]
-    n = cms_array.shape[0]
-    b = int(0.6 * n)
-
-    # scale and center 
-    cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
+            cms_array = cms_data.values
 
 
-    print(f'{str.upper(omics_type)}, {cms} RESULTS\n-------------------\n')
+
+            # LOad Omics Prior Matrix
+            if prior_bool == True:
+                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj2.csv', index_col=0)
+            else:
+                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj2.csv', index_col=0)
+                #only keep columns / rows that are in the omics data
+                cms_omics_prior = cms_omics_prior[cms_data.columns]
+                cms_omics_prior = cms_omics_prior.reindex(index=cms_data.columns)
+                cms_omics_prior = cms_omics_prior * 0
+
+            cms_omics_prior_matrix = cms_omics_prior.values
+            # # Check if there are any non-zero values in the prior matrix
+            # print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
+
+            # # SYNSUSSYSNSS ##############################################
+
+            # p = 200
+            # n = 500
+            # fp_fn = 0.0
+            # seed = 42
+            # dens = 0.03
 
 
-    print(f'Number of samples: {n}')
-    print(f'Number of sub-samples: {Q}')
-    print(f'Number of variables: {p}\n')
+            # # Fixed parameters
+            # Q = 2000
+            # lowerbound = 0.01
+            # upperbound = 0.5
+            # granularity = 100
+            # b_perc = 0.6
+            # skew = 0
+            # filename_edges = 'Networks/net_results/net_results_sweep/net_results/synthetic_cmsALL_edge_counts_all_pnQ200_500_2000_0.01_0.5_ll100_b0.6_fpfn0.25_skew0_dens0.04_s3.pkl'
 
-    # print(f'Granularity of sliced lambda range: {new_granularity}')
+            # with open(filename_edges, 'rb') as f:
+            #         omics_edge_counts_all = pickle.load(f)
+                        
+            # # Process the edge counts (your specific processing logic here)
+            # omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
 
-    # # RUN ANALYSIS for multiple END SLICES
-    if False:
-        densities = []
-        no_end_slices = 75
-        i = 0
-        for end_slice in range(1, no_end_slices):
-            i += 1
-            print(i)
-            sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
+            # cms_array, cms_omics_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
 
-            # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
-            new_granularity = sliced_omics_edge_counts_all.shape[2]
-            new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
-            lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
+            # #### YSNSYNSYHYY END
 
-            kpa = 0                                                                                                        # HERE
-            precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                        lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+            p = cms_array.shape[1]
+            n = cms_array.shape[0]
+            b = int(0.6 * n)
 
-            densities.append(density)
+            # scale and center 
+            cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
+
+
+            print(f'{str.upper(omics_type)}, {cms} RESULTS\n-------------------\n')
+
+
+            print(f'Number of samples: {n}')
+            print(f'Number of sub-samples: {Q}')
+            print(f'Number of variables: {p}\n')
+
+            # print(f'Granularity of sliced lambda range: {new_granularity}')
+
+            # # RUN ANALYSIS for multiple END SLICES
+            if True:
+                densities = []
+                np_lams = []
+                wp_lams = []
+                no_end_slices = 300
+                slicer_range = range(200, no_end_slices)
+                x_axis = []
+                i = 0
+                for end_slice in slicer_range:
+                    i += 1
+                    sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
+
+                    # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
+                    new_granularity = sliced_omics_edge_counts_all.shape[2]
+                    new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
+                    x_axis.append(new_upperbound)
+
+                    lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
+                    kpa = 0                                                                                                        # HERE
+                    precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+
+                    print(i, new_upperbound, o_t, cms)
+                    print(f'lambda_np: {lambda_np}, lambda_wp: {lambda_wp}, density: {density}')
+                    densities.append(density)
+                    np_lams.append(lambda_np)
+                    wp_lams.append(lambda_wp)
+                
+                # write densities to file
+                with open(f'Networks/net_results/Sendslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                    pickle.dump(densities, f)
+                # write np_lams to file
+                with open(f'Networks/net_results/Sendslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                    pickle.dump(np_lams, f)
+                # write wp_lams to file
+                with open(f'Networks/net_results/Sendslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                    pickle.dump(wp_lams, f)
+
+                # # load np_lams from file
+                # with open(f'Networks/net_results/endslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                #     np_lams = pickle.load(f)
+
+                # # load wp_lams from file
+                # with open(f'Networks/net_results/endslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                #     wp_lams = pickle.load(f)
+
+                # # plot both np_lams and wp_lams against end slice value
+                # plt.figure(figsize=(12, 5))
+                # plt.plot(x_axis, np_lams, color='red', alpha=0.8, label=r'$\lambda_{np}$')
+                # plt.scatter(x_axis, np_lams, color='red', alpha=0.8)
+                # plt.plot(x_axis, wp_lams, color='blue', alpha=0.8, label=r'$\lambda_{wp}$')
+                # plt.scatter(x_axis, wp_lams, color='blue', alpha=0.8)
+                # plt.title(f'$\lambda_np$ and $\lambda_wp$ vs end slice value for {omics_type} data, Q = {Q}')
+                # plt.xlabel('End slice value', fontsize=12)
+                # plt.ylabel(r'$\lambda$', fontsize=12)
+                # # plt.ylim(0.0, 0.5)
+
+                plt.show()
+
+                # # load densities from file
+                with open(f'Networks/net_results/endslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                    densities = pickle.load(f)
+                    
+                # plot density against end slice value
+                plt.figure(figsize=(12, 5))
+                plt.plot(x_axis, densities, color='red', alpha=0.8)
+                plt.scatter(x_axis, densities, color='red', alpha=0.8)
+                plt.title(f'Density vs end slice value for {omics_type} data, Q = {Q}')
+                plt.xlabel('End slice value', fontsize=12)
+                plt.ylabel('Density', fontsize=12)
+                # plt.ylim(0.0, 0.5)
+                plt.grid()
+                ax = plt.gca()
+                ax.grid(alpha=0.2)
+                plt.tight_layout()
+
+                # save plot image to file
+                plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/density_vs_end_slice_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.png')
+
+                # plt.show()
             
-        # plot density against end slice value
-        plt.figure(figsize=(12, 5))
-        plt.subplot(1, 2, 1)
-        plt.plot(range(1, no_end_slices), densities, color='red', alpha=0.8)
-        plt.scatter(range(1, no_end_slices), densities, color='red', alpha=0.8)
-        plt.title(f'Density vs end slice value for {omics_type} data, Q = {Q}')
-        plt.xlabel('End slice value', fontsize=12)
-        plt.ylabel('Density', fontsize=12)
-        # plt.ylim(0.0, 0.5)
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-        plt.tight_layout()
+            else:
+                sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
-        # save plot image to file
-        plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/density_vs_end_slice_{omics_type}_{cms}_Q{Q}.png')
+                # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
+                new_granularity = sliced_omics_edge_counts_all.shape[2]
+                new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
+                lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
 
-        # plt.show()
-    
-    else:
-        sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
-
-        # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
-        new_granularity = sliced_omics_edge_counts_all.shape[2]
-        new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
-        lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
-
-        kpa = 0                                                                                                        # HERE
-        precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                    lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+                kpa = 0                                                                                                        # HERE
+                precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
 
 
-    # get adjacency from precision matrix
-    adj_matrix = (np.abs(precision_mat) > 1e-5).astype(int)
-    # assign columns and indices of prior matrix to adj_matrix
-    adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
+            # # get adjacency from precision matrix
+            # adj_matrix = (np.abs(precision_mat) > 1e-5).astype(int)
+            # # assign columns and indices of prior matrix to adj_matrix
+            # adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
 
-    # WRITE ADJACAENCY MATRIX TO FILE
-    # # save adjacency matrix
-    # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_lowenddensity.csv')
-
-    # # draw the network
-    # G = nx.from_pandas_adjacency(cms_omics_prior)
-    # nx.draw(G, with_labels=True)
-    # plt.title(f'Network for {omics_type} data')
-    # plt.show()
-
-    # #plot the degree distribution
-    G = nx.from_pandas_adjacency(adj_matrix)
-    degrees = [G.degree(n) for n in G.nodes()]
-
-    # get layout and draw the network
-    pos = nx.spring_layout(G)
-    nx.draw(G, pos, with_labels=True)
-    plt.title(f'Network for {omics_type} data')
-    plt.show()
-
-
-    # plt.hist(degrees, bins=20)
-    # plt.title(f'Degree distribution for {omics_type} data')
-    # plt.xlabel('Degree')
-    # plt.ylabel('Frequency')
-    # plt.show()
-
-    highest_degrees_indices = list(np.argsort(degrees)[-20:])
-    nodes_with_highest_degrees = [list(G.nodes())[i] for i in highest_degrees_indices]
-
-    print(f'Highest degrees: {np.sort(degrees)[-20:]}')
-    print(f'Nodes with highest degrees: {nodes_with_highest_degrees}')
-
-    # Print the degree of 'TP53'
-    print(f'Degree of TP53: {G.degree("TP53")}')
+            # # WRITE ADJACAENCY MATRIX TO FILE
+            # # # save adjacency matrix
+            # # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_lowenddensity.csv')
 
 
 
-    # # LOG - LOG SCALE   
-    # # Count the frequency of each degree
-    # degree_counts = Counter(degrees)
-    # degrees, counts = zip(*degree_counts.items())
-    # # Scatter plot
-    # plt.scatter(degrees, counts)
-    # # Set both axes to logarithmic scale
-    # plt.xscale('log')
-    # plt.yscale('log')
-    # # Set the labels and title
-    # plt.xlabel('Degree')
-    # plt.ylabel('Frequency')
-    # plt.title(f'Log-Log Scatter Plot of Degree Distribution for {omics_type} data')
-    # # Show the plot
-    # plt.show()
+
+
+
+
+
+
+            # # # draw the network
+            # # G = nx.from_pandas_adjacency(cms_omics_prior)
+            # # nx.draw(G, with_labels=True)
+            # # plt.title(f'Network for {omics_type} data')
+            # # plt.show()
+
+            # # #plot the degree distribution
+            # G = nx.from_pandas_adjacency(adj_matrix)
+            # degrees = [G.degree(n) for n in G.nodes()]
+
+            # # get layout and draw the network
+            # pos = nx.spring_layout(G)
+            # nx.draw(G, pos, with_labels=True)
+            # plt.title(f'Network for {omics_type} data')
+            # plt.show()
+
+
+            # # plt.hist(degrees, bins=20)
+            # # plt.title(f'Degree distribution for {omics_type} data')
+            # # plt.xlabel('Degree')
+            # # plt.ylabel('Frequency')
+            # # plt.show()
+
+            # highest_degrees_indices = list(np.argsort(degrees)[-20:])
+            # nodes_with_highest_degrees = [list(G.nodes())[i] for i in highest_degrees_indices]
+
+            # print(f'Highest degrees: {np.sort(degrees)[-20:]}')
+            # print(f'Nodes with highest degrees: {nodes_with_highest_degrees}')
+
+            # # Print the degree of 'TP53'
+            # print(f'Degree of TP53: {G.degree("TP53")}')
+
+
+
+            # # # LOG - LOG SCALE   
+            # # # Count the frequency of each degree
+            # # degree_counts = Counter(degrees)
+            # # degrees, counts = zip(*degree_counts.items())
+            # # # Scatter plot
+            # # plt.scatter(degrees, counts)
+            # # # Set both axes to logarithmic scale
+            # # plt.xscale('log')
+            # # plt.yscale('log')
+            # # # Set the labels and title
+            # # plt.xlabel('Degree')
+            # # plt.ylabel('Frequency')
+            # # plt.title(f'Log-Log Scatter Plot of Degree Distribution for {omics_type} data')
+            # # # Show the plot
+            # # plt.show()
 
 
 

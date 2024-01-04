@@ -934,9 +934,9 @@ def multiplex_net_viz(M, ax, diff_colors=False, node_colors=None, node_sizes=Non
             defaultEdgeAlpha=0.25,
             layerColorDict=layer_colors,
             defaultLayerAlpha=0.075,
-            layerLabelRule={},  # Clear any label rules
-            defaultLayerLabel=None,  # Set default label to None
-            azim=45,
+            # layerLabelRule={},  # Clear any label rules
+            # defaultLayerLabel=None,  # Set default label to None
+            # azim=45,
             elev=25)
 
     print(type(fig))
@@ -944,6 +944,8 @@ def multiplex_net_viz(M, ax, diff_colors=False, node_colors=None, node_sizes=Non
     return fig
 
 # %%
+
+args.visualize = True
 
 def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None):
     # Load the pickle file
@@ -962,7 +964,7 @@ def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None
     prot_node_positions = nx.spring_layout(weighted_G.subgraph(prot_nodes))  # Adjust as necessary
 
     # Set up a 3x3 subplot grid with 3D projection
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 20), subplot_kw={'projection': '3d'})
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 20), subplot_kw={'projection': '3d'})
     axs = axes.flatten()  # Flatten the axes array for easy iteration
     fig.suptitle('Network Diffusion over 25 Time Points')
 
@@ -999,7 +1001,7 @@ def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None
         # if idx % 5 == 0:
         # Create the unit vector e_j with 1 at the jth index and 0 elsewhere
         e_j = np.zeros(len(weighted_G.nodes()))
-        e_j[t_indices] = 1
+        e_j[j] = 100
 
         # e_j = np.ones(len(weighted_G_cms_ALL.nodes()))
         
@@ -1043,10 +1045,10 @@ def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None
     # Adjust layout to prevent overlap
     # plt.tight_layout()
     # plt.subplots_adjust(top=0.95)  # Adjust the top space to fit the main title
-    # plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), ax=axs.ravel().tolist(), orientation='vertical')
+    plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), ax=axs.ravel().tolist(), orientation='vertical')
 
     # savethefigure
-    plt.savefig('diffusion_figure.png', dpi=300)
+    plt.savefig('diffusion_figure.svg') # make rc.param no font export
 
     # Display the figure
     plt.show()

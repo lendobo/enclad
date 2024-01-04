@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pickle
 import sys
 from itertools import combinations
-from scipy.special import comb, erf
+from scipy.special import comb, erf, gammaln
 from scipy.stats import norm
 from scipy.optimize import curve_fit, OptimizeWarning
 import warnings
@@ -43,6 +43,10 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     N_k_matrix = np.sum(edge_counts_all, axis=2)
     p_k_matrix = N_k_matrix / (Q * J)
 
+    # Regularizing probabilities to avoid 0 or 1
+    epsilon = 1e-5
+    p_k_matrix = np.clip(p_k_matrix, epsilon, 1 - epsilon)
+
     # check for NaNs or Infs in p_k_matrix
     if np.isnan(p_k_matrix[:,:,None]).any():
         print('NaNs in p_k_matrix')
@@ -51,6 +55,7 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     # check for NaNs or Infs in  comb(Q, edge_counts_all)
     if np.isnan(comb(Q, edge_counts_all)).any():
         print('NaNs in comb(Q, edge_counts_all)')
+
     p, _, J = edge_counts_all.shape
     bad_i = 0
     for i in range(p):
@@ -62,7 +67,18 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
                         bad_i = i
     
     # Compute theta_lj_matrix, f_k_lj_matrix, and g_l_matrix for all lambdas simultaneously
-    theta_matrix = comb(Q, edge_counts_all) * (p_k_matrix[:, :, None] ** edge_counts_all) * ((1 - p_k_matrix[:, :, None]) ** (Q - edge_counts_all))
+    def log_comb(n, k):
+        """Compute the logarithm of combinations using gamma logarithm for numerical stability."""
+        return gammaln(n + 1) - gammaln(k + 1) - gammaln(n - k + 1)
+    # Using log probabilities and exponentiation to improve numerical stability
+    log_theta_matrix = log_comb(Q, edge_counts_all) \
+                        + edge_counts_all * np.log(p_k_matrix[:, :, None]) \
+                        + (Q - edge_counts_all) * np.log(1 - p_k_matrix[:, :, None])
+
+    # Convert log_theta_matrix back to theta_matrix
+    theta_matrix = np.exp(log_theta_matrix)
+    
+    
     f_k_lj_matrix = edge_counts_all / Q
     g_matrix = 4 * f_k_lj_matrix * (1 - f_k_lj_matrix)
 
@@ -72,6 +88,10 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
     # Compute the score for each lambda using vectorized operations
     scores = np.sum(theta_matrix_reshaped * (1 - g_matrix_reshaped), axis=1)
+
+    # Check for extreme values or identical scores in scores array
+    if np.isnan(scores).any() or np.isinf(scores).any():
+        raise ValueError("Scores contain NaN or Inf values.")
 
     # Find the lambda that maximizes the score
     lambda_np = lambda_range[np.argmax(scores)]
@@ -271,23 +291,23 @@ def find_all_knee_points(lambda_range, edge_counts_all):
 # Main code
 if __name__ == "__main__":
     #### Main code ####
-    p = 137
-    n = 750 # [50, 100, 200, 400, 750, 1000, 2000]
+    p = 154
+    n = 1337 # [50, 100, 200, 400, 750, 1000, 2000]
     b_perc = 0.6
     b = b_perc * n   # size of sub-samples
-    Q = 1200          # number of sub-samples
+    Q = 2000          # number of sub-samples
 
     lowerbound = 0.01
-    upperbound = 0.5
-    granularity = 100
+    upperbound = 0.9
+    granularity = 300
     lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
-    fp_fn = 0.0
+    fp_fn = 0
     skew = 0
     density = 0.03
     seed = 42
 
-    typer = 'synthetic'
+    typer =  'proteomics' # 'synthetic'
 
     filename_edges = f'Networks/net_results/{typer}_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
     with open(filename_edges, 'rb') as f:

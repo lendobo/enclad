@@ -394,48 +394,58 @@ rppa_with_labelsT.to_csv('../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.cs
 
 
 
+
+
+
+
+
+
+
+
 # %% LINKEDOMICS LINKEDOMICS LINKEDOMICS
-linked_RNA = pd.read_csv('../data/LinkedOmics/linked_rna.cct', sep='\t')
-linked_rppa = pd.read_csv('../data/LinkedOmics/linked_rppa.tsv', sep='\t')
+linked_RNA = pd.read_csv('../data/LinkedOmics/linked_rna.cct', sep='\t', index_col=0)
+linked_rppa = pd.read_csv('../data/LinkedOmics/linked_rppa.tsv', sep='\t', index_col=0)
+
+# transpose
+linked_RNA_T = linked_RNA.transpose()
+linked_rppa_T = linked_rppa.transpose()
 
 classifier_labels = pd.read_csv('../data/LinkedOmics/TCGACRC_CMS_CLASSIFIER_LABELS.tsv', sep='\t')
 classifier_labels.rename(columns={classifier_labels.columns[0]: 'sample_ID'}, inplace=True)
 
+# remove all columns except for 'sampleID' and 'SSP.nearestCMS'
+classifier_labels = classifier_labels.loc[:, classifier_labels.columns.isin(['sample_ID', 'SSP.nearestCMS'])]
 
-classifier_labels.head()
+# set index to 'sample_ID'
+classifier_labels.set_index('sample_ID', inplace=True)
 
-# Now let's create a dictionary where keys are unique labels and values are dataframes corresponding to those labels.
-# First, we extract the unique labels from the CSV data.
-unique_labels = classifier_labels['SSP.nearestCMS'].unique()
 
-# Create a dictionary to hold the dataframes for each label.
-rna_dataframes = {}
-prot_dataframes = {}
+# Merge the labels with the transposed RNA data
+linked_RNA_T_labeled = linked_RNA_T.join(classifier_labels)
+# Merge the labels with the transposed RPPA data
+linked_rppa_T_labeled = linked_rppa_T.join(classifier_labels)
 
-# Loop through each label and create a dataframe for it from the CCT data.
-for label in unique_labels:
-    # Find samples with the current label.
-    samples_with_label = classifier_labels[classifier_labels['SSP.nearestCMS'] == label]['sample_ID']
-    # Select columns in CCT data that match the samples with the current label.
-    rna_df_for_label = linked_RNA.loc[:, linked_RNA.columns.intersection(['attrib_name'] + samples_with_label.tolist())]
-    rppa_df_for_label = linked_rppa.loc[:, linked_rppa.columns.intersection(['attrib_name'] + samples_with_label.tolist())]
-    # Store the dataframe in the dictionary.
-    rna_dataframes[label] = rna_df_for_label
-    prot_dataframes[label] = rppa_df_for_label
+# only keep columns that are in both dataframes
+linked_RNA_T_labeled = linked_RNA_T_labeled.loc[:, linked_RNA_T_labeled.columns.isin(linked_rppa_T_labeled.columns)]
+linked_rppa_T_labeled = linked_rppa_T_labeled.loc[:, linked_rppa_T_labeled.columns.isin(linked_RNA_T_labeled.columns)]
 
-# merge CMS 1 2 and 3
-rna_dataframes_cms123 = pd.concat([rna_dataframes['CMS1'], rna_dataframes['CMS2'], rna_dataframes['CMS3']], ignore_index=True)
-prot_dataframes_cms123 = pd.concat([prot_dataframes['CMS1'], prot_dataframes['CMS2'], prot_dataframes['CMS3']], ignore_index=True)
+# make subset df with only CMS1, CMS2, CMS3 and then drop the last column
+linked_RNA_T_123 = linked_RNA_T_labeled.loc[linked_RNA_T_labeled.iloc[:, -1].isin(['CMS1', 'CMS2', 'CMS3'])].drop(columns=['SSP.nearestCMS'])
+linked_rppa_T_123 = linked_rppa_T_labeled.loc[linked_rppa_T_labeled.iloc[:, -1].isin(['CMS1', 'CMS2', 'CMS3'])].drop(columns=['SSP.nearestCMS'])
+linked_RNA_T_ALL = linked_RNA_T_labeled.drop(columns=['SSP.nearestCMS'])
+linked_rppa_T_ALL = linked_rppa_T_labeled.drop(columns=['SSP.nearestCMS'])
 
-# merge all dataframes
-rna_dataframes_cmsALL = pd.concat([rna_dataframes['CMS1'], rna_dataframes['CMS2'], rna_dataframes['CMS3'], rna_dataframes['CMS4']], ignore_index=True)
-prot_dataframes_cmsALL = pd.concat([prot_dataframes['CMS1'], prot_dataframes['CMS2'], prot_dataframes['CMS3'], prot_dataframes['CMS4']], ignore_index=True)
+# write to csv
+linked_RNA_T_ALL.to_csv('../data/LinkedOmics/linked_rna_ALL.csv')
+linked_rppa_T_ALL.to_csv('../data/LinkedOmics/linked_rppa_ALL.csv')
+linked_RNA_T_123.to_csv('../data/LinkedOmics/linked_rna_123.csv')
+linked_rppa_T_123.to_csv('../data/LinkedOmics/linked_rppa_123.csv')
 
-prot_dataframes_cmsALL.head()
-
-# write to file
-rna_dataframes_cms123.to_csv('../data/LinkedOmics/linked_rna_cms123.csv')
-prot_dataframes_cms123.to_csv('../data/LinkedOmics/linked_rppa_cms123.csv')
+# print shapes
+print(f'linked_RNA_T_ALL shape: {linked_RNA_T_ALL.shape}')
+print(f'linked_rppa_T_ALL shape: {linked_rppa_T_ALL.shape}')
+print(f'linked_RNA_T_123 shape: {linked_RNA_T_123.shape}')
+print(f'linked_rppa_T_123 shape: {linked_rppa_T_123.shape}')
 
 
 # %% CHECK TO SEE IF EXPRESSION FROM GUINNEY DATA MATCHES THE RPPA DATA
@@ -465,52 +475,20 @@ def center_and_scale(df, axis=0):
     df = df.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
     return df
 
-expression_file = '../data/Synapse/TCGA/RNA_CMS_groups/TCGACRC_expression_ALL_labelled.csv'
-# expression_file = '../data/TCGA-COAD-L4/tmp/RNA_for_RPPA_scaled_labels_ALLT.csv'
-rppa_file = '../data/TCGA-COAD-L4/tmp/RPPA_gene_name_labels_ALLT.csv'
 
-expr_df = pd.read_csv(expression_file, index_col=0)
-rppa_df = pd.read_csv(rppa_file, index_col=0)
-
-# # split index of rppa_df on '-' and keep first 3 items and rejoin with '-'
-# rppa_df.index = rppa_df.index.str.split('-').str[:3].str.join('-')
-
-# expr_df_4_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
-# rppa_df_4_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS3', 'CMS4'])]
-
-# expr_df_2_13 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
-# rppa_df_2_13 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS1', 'CMS2', 'CMS3'])]
-
-# # Specific DFs with only CMS2 and CMS4
-# expr_df_2 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS2'])]
-# rppa_df_2 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS2'])]
-
-# expr_df_4 = expr_df.loc[expr_df.iloc[:, 0].isin(['CMS4'])]
-# rppa_df_4 = rppa_df.loc[rppa_df.iloc[:, 0].isin(['CMS4'])]
-
-
-# check overlap between expr_df.columns and rppa_df.columns
-overlap = set(expr_df.columns).intersection(set(rppa_df.columns))
-print('total number of variables in rppa: {}'.format(len(rppa_df.columns)))
-print(f'variables both in guinney expression and rppa: {len(overlap)}')
-
-# keep only columns that are in ovlerlap
-rppa_df, expr_df = filter_dataframes(rppa_df, expr_df)
-rppa_df_2_13, expr_df_2_13 = filter_dataframes(rppa_df_2_13, expr_df_2_13)
-rppa_df_2, expr_df_2 = filter_dataframes(rppa_df_2, expr_df_2)
-rppa_df_4, expr_df_4 = filter_dataframes(rppa_df_4, expr_df_4)
-
+# Load the data
+linked_RNA_T_ALL = pd.read_csv('../data/LinkedOmics/linked_rna_ALL.csv', index_col=0)
+linked_rppa_T_ALL = pd.read_csv('../data/LinkedOmics/linked_rppa_ALL.csv', index_col=0)
+linked_RNA_T_123 = pd.read_csv('../data/LinkedOmics/linked_rna_123.csv', index_col=0)
+linked_rppa_T_123 = pd.read_csv('../data/LinkedOmics/linked_rppa_123.csv', index_col=0)
 
 
 # center and scale across columns
-rppa_df_sc = center_and_scale(rppa_df)
-expr_df_sc = center_and_scale(expr_df)
-rppa_df_2_13_sc = center_and_scale(rppa_df_2_13)
-expr_df_2_13_sc = center_and_scale(expr_df_2_13)
-rppa_df_2_sc = center_and_scale(rppa_df_2)
-expr_df_2_sc = center_and_scale(expr_df_2)
-rppa_df_4_sc = center_and_scale(rppa_df_4)
-expr_df_4_sc = center_and_scale(expr_df_4)
+PROT_df_ALL_SC = center_and_scale(linked_rppa_T_ALL)
+RNA_df_ALL_SC = center_and_scale(linked_RNA_T_ALL)
+PROT_df_123_SC = center_and_scale(linked_rppa_T_123)
+RNA_df_123_SC = center_and_scale(linked_RNA_T_123)
+
 
 
 def transform_and_test(data_to_trim, dataframe_name):
@@ -553,10 +531,12 @@ def transform_and_test(data_to_trim, dataframe_name):
     return data_to_trim
 
 # Apply transformations and tests to each dataframe
-rppa_df_transformed = transform_and_test(rppa_df, 'rppa_df')
-expr_df_transformed = transform_and_test(expr_df, 'expr_df')
-rppa_df_2_13_transformed = transform_and_test(rppa_df_2_13, 'rppa_df_2_13')
-expr_df_2_13_transformed = transform_and_test(expr_df_2_13, 'expr_df_2_13')
+prot_df_all_transformed = transform_and_test(PROT_df_ALL_SC, 'PROT_df_ALL')
+rna_df_all_transformed = transform_and_test(RNA_df_ALL_SC, 'RNA_df_ALL')
+prot_df_123_transformed = transform_and_test(PROT_df_123_SC, 'PROT_df_123')
+rna_df_123_transformed = transform_and_test(RNA_df_123_SC, 'RNA_df_123_SC')
+
+print(prot_df_123_transformed.shape)
 
 
 whitelist = ['VEGFR2', 'CDH1', 'BRAF', 'BAP1', 'TP53', 'CASP7', 'PRKCD', 'RAB11A', 'YAP1', 'CTNNB1', 'CCNB1', 'CCNE1', 
@@ -564,32 +544,46 @@ whitelist = ['VEGFR2', 'CDH1', 'BRAF', 'BAP1', 'TP53', 'CASP7', 'PRKCD', 'RAB11A
              'MYH11','TP53BP1', 'EIF4EBP1', 'EEF2K', 'EIF4G1', 'FRAP1', 'RICTOR', 'RPS6', 'TSC1', 'RPS6KA1', 'ACACA',
              'AR', 'KIT', 'EGFR', 'FASN', 'ERBB3', 'IGFBP2', 'CDKN1A', 'CDKN1B', 'SQSTM1', 'PEA15', 'RB1', 'ACVRL1'
              'SMAD1', 'FOXM1', 'FOXO3', 'CAV1', 'PARK7', 'SERPINE1', 'RBM15', 'WWTR1', 'TGM2']
-blacklist = ['AR']
+blacklist = ['ERBB2', 'NKX2-1', 'RAD50']
+
+# %%
 
 # remove columns in blacklist
-rppa_df_transformed = rppa_df_transformed.loc[:, ~rppa_df_transformed.columns.isin(blacklist)]
-expr_df_transformed = expr_df_transformed.loc[:, ~expr_df_transformed.columns.isin(blacklist)]
-rppa_df_2_13_transformed = rppa_df_2_13_transformed.loc[:, ~rppa_df_2_13_transformed.columns.isin(blacklist)]
-expr_df_2_13_transformed = expr_df_2_13_transformed.loc[:, ~expr_df_2_13_transformed.columns.isin(blacklist)]
+prot_df_all_transformed = prot_df_all_transformed.loc[:, ~prot_df_all_transformed.columns.isin(blacklist)]
+rna_df_all_transformed = rna_df_all_transformed.loc[:, ~rna_df_all_transformed.columns.isin(blacklist)]
+prot_df_123_transformed = prot_df_123_transformed.loc[:, ~prot_df_123_transformed.columns.isin(blacklist)]
+rna_df_123_transformed = rna_df_123_transformed.loc[:, ~rna_df_123_transformed.columns.isin(blacklist)]
 
 # check shape of all dataframes
-print(f'\nexpr_df shape: {expr_df_transformed.shape}')
-print(f'rppa_df shape: {rppa_df_transformed.shape}')
-print(f'expr_df_2_13 shape: {expr_df_2_13_transformed.shape}')
-print(f'rppa_df_2_13 shape: {rppa_df_2_13_transformed.shape}')
+print(f'\nexpr_df shape: {rna_df_all_transformed.shape}')
+print(f'rppa_df shape: {prot_df_all_transformed.shape}')
+print(f'expr_df_2_13 shape: {rna_df_123_transformed.shape}')
+print(f'rppa_df_2_13 shape: {prot_df_123_transformed.shape}')
 
+# Check for NaNs 
+print(f'expr_df NaNs: {rna_df_all_transformed.isna().sum().sum()}')
+print(f'rppa_df NaNs: {prot_df_all_transformed.isna().sum().sum()}')
+# Check for Inf
+print(f'expr_df Inf: {np.isinf(rna_df_all_transformed).sum().sum()}')
+print(f'rppa_df Inf: {np.isinf(prot_df_all_transformed).sum().sum()}')
+
+# replace NaNs with column mean
+rna_df_all_transformed = rna_df_all_transformed.fillna(rna_df_all_transformed.mean())
+prot_df_all_transformed = prot_df_all_transformed.fillna(prot_df_all_transformed.mean())
+rna_df_123_transformed = rna_df_123_transformed.fillna(rna_df_123_transformed.mean())
+prot_df_123_transformed = prot_df_123_transformed.fillsna(prot_df_123_transformed.mean())
 
 
 # write to csv
-rppa_df_transformed.to_csv('../Diffusion/data/proteomics_for_pig_cmsALL.csv')
-expr_df_transformed.to_csv('../Diffusion/data/transcriptomics_for_pig_cmsALL.csv')
+prot_df_all_transformed.to_csv('../Diffusion/data/proteomics_for_pig_cmsALL.csv')
+rna_df_all_transformed.to_csv('../Diffusion/data/transcriptomics_for_pig_cmsALL.csv')
 
-rppa_df_2_13_transformed.to_csv('../Diffusion/data/proteomics_for_pig_cms123.csv')
-expr_df_2_13_transformed.to_csv('../Diffusion/data/transcriptomics_for_pig_cms123.csv')
+prot_df_123_transformed.to_csv('../Diffusion/data/proteomics_for_pig_cms123.csv')
+rna_df_123_transformed.to_csv('../Diffusion/data/transcriptomics_for_pig_cms123.csv')
 
 # write column names to .txt file
 with open('../Diffusion/data/VAR_NAMES_GENELIST.txt', 'w') as f:
-    for item in rppa_df_transformed.columns:
+    for item in prot_df_all_transformed.columns:
         f.write("%s\n" % item)
 
 
