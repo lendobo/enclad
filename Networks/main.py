@@ -12,8 +12,13 @@ from collections import Counter
 
 from collections import defaultdict
 import os
+import sys
 
 from tqdm import tqdm
+
+original_stdout = sys.stdout
+sys.stdout = open('Networks/net_results/Piglasso_Logs.txt', 'w')
+
 
 def analysis(data, 
         prior_matrix, 
@@ -41,7 +46,7 @@ def analysis(data,
     else:
         l_hi = right_knee_point_index + kneepoint_adder  
         if verbose:
-            print(f'\nADDER (right): + {kneepoint_adder}')
+            # print(f'\nADDER (right): + {kneepoint_adder}')
             print(f'right_knee_point_index: {right_knee_point_index}')
         # print(f'selected l_hi: {lambda_range[l_hi]}')
     
@@ -74,10 +79,8 @@ def analysis(data,
         print('lambda_np: ', lambda_np)
         print('lambda_wp: ', lambda_wp, '\n')
 
-
-
     # GRAPH OPTIMIZATION WITH FOUND LAMBDAS
-    precision_matrix, edge_counts, density = optimize_graph(data, prior_matrix, lambda_np, lambda_wp)
+    precision_matrix, edge_counts, density = optimize_graph(data, prior_matrix, lambda_np, lambda_wp, verbose=verbose)
 
     if verbose:
         print('Number of edges of inferred network (lower triangular): ', edge_counts)
@@ -432,8 +435,6 @@ if True:
 
             # o_t =  't' # omics_type # commented out for loop
             # cms = 'cmsALL' # cms_type # commented out for loop
-            # end_slice = 30
-
 
             if o_t == 'p':
                 prior_bool = True
@@ -476,34 +477,6 @@ if True:
             # # Check if there are any non-zero values in the prior matrix
             # print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
 
-            # # SYNSUSSYSNSS ##############################################
-
-            # p = 200
-            # n = 500
-            # fp_fn = 0.0
-            # seed = 42
-            # dens = 0.03
-
-
-            # # Fixed parameters
-            # Q = 2000
-            # lowerbound = 0.01
-            # upperbound = 0.5
-            # granularity = 100
-            # b_perc = 0.6
-            # skew = 0
-            # filename_edges = 'Networks/net_results/net_results_sweep/net_results/synthetic_cmsALL_edge_counts_all_pnQ200_500_2000_0.01_0.5_ll100_b0.6_fpfn0.25_skew0_dens0.04_s3.pkl'
-
-            # with open(filename_edges, 'rb') as f:
-            #         omics_edge_counts_all = pickle.load(f)
-                        
-            # # Process the edge counts (your specific processing logic here)
-            # omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
-
-            # cms_array, cms_omics_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
-
-            # #### YSNSYNSYHYY END
-
             p = cms_array.shape[1]
             n = cms_array.shape[0]
             b = int(0.6 * n)
@@ -522,12 +495,12 @@ if True:
             # print(f'Granularity of sliced lambda range: {new_granularity}')
 
             # # RUN ANALYSIS for multiple END SLICES
-            if True:
+            if False:
                 densities = []
                 np_lams = []
                 wp_lams = []
-                no_end_slices = 300
-                slicer_range = range(200, no_end_slices)
+                no_end_slices = 400
+                slicer_range = range(250, no_end_slices)
                 x_axis = []
                 i = 0
                 for end_slice in slicer_range:
@@ -604,6 +577,7 @@ if True:
                 # plt.show()
             
             else:
+                end_slice = 250
                 sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
                 # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
@@ -611,50 +585,41 @@ if True:
                 new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
                 lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
 
-                kpa = 0                                                                                                        # HERE
+                                                                                                                        # HERE
                 precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=0, plot=False, verbose=True)
 
 
-            # # get adjacency from precision matrix
-            # adj_matrix = (np.abs(precision_mat) > 1e-5).astype(int)
-            # # assign columns and indices of prior matrix to adj_matrix
-            # adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
+            # get adjacency from precision matrix
+            adj_matrix = (np.abs(precision_mat) > 1e-5).astype(int)
+            # assign columns and indices of prior matrix to adj_matrix
+            adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
 
-            # # WRITE ADJACAENCY MATRIX TO FILE
-            # # # save adjacency matrix
-            # # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_kpa{kpa}_lowenddensity.csv')
-
-
-
-
-
-
-
+            # WRITE ADJACAENCY MATRIX TO FILE
+            # save adjacency matrix
+            adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}.csv')
 
 
             # # # draw the network
-            # # G = nx.from_pandas_adjacency(cms_omics_prior)
-            # # nx.draw(G, with_labels=True)
+            G = nx.from_pandas_adjacency(adj_matrix)
+            # get number of orphan nodes
+            orphan_nodes = [node for node, degree in dict(G.degree()).items() if degree == 0]
+            print(f'Number of orphan nodes: {len(orphan_nodes)}')
+            # print names of orphan nodes
+            print(f'Names of orphan nodes: {orphan_nodes}\n\n')
+
+            # nx.draw(G, with_labels=True)
             # # plt.title(f'Network for {omics_type} data')
             # # plt.show()
 
             # # #plot the degree distribution
             # G = nx.from_pandas_adjacency(adj_matrix)
             # degrees = [G.degree(n) for n in G.nodes()]
-
-            # # get layout and draw the network
-            # pos = nx.spring_layout(G)
-            # nx.draw(G, pos, with_labels=True)
-            # plt.title(f'Network for {omics_type} data')
+            # plt.hist(degrees, bins=20)
+            # plt.title(f'Degree distribution for {omics_type} data')
+            # plt.xlabel('Degree')
+            # plt.ylabel('Frequency')
             # plt.show()
-
-
-            # # plt.hist(degrees, bins=20)
-            # # plt.title(f'Degree distribution for {omics_type} data')
-            # # plt.xlabel('Degree')
-            # # plt.ylabel('Frequency')
-            # # plt.show()
 
             # highest_degrees_indices = list(np.argsort(degrees)[-20:])
             # nodes_with_highest_degrees = [list(G.nodes())[i] for i in highest_degrees_indices]
@@ -684,7 +649,8 @@ if True:
             # # plt.show()
 
 
-
+sys.stdout.close()
+sys.stdout = original_stdout
 
 
 

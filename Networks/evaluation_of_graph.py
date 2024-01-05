@@ -67,7 +67,6 @@ def optimize_graph(data, prior_matrix, lambda_np, lambda_wp, verbose=False):
 
     if verbose:
         print(f'Number of prior edges (lower triangular): {np.sum(prior_matrix == 1) / 2}')
-        print(f'Number of prior penalty edges: {np.sum(penalty_matrix == lambda_wp) / 2}')
         print(f'Edges in complete graph: {complete_graph_edges}')
         print(f'Density of prior penalty matrix: {((np.sum(penalty_matrix == lambda_wp) / 2) / complete_graph_edges)}\n')
 
