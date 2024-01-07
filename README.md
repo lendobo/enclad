@@ -5,4 +5,4 @@ Target nodes and biological pathways are identified via significance testing of 
 
 The tool has been tested on colorectal cancer datasets.
 
-![Alt text](MONIKA.png)
+![Alt text](MONIKA_arrow.png)
