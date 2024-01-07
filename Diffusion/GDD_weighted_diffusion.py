@@ -48,8 +48,10 @@ parser.add_argument('--kob', type=int, default=5, help='Number of bottom nodes t
 parser.add_argument('--red_range', type=str, default='0.05, 0.05, 1', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 # parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
-parser.add_argument('--pathway', type=bool, default=False, help='Boolean for Pathway Knockout')
-parser.add_argument('--test_net', type=bool, default=False, help='Boolean for testing network')
+parser.add_argument('--test_net', type=bool, default=False, help='Boolean for using test nets of various sizes')
+parser.add_argument('--pathway', type=bool, default=True, help='Boolean for Pathway Knockout')
+parser.add_argument('--permuter', type=bool, default=False, help='Boolean for permutation')
+parser.add_argument('--permu_range', type=str, default='5, 26', help='Range of reduction factors to investigate for permutation')
 parser.add_argument('--permu_runs', type=int, default=30, help='Number of runs for permutation random pathway knockout')
 parser.add_argument('--visualize', type=bool, default=False, help='Boolean for visualizing the network')
 parser.add_argument('--enrich_file', type=str, default='/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info_LinkedOmics.csv', help='Path to pathway enrichment file')
@@ -78,22 +80,14 @@ def weighted_laplacian_matrix(G):
     D = np.diag(W.sum(axis=1))
     # Weighted Laplacian matrix
     L = D - W
+
     return L
 
-def dynamic_eig_solver(L):
-    # Check if L is a sparse matrix
+def force_dense_eig_solver(L):
     if issparse(L):
-        # Check if the matrix is small or not very sparse
-        if L.size < 10000 or L.count_nonzero() / float(L.size) > 0.1:  # These thresholds are arbitrary examples
-            # Convert to dense and use numpy's eigh
-            eigenvalues, eigenvectors = np.linalg.eigh(L.toarray())
-        else:
-            # Use sparse eigsh
-            eigenvalues, eigenvectors = eigsh(L, k=6)  # Adjust 'k' as needed
-    else:
-        # If L is already dense, use numpy's eigh
-        eigenvalues, eigenvectors = np.linalg.eigh(L)
-    
+        L = L.toarray()  # Convert sparse matrix to dense
+    eigenvalues, eigenvectors = np.linalg.eigh(L)  # Use dense method
+
     return eigenvalues, eigenvectors
 
 def laplacian_exponential_kernel_eigendecomp(L, t):
@@ -102,7 +96,7 @@ def laplacian_exponential_kernel_eigendecomp(L, t):
     The function takes the Laplacian matrix L and a time parameter t as inputs.
     """
     # Calculate the eigenvalues and eigenvectors of the Laplacian matrix
-    eigenvalues, eigenvectors = dynamic_eig_solver(L)
+    eigenvalues, eigenvectors = force_dense_eig_solver(L)
     # Compute the matrix exponential using eigenvalues
     exp_eigenvalues = np.exp(-t * eigenvalues)
     # Reconstruct the matrix using the eigenvectors and the exponentiated eigenvalues
@@ -113,6 +107,7 @@ def laplacian_exponential_kernel_eigendecomp(L, t):
 def laplacian_exponential_diffusion_kernel(L, t):
     """
     compute the Laplacian exponential kernel for a given t value"""
+    
     return scipy.linalg.expm(-t * L)
 
 def knockout_node(G, node_to_isolate):
@@ -211,7 +206,7 @@ def knockdown_pathway_nodes(G, pathway_description, reduced_weight=0.3):
     return modified_graph, new_laplacian, num_disconnected_components, connected_components_lengths, len(pathway_nodes_with_suffixes)
 
 
-def knockdown_random_nodes(G, num_nodes, reduced_weight=0.3, seed=42):
+def knockdown_random_nodes(G, node_list, reduced_weight=0.05):
     """
     Reduces the weights of all edges connected to the nodes in a pathway or a list of nodes in both layers of the graph.
 
@@ -220,31 +215,22 @@ def knockdown_random_nodes(G, num_nodes, reduced_weight=0.3, seed=42):
     :param reduced_weight: Factor to reduce edge weights by, defaults to 0.3
     :return: Tuple containing the modified graph and its weighted Laplacian matrix
     """
-    random.seed(seed)
-    
-    # Separate nodes by layer
-    proteomics_nodes = [node for node in G.nodes() if node.endswith('.p')]
-    transcriptomics_nodes = [node for node in G.nodes() if node.endswith('.t')]
-    
-    # Randomly select half of the nodes from each layer, ensuring that for each selected node, its pair is also selected
-    random_proteomics_nodes = random.sample(proteomics_nodes, num_nodes // 2)
-    random_transcriptomics_nodes = [node.replace('.p', '.t') for node in random_proteomics_nodes]  # Get corresponding nodes in the other layer
-    
-    # Combine both sets of nodes
-    random_nodes = random_proteomics_nodes + random_transcriptomics_nodes
+
 
     modified_graph = G.copy()
     
     # Reduce the weight of all edges to and from the random nodes in both layers
-    for node in random_nodes:
+    for node in node_list:
         if node in G:  # Check if the node is present in the graph
             for neighbor in G[node]:  # Iterate through its neighbors
                 # Reducing the weights
                 modified_graph[node][neighbor]['weight'] = reduced_weight
                 modified_graph[neighbor][node]['weight'] = reduced_weight
+        else:
+            print(f"Node {node} not found in graph!!!!!!!!!!!")
 
     # Form the subgraph for the randomly selected nodes
-    subgraph = modified_graph.subgraph(random_nodes)
+    subgraph = modified_graph.subgraph(node_list)
     # Find the connected components in the subgraph
     connected_components = list(nx.connected_components(subgraph))
     connected_components_lengths = [len(i) for i in connected_components]
@@ -255,7 +241,7 @@ def knockdown_random_nodes(G, num_nodes, reduced_weight=0.3, seed=42):
     new_laplacian = nx.laplacian_matrix(modified_graph)
 
     # Return the modified graph, new laplacian, and number of disconnected components
-    return modified_graph, new_laplacian, num_disconnected_components, connected_components_lengths, len(random_nodes)
+    return modified_graph, new_laplacian, num_disconnected_components, connected_components_lengths, len(node_list)
 
 # %%                  ############################################# double5 DEMO NET#########################
 
@@ -343,12 +329,12 @@ def weighted_multi_omics_graph(cms, plot=False):
     G_proteomics_layer = nx.from_pandas_adjacency(adj_matrix_proteomics)
     G_transcriptomic_layer = nx.from_pandas_adjacency(adj_matrix_transcriptomics)
 
-    # get orphans using function
-    orphans_proteomics = get_orphans(G_proteomics_layer)
-    orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
+    # # get orphans using function
+    # orphans_proteomics = get_orphans(G_proteomics_layer)
+    # orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
 
-    print(f'orphans in proteomics: {orphans_proteomics}')
-    print(f'orphans in transcriptomics: {orphans_transcriptomics}')
+    # print(f'orphans in proteomics: {orphans_proteomics}')
+    # print(f'orphans in transcriptomics: {orphans_transcriptomics}')
 
     if plot:
         # Calculate the degrees of each node
@@ -481,8 +467,10 @@ weighted_G_cms_ALL, pymnet_ALL = weighted_multi_omics_graph('cmsALL', plot=False
 
 orphans_123 = get_orphans(weighted_G_cms_123)
 orphans_ALL = get_orphans(weighted_G_cms_ALL)
-print(f'Multiplex orphans in cms123: {orphans_123}')  
-print(f'Multiplex orphans in cmsALL: {orphans_ALL}')
+
+if orphans_123 or orphans_ALL:
+    print(f'Multiplex orphans in cms123: {orphans_123}')  
+    print(f'Multiplex orphans in cmsALL: {orphans_ALL}')
 
 
 
@@ -506,7 +494,7 @@ if rank == 0:
     print(f'hub nodes: {hub_nodes}')
     print(f'anti-hubs nodes: {low_nodes}')
 
-t_values = np.linspace(0.01, 10, 500)
+t_values = np.linspace(0.01, 10, 250)
 
 red_range = args.red_range.split(',')
 red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
@@ -549,8 +537,34 @@ def distribute_pathways(pathways, rank, size):
 
     return pathways[start_index:end_index]
 
+def distribute_runs(total_runs, rank, size):
+    runs_per_rank = total_runs // size
+    start_run = rank * runs_per_rank
+    end_run = start_run + runs_per_rank if rank != size - 1 else total_runs  # Ensure the last rank takes any remaining runs
+    return range(start_run, end_run)
 
-def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df=None, num_runs=30):
+
+def generate_node_combinations(G, num_nodes, total_combinations=10000):
+    random.seed(42)
+    # Separate nodes by layer
+    proteomics_nodes = [node for node in G.nodes() if node.endswith('.p')]
+
+    unique_combinations = set()
+    while len(unique_combinations) < total_combinations:
+        # generate a new combination
+        # Randomly select half of the nodes from each layer, ensuring that for each selected node, its pair is also selected
+        random_proteomics_nodes = random.sample(proteomics_nodes, num_nodes)
+        random_transcriptomics_nodes = [node.replace('.p', '.t') for node in random_proteomics_nodes]  # Get corresponding nodes in the other layer
+        
+        # Combine both sets of nodes
+        random_nodes = random_proteomics_nodes + random_transcriptomics_nodes
+        unique_combinations.add(random_nodes)
+
+    return list(unique_combinations)
+
+
+
+def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red_range, t_values, orig_aggro_kernel, orig_gdd_values, run_idx, pathway_df=None):
     results = {}
 
     if knockout_type == 'runtype_node' or knockout_type == 'runtype_pathway':
@@ -574,47 +588,55 @@ def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red
             diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
             diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
 
-            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
-            gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+            gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
 
             results[knockout_target][reduction] = {
                 'gdd_values_trans': gdd_values_trans,
                 'gdd_values_disrupt': gdd_values_disrupt,
-                'max_gdd_trans': np.max(gdd_values_trans),
-                'max_gdd_disrupt': np.max(gdd_values_disrupt)
+                'max_gdd_trans': np.max(np.sqrt(gdd_values_trans)),
+                'max_gdd_disrupt': np.max(np.sqrt(gdd_values_disrupt))
             }
 
             if args and args.visualize:
                 results[knockout_target][reduction]['vis_kernels'] = [diff_kernel_knock_aggro[i] for i, t in enumerate(t_values) if i % 20 == 0]
 
     elif knockout_type == 'runtype_random':
-        all_nodes = list(set([node.split('.')[0] for node in G_aggro.nodes()]))
 
-        for _ in range(num_runs):
-            num_rand_nodes = knockout_target  # Number of genes in the pathway
-            max_gdd_trans_run, max_gdd_disrupt_run = [], []
+        num_rand_nodes = knockout_target  # Number of genes in the pathway
 
-            results[f'random_{knockout_target}_run_{_}'] = {}
+        unique_node_combinations = generate_node_combinations(G_aggro, num_rand_nodes, total_combinations=args.permu_runs)
+
+        for run_index in run_idx:
+
+            node_list = unique_node_combinations[run_index]
+            results[f'random_{num_rand_nodes}_run_{run_index}'] = {}
+
             for reduction in red_range:
                 # print(f"Random Pathway Knockout: size {knockout_target}, run {_} with reduction factor: {reduction}")
                 # Perform the knockout
-                knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(G_aggro, num_rand_nodes, reduced_weight=reduction, seed=_)
-                knockdown_non_mesench, knockdown_laplacian_non_mesench,_,_,_ = knockdown_random_nodes(G_stable, num_rand_nodes, reduced_weight=reduction, seed=_)
+                knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(G_aggro, node_list, reduced_weight=reduction)
+                knockdown_non_mesench, knockdown_laplacian_non_mesench,_,_,_ = knockdown_random_nodes(G_stable, node_list, reduced_weight=reduction)
 
                 # Calculate diffusion kernels and GDD
                 diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
                 diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
 
-                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
-                gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')
+                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
 
-                max_gdd_trans_run.append(np.max(gdd_values_trans))
-                max_gdd_disrupt_run.append(np.max(gdd_values_disrupt))
+                try:
+                    results[f'random_{num_rand_nodes}_run_{run_index}'][reduction] = {
+                        'max_gdd_trans': np.max(np.sqrt(gdd_values_trans)),
+                        'max_gdd_disrupt': np.max(np.sqrt(gdd_values_disrupt))
+                    }
+                except KeyError as e:
+                    print(f"KeyError encountered! Attempted to access results[{f'random_{num_rand_nodes}_run_{run_index}'}][{reduction}]")
+                    print(f"The current keys in results are: {list(results.keys())}")
+                    print(f"Contents of the problematic key if it exists: {results.get(f'random_{num_rand_nodes}_run_{run_index}', 'Key does not exist!')}")
+                    print(f"Value of num_rand_nodes: {num_rand_nodes}, Value of _: {run_index}, Value of reduction: {reduction}")
+                    raise e  # Re-raise the exception to halt the script and indicate error
 
-                results[f'random_{knockout_target}_run_{_}'][reduction] = {
-                    'max_gdd_trans': max(max_gdd_trans_run),
-                    'max_gdd_disrupt': max(max_gdd_disrupt_run)
-                }
 
     return results
 
@@ -646,8 +668,8 @@ crit_paths = ['Regulation of angiogenesis', 'Positive regulation of angiogenesis
 
 pathways = crit_paths
 
-args.pathway = True
-args.enrich_file = '/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/Pathway_Enrichment_Info_LinkedOmics.csv'
+if "SLURM_JOB_ID" not in os.environ:
+    args.enrich_file = '/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/Pathway_Enrichment_Info_LinkedOmics.csv'
 
 if args.pathway:
     pathway_df = pd.read_csv(args.enrich_file) # '/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info.csv'
@@ -656,9 +678,6 @@ if args.pathway:
     # Filter dataframe to only contain rows with 'GO Biological Process' or 'Reactome Pathways' in the 'category' column
     pathway_df = pathway_df[pathway_df['category'].isin(['GO Biological Process', 'Reactome Pathways'])]
     
-    print(pathway_df.shape)
-
-
     # # only keep first X
     filtered_pathway_df = pathway_df # filtered_pathway_df.head(args.koh)
     # # Start with critical pathways
@@ -678,10 +697,10 @@ if args.pathway:
         if pathway not in pathways:
             pathways.append(pathway)
 
-    # random pathway length distribution
-    matches = pathway_df['description'].isin(pathways)
-    interest_pathway_df = pathway_df[matches]
-    pathway_lengths = [len(row['genes'].split('|')) for _, row in interest_pathway_df.iterrows()]
+    # OVERRIDING THE PATHWAY LENGTHS
+    permutation_range = args.permu_range.split(',')
+    permutation_range = range(int(permutation_range[0]), int(permutation_range[1])) 
+    pathway_lengths = permutation_range # We redefined for full range, usually just as long as the pathways_subsets
 
     if "SLURM_JOB_ID" in os.environ:
         # Distribute pathways across ranks
@@ -699,45 +718,43 @@ if args.pathway:
         print(f'pathways for rank {rank}: {pathways_subset}')
         print(f'rand pathways for rank {rank}: {rand_lengths_subset}')
 
-# print(f'pathways to investigate: {len(pathways_subset)}')
 
-# # %%
-### CONNECTED COMPONENTS CHECK ###
-all_path_disc = []
-all_rand_disc = []
-reduction = 0.05
-for pathway in pathways_subset:
-    knockdown_graph_aggro, knockdown_laplacian_aggro, num_disconnected_components, connected_components_lengths, total_path_nodes  = knockdown_pathway_nodes(weighted_G_cms_ALL, pathway, reduced_weight=reduction)
-    # print(f'pathway: {pathway[:10]}, num_discon_comps: {num_disconnected_components}, connect_comps_lens: {connected_components_lengths}, total_path_nodes: {total_path_nodes}')
-    # print(f'pathway: {num_disconnected_components}, total_path_nodes: {total_path_nodes}')
-    all_path_disc.append(num_disconnected_components)
+    # ## CONNECTED COMPONENTS CHECK ###
+    # all_path_disc = []
+    # all_rand_disc = []
+    # reduction = 0.05
+    # for pathway in pathways_subset:
+    #     knockdown_graph_aggro, knockdown_laplacian_aggro, num_disconnected_components, connected_components_lengths, total_path_nodes  = knockdown_pathway_nodes(weighted_G_cms_ALL, pathway, reduced_weight=reduction)
+    #     print(f'pathway: {pathway[:10]}, num_discon_comps: {num_disconnected_components}, connect_comps_lens: {connected_components_lengths}, total_path_nodes: {total_path_nodes}')
+    #     print(f'pathway: {num_disconnected_components}, total_path_nodes: {total_path_nodes}')
+    #     all_path_disc.append(num_disconnected_components)
 
-    avg_discs_rand = []
-    for _ in range(1):
-        random_graph_aggro, random_laplacian_aggro, num_disconnected_components, connected_components_lengths, total_path_nodes  = knockdown_random_nodes(weighted_G_cms_ALL, total_path_nodes, reduced_weight=reduction, seed=_)
-        # print(f'random: num_discon_comps: {num_disconnected_components}, connect_comps_lens: {connected_components_lengths}, total_path_nodes: {total_path_nodes}')
-        # print(random_laplacian_aggro)
-        avg_discs_rand.append(num_disconnected_components)
-    avg_discs_rand = np.mean(avg_discs_rand)
-    # print(f'random: {avg_discs_rand}, total_path_nodes: {total_path_nodes}')
-    all_rand_disc.append(avg_discs_rand)
+    #     avg_discs_rand = []
+    #     for _ in range(1):
+    #         random_graph_aggro, random_laplacian_aggro, num_disconnected_components, connected_components_lengths, total_path_nodes  = knockdown_random_nodes(weighted_G_cms_ALL, total_path_nodes, reduced_weight=reduction, seed=_)
+    #         print(f'random: num_discon_comps: {num_disconnected_components}, connect_comps_lens: {connected_components_lengths}, total_path_nodes: {total_path_nodes}')
+    #         print(random_laplacian_aggro)
+    #         avg_discs_rand.append(num_disconnected_components)
+    #     avg_discs_rand = np.mean(avg_discs_rand)
+    #     print(f'random: {avg_discs_rand}, total_path_nodes: {total_path_nodes}')
+    #     all_rand_disc.append(avg_discs_rand)
 
-# # plot connected components
-# plt.plot(all_path_disc, label='pathways')
-# plt.plot(all_rand_disc, label='random')
-# plt.legend()
-# plt.show()
+    # # plot connected components
+    # plt.plot(all_path_disc, label='pathways')
+    # plt.plot(all_rand_disc, label='random')
+    # plt.legend()
+    # plt.show()
 
-knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(weighted_G_cms_ALL, 0, reduced_weight=reduction, seed=42)
-knockdown_non_mesench, knockdown_laplacian_non_mesench,_,_,_ = knockdown_random_nodes(weighted_G_cms_123, 0, reduced_weight=reduction, seed=42)
+    # knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(weighted_G_cms_ALL, 0, reduced_weight=reduction, seed=42)
+    # knockdown_non_mesench, knockdown_laplacian_non_mesench,_,_,_ = knockdown_random_nodes(weighted_G_cms_123, 0, reduced_weight=reduction, seed=42)
 
 
-print(knockdown_laplacian_aggro.shape)
-print(knockdown_laplacian_non_mesench.shape)
+    # print(knockdown_laplacian_aggro.shape)
+    # print(knockdown_laplacian_non_mesench.shape)
 
-# Calculate diffusion kernels and GDD
-diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+    # # Calculate diffusion kernels and GDD
+    # diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
+    # diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
 
 
 # %%
@@ -755,7 +772,6 @@ else:
 
 # RUN on test net
 if args.test_net:
-    t_values = np.linspace(0.01, 10, 500)
     # Create two multiplex graphs FOR TESTING
     weighted_G_cms_123 = create_multiplex_test(12)
     weighted_G_cms_ALL = create_multiplex_test(12)
@@ -813,14 +829,23 @@ if args.pathway:
         pathway_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_pathway', pathway, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df)
         local_target_results.update(pathway_results)
 
-    # RANDOM PATHWAY KNOCKOUTS (for permutation analysis)
-    local_rand_results = {}
-    # Create a boolean series where each element is True if the 'description' column contains any of the pathway descriptions
-    for random_pathway_size in rand_lengths_subset:
-        rand_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_random', random_pathway_size, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df, num_runs=args.permu_runs)
-        local_rand_results.update(rand_results)
+    if args.permuter:
+        # RANDOM PATHWAY KNOCKOUTS (for permutation analysis)
+        local_rand_results = {}
         
-    print(f'Rank {rank} has finished the target and random pathway runs.')
+        # Determine the subset of run indices for each rank
+        total_runs = args.permu_runs  # Total number of unique node combinations
+        runs_per_rank = total_runs // size  # assuming size is the total number of ranks
+
+        run_indices = range(runs_per_rank * rank, runs_per_rank * (rank + 1))
+
+        # Create a boolean series where each element is True if the 'description' column contains any of the pathway descriptions
+        for random_pathway_size in range(args.permu_range.split(',')[0], args.permu_range.split(',')[1]):
+            rand_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_random', random_pathway_size, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df, run_idx=run_indices, num_runs=args.permu_runs)
+            
+            local_rand_results.update(rand_results)
+            
+        print(f'Rank {rank} has finished the target and random pathway runs.')
 
 else:
     for node in nodes_subset:
@@ -832,9 +857,13 @@ else:
 # GATHERING RESULTS
 all_target_results = comm.gather(local_target_results, root=0)
 if args.pathway:
-    all_rand_results = comm.gather(local_rand_results, root=0)
-    all_results_list = [all_target_results, all_rand_results]
-    filename_identifiers = ['target', 'random']
+    if args.permuter:
+        all_rand_results = comm.gather(local_rand_results, root=0)
+        all_results_list = [all_target_results, all_rand_results]
+        filename_identifiers = ['target', 'random']
+    else:
+        all_results_list = [all_target_results]
+        filename_identifiers = ['target']
     
     # Assuming 'pathways' is a list of strings
     unique_identifier = ''.join([pathway[0] for pathway in pathways])
@@ -846,7 +875,7 @@ else:
     filename_identifiers = ['target']
 
     unique_identifier = ''.join([node[0] for node in nodes_to_investigate_bases])
-    unique_identifier = unique_identifier[:20]
+    unique_identifier = unique_identifier[:5]
 
 for i, all_results in enumerate(all_results_list):
     # Post-processing on the root processor
@@ -883,14 +912,30 @@ print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time
 MPI.Finalize()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 # %% SIGNIFICANCE TESTING
 
 if "SLURM_JOB_ID" not in os.environ:
+
+    # args.pathway = True
+    unique_identifier = 'RPRSTCRRBARCTRmSATDS'
+
     if args.pathway:
         # Load results and pathway information
-        with open('diff_results/Pathway_True_target_ARPSRTTWSCTCRRNLRPHC_GDDs_ks272.pkl', 'rb') as f:
+        with open('diff_results/Pathway_True_target_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permu30.pkl', 'rb') as f:
             target_results = pkl.load(f)
-        with open('diff_results/Pathway_True_random_ARPSRTTWSCTCRRNLRPHC_GDDs_ks272.pkl', 'rb') as f:
+        with open('diff_results/Pathway_True_random_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permu30.pkl', 'rb') as f:
             random_results = pkl.load(f)
 
         def get_pathway_length(pathway_name, df):
@@ -916,6 +961,8 @@ if "SLURM_JOB_ID" not in os.environ:
                 random_results_by_length[length] = []
             random_results_by_length[length].append(max_gdd_trans)
 
+
+   
         # Calculate p-values
         p_values = {}
         for pathway, result in target_results.items():
@@ -979,7 +1026,8 @@ if "SLURM_JOB_ID" not in os.environ:
         print(target_df_sorted.head())
 
         # write to csv
-        target_df_sorted.to_csv(f'diff_results/Pathway_Knockouts_{unique_identifier}_permu_{args.permu_runs}.csv', index=False)
+        permu_runs = 30
+        target_df_sorted.to_csv(f'diff_results/Pathway_Knockouts_{unique_identifier}_permu_{permu_runs}.csv', index=False)
 
 
         # %%
@@ -1006,8 +1054,225 @@ if "SLURM_JOB_ID" not in os.environ:
             plt.ylabel('Frequency')
             plt.legend()
             plt.show()
+        
+        # %%
+
+        # GDD PLOTTING
+        # Extract all target GDD values and sort them
+        all_gdd_values = [(pathway, result[0.05]['max_gdd_trans']) for pathway, result in target_results.items()]
+        sorted_gdd_values = sorted(all_gdd_values, key=lambda x: x[1])
+
+        # Select top 3 and bottom 3 targets based on GDD values
+        top_3_gdd = sorted_gdd_values[-3:]
+        bottom_3_gdd = sorted_gdd_values[:3]
+
+        # Plotting section adapted for the new structure
+        plt.figure(figsize=(20, 12))
+
+        # Plot for the top 3 GDD values
+        for target, gdd_value in top_3_gdd:
+            # Assuming the new code stores a list or similar iterable of GDD values
+            plt.plot(t_values, target_results[target][0.05]['gdd_values_trans'], label=f'Top {target} GDD')
+
+        # Plot for the bottom 3 GDD values
+        for target, gdd_value in bottom_3_gdd:
+            plt.plot(t_values, target_results[target][0.05]['gdd_values_trans'], label=f'Bottom {target} GDD')
+
+        plt.title('GDD Over Time (Trans) for Top 3 and Bottom 3 Targets')
+        plt.xlabel('Time')
+        plt.ylabel('GDD Value')
+        plt.legend()
+        plt.show()
 
 
+
+
+
+
+
+    # # %% OLD CODE FOR GDD PLOTTING AND MAXIMUM GDD VALUE SORTING
+    # # t_values = np.linspace(0.01, 10, 500)
+    # # red_range = red_args.split(',')
+    # # # red_range = [float(i) for i in red_range]
+    # # red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
+
+    # kernel_size = 272
+    # Pathway = True
+
+    # red_range = args.red_range.split(',')
+    # red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
+
+    # filename = f'diff_results/Pathway_{Pathway}_GDDs_{kernel_size}.pkl'
+
+
+    # if not "SLURM_JOB_ID" in os.environ:
+    #     with open(filename, 'rb') as f:
+    #         GDDs_and_Kernels = pkl.load(f)
+
+    #     first_key_outer = next(iter(GDDs_and_Kernels))
+    #     first_key_inner = next(iter(GDDs_and_Kernels[first_key_outer]))
+
+    #     print(GDDs_and_Kernels[first_key_outer][first_key_inner].keys())
+
+    #     orig_max_gdd = GDDs_and_Kernels[first_key_outer][first_key_inner]['max_gdd_orig']
+        
+    #     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
+    #     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
+    #     # Choose a reduction factor from the list of reductions
+    #     selected_reduction = red_range[1]
+
+    #     # Calculate max GDDs for each target (node or pathway) and sort them
+    #     max_gdds_trans = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']) for target in GDDs_and_Kernels}
+    #     max_gdds_disrupt = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']) for target in GDDs_and_Kernels}
+
+    #     sorted_max_gdds_trans = sorted(max_gdds_trans.items(), key=lambda item: item[1])
+    #     sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1], reverse=True)
+
+    #     # Calculate the percentage of the original max GDD for each sorted max GDD
+    #     max_gdds_trans_percent = {target: (value / orig_max_gdd) * 100 for target, value in sorted_max_gdds_trans}
+    #     max_gdds_disrupt_percent = {target: 'N/A' for target, value in sorted_max_gdds_disrupt}
+
+    #     half_point = int(len(sorted_max_gdds_disrupt) / 2)
+    #     targets_to_show = 3
+
+    #     # Select top 3 and bottom 3 targets for each case
+    #     top_3_trans = [target for target, _ in sorted_max_gdds_trans[-targets_to_show:]]
+    #     bottom_3_trans = [target for target, _ in sorted_max_gdds_trans[:targets_to_show]]
+    #     top_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[-targets_to_show:]]
+    #     bottom_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[:targets_to_show]]
+
+    #     fig, axes = plt.subplots(2, 2, figsize=(20, 12), dpi=300)  # Creating 4 plots
+    #     (ax1, ax2), (ax3, ax4) = axes
+
+    #     # Plot GDD values for top 3 and bottom 3 targets (Trans)
+    #     for target in top_3_trans + bottom_3_trans:
+    #         gdd_values_trans = GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']
+    #         ax1.plot(t_values, gdd_values_trans, label=f'target {target}')
+
+    #     # Plot GDD values for top 3 and bottom 3 targets (Disrupt)
+    #     for target in top_3_disrupt + bottom_3_disrupt:
+    #         gdd_values_disrupt = GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']
+    #         ax3.plot(t_values, gdd_values_disrupt, label=f'target {target}')
+
+    #     ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 targets')
+    #     ax1.set_xlabel('Time')
+    #     ax1.set_ylabel('GDD Value (Trans)')
+    #     ax1.legend()
+    #     ax1.grid(True)
+
+    #     ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 targets')
+    #     ax3.set_xlabel('Time')
+    #     ax3.set_ylabel('GDD Value (Disrupt)')
+    #     ax3.legend()
+    #     ax3.grid(True)
+
+    #     plt.show()
+
+    # def write_to_csv(data, percent_data, filename):
+    #     """
+    #     Writes the data to a CSV file with three columns.
+    #     :param data: List of tuples, where each tuple contains two elements (key, value)
+    #     :param percent_data: Dictionary with the percentage values
+    #     :param filename: Name of the CSV file to be written
+    #     """
+    #     with open(filename, mode='w', newline='') as file:
+    #         writer = csv.writer(file)
+    #         for key, value in data:
+    #             writer.writerow([key, value, percent_data[key]])
+
+    # # Write to CSV files
+    # write_to_csv(sorted_max_gdds_trans, max_gdds_trans_percent, f'diff_results/max_gdds_trans_Pathway_{Pathway}_{kernel_size}.csv')
+    # write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/max_gdds_disrupt_Pathway_{Pathway}_{kernel_size}.csv')
+
+
+    # %% OLD NODE CODE, as far as I can tell
+    # cms = 'cmsALL'
+    # kernel_size = 20
+
+    # if not "SLURM_JOB_ID" in os.environ:
+    #     with open(f'diff_results/GDDs_and_Kernels_268.pkl', 'rb') as f:
+    #         GDDs_and_Kernels = pkl.load(f)
+
+    #     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
+    #     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
+
+    #     # Choose the node and t_values for plotting
+    #     selected_node = np.random.choice(list(GDDs_and_Kernels.keys()))
+
+    #     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+
+    #     # Left plot: GDD values over time for various reductions (single node)
+    #     for reduction in GDDs_and_Kernels[selected_node].keys():
+    #         gdd_values = GDDs_and_Kernels[selected_node][reduction]['gdd_values']
+    #         ax1.plot(t_values, gdd_values, label=f'Reduction {reduction}')
+
+    #     ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
+    #     ax1.set_xlabel('Time')
+    #     ax1.set_ylabel('GDD Value')
+    #     ax1.legend()
+    #     ax1.grid(True)
+
+    #     # Choose a reduction factor from the list of reductions
+    #     selected_reduction = red_range[1]
+
+    #     max_gdds = {}
+    #     # Right plot: GDD values over time for a single reduction (all nodes)
+    #     for node_base in GDDs_and_Kernels.keys():
+    #         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
+    #         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+    #         max_gdds[node_base] = np.max(gdd_values)
+
+    #     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+    #     ax2.set_xlabel('Time')
+    #     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+    #     # ax2.legend()
+    #     ax2.set_xlim([0, 2])
+    #     ax2.grid(True)
+
+    #     plt.show()
+    #     # print(max_gdds)
+    #     # max_GDD_1 = max_gdds['1']
+    #     # max_GDD_2 = max_gdds['2']
+    #     # print(max_GDD_1 - max_GDD_2)
+
+    #     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+
+    #     # PLOT 2 (WEAKER KNOCKDOWN)
+    #     # make another plot as ax2 but for reduction factor = 0.8
+    #     selected_reduction = red_range[-1]
+
+    #     max_gdds = {}
+    #     # Right plot: GDD values over time for a single reduction (all nodes)
+    #     for node_base in GDDs_and_Kernels.keys():
+    #         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
+    #         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+    #         max_gdds[node_base] = np.max(gdd_values)
+
+
+    #     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+    #     ax2.set_xlabel('Time')
+    #     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+    #     # ax2.legend()
+    #     ax2.set_xlim([0, 2])
+    #     ax2.grid(True)
+
+    #     plt.show()
+    #     # print(max_gdds)
+    #     # max_GDD_1 = max_gdds['1']
+    #     # max_GDD_2 = max_gdds['2']
+    #     # print(max_GDD_1 - max_GDD_2)
+
+    # selected_reduction = red_range[-1]
+    # # order nodes by max GDD
+    # max_gdds = {}
+    # for node_base in GDDs_and_Kernels.keys():
+    #     max_gdds[node_base] = np.max(GDDs_and_Kernels[node_base][selected_reduction]['gdd_values'])
+
+    # sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+
+    # # get the nodes with the highest GDD
+    # highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
+    # highest_gdd_nodes
 
     # %%
     # VISUALIZE DIFFUSION
@@ -1175,303 +1440,6 @@ if "SLURM_JOB_ID" not in os.environ:
         multiplex_diff_viz(pymnet_ALL, weighted_G_cms_ALL)
 
 
-# %% 
-   
-    # plt.savefig('network_figure.png', dpi=300)
-
-# multiplex_diff_viz(pymnet_ALL)
-# # %% OLD CODE FOR GDD PLOTTING AND MAXIMUM GDD VALUE SORTING
-# # t_values = np.linspace(0.01, 10, 500)
-# # red_range = red_args.split(',')
-# # # red_range = [float(i) for i in red_range]
-# # red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
-
-# kernel_size = 272
-# Pathway = True
-
-# t_values = np.linspace(0.01, 10, 500)
-# red_range = args.red_range.split(',')
-# red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
-
-# filename = f'diff_results/Pathway_{Pathway}_GDDs_{kernel_size}.pkl'
-
-
-# if not "SLURM_JOB_ID" in os.environ:
-#     with open(filename, 'rb') as f:
-#         GDDs_and_Kernels = pkl.load(f)
-
-#     first_key_outer = next(iter(GDDs_and_Kernels))
-#     first_key_inner = next(iter(GDDs_and_Kernels[first_key_outer]))
-
-#     print(GDDs_and_Kernels[first_key_outer][first_key_inner].keys())
-
-#     orig_max_gdd = GDDs_and_Kernels[first_key_outer][first_key_inner]['max_gdd_orig']
-    
-#     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
-#     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
-#     # Choose a reduction factor from the list of reductions
-#     selected_reduction = red_range[1]
-
-#     # Calculate max GDDs for each target (node or pathway) and sort them
-#     max_gdds_trans = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']) for target in GDDs_and_Kernels}
-#     max_gdds_disrupt = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']) for target in GDDs_and_Kernels}
-
-#     sorted_max_gdds_trans = sorted(max_gdds_trans.items(), key=lambda item: item[1])
-#     sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1], reverse=True)
-
-#     # Calculate the percentage of the original max GDD for each sorted max GDD
-#     max_gdds_trans_percent = {target: (value / orig_max_gdd) * 100 for target, value in sorted_max_gdds_trans}
-#     max_gdds_disrupt_percent = {target: 'N/A' for target, value in sorted_max_gdds_disrupt}
-
-#     half_point = int(len(sorted_max_gdds_disrupt) / 2)
-#     targets_to_show = 3
-
-#     # Select top 3 and bottom 3 targets for each case
-#     top_3_trans = [target for target, _ in sorted_max_gdds_trans[-targets_to_show:]]
-#     bottom_3_trans = [target for target, _ in sorted_max_gdds_trans[:targets_to_show]]
-#     top_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[-targets_to_show:]]
-#     bottom_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[:targets_to_show]]
-
-#     fig, axes = plt.subplots(2, 2, figsize=(20, 12), dpi=300)  # Creating 4 plots
-#     (ax1, ax2), (ax3, ax4) = axes
-
-#     # Plot GDD values for top 3 and bottom 3 targets (Trans)
-#     for target in top_3_trans + bottom_3_trans:
-#         gdd_values_trans = GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']
-#         ax1.plot(t_values, gdd_values_trans, label=f'target {target}')
-
-#     # Plot GDD values for top 3 and bottom 3 targets (Disrupt)
-#     for target in top_3_disrupt + bottom_3_disrupt:
-#         gdd_values_disrupt = GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']
-#         ax3.plot(t_values, gdd_values_disrupt, label=f'target {target}')
-
-#     ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 targets')
-#     ax1.set_xlabel('Time')
-#     ax1.set_ylabel('GDD Value (Trans)')
-#     ax1.legend()
-#     ax1.grid(True)
-
-#     ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 targets')
-#     ax3.set_xlabel('Time')
-#     ax3.set_ylabel('GDD Value (Disrupt)')
-#     ax3.legend()
-#     ax3.grid(True)
-
-#     plt.show()
-
-# def write_to_csv(data, percent_data, filename):
-#     """
-#     Writes the data to a CSV file with three columns.
-#     :param data: List of tuples, where each tuple contains two elements (key, value)
-#     :param percent_data: Dictionary with the percentage values
-#     :param filename: Name of the CSV file to be written
-#     """
-#     with open(filename, mode='w', newline='') as file:
-#         writer = csv.writer(file)
-#         for key, value in data:
-#             writer.writerow([key, value, percent_data[key]])
-
-# # Write to CSV files
-# write_to_csv(sorted_max_gdds_trans, max_gdds_trans_percent, f'diff_results/max_gdds_trans_Pathway_{Pathway}_{kernel_size}.csv')
-# write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/max_gdds_disrupt_Pathway_{Pathway}_{kernel_size}.csv')
-
-
-
-
-
-
-# %%
-# cms = 'cmsALL'
-# kernel_size = 20
-
-# if not "SLURM_JOB_ID" in os.environ:
-#     with open(f'diff_results/GDDs_and_Kernels_268.pkl', 'rb') as f:
-#         GDDs_and_Kernels = pkl.load(f)
-
-#     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
-#     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
-
-#     # Choose the node and t_values for plotting
-#     selected_node = np.random.choice(list(GDDs_and_Kernels.keys()))
-
-#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
-
-#     # Left plot: GDD values over time for various reductions (single node)
-#     for reduction in GDDs_and_Kernels[selected_node].keys():
-#         gdd_values = GDDs_and_Kernels[selected_node][reduction]['gdd_values']
-#         ax1.plot(t_values, gdd_values, label=f'Reduction {reduction}')
-
-#     ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
-#     ax1.set_xlabel('Time')
-#     ax1.set_ylabel('GDD Value')
-#     ax1.legend()
-#     ax1.grid(True)
-
-#     # Choose a reduction factor from the list of reductions
-#     selected_reduction = red_range[1]
-
-#     max_gdds = {}
-#     # Right plot: GDD values over time for a single reduction (all nodes)
-#     for node_base in GDDs_and_Kernels.keys():
-#         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
-#         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-#         max_gdds[node_base] = np.max(gdd_values)
-
-#     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-#     ax2.set_xlabel('Time')
-#     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-#     # ax2.legend()
-#     ax2.set_xlim([0, 2])
-#     ax2.grid(True)
-
-#     plt.show()
-#     # print(max_gdds)
-#     # max_GDD_1 = max_gdds['1']
-#     # max_GDD_2 = max_gdds['2']
-#     # print(max_GDD_1 - max_GDD_2)
-
-#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
-
-#     # PLOT 2 (WEAKER KNOCKDOWN)
-#     # make another plot as ax2 but for reduction factor = 0.8
-#     selected_reduction = red_range[-1]
-
-#     max_gdds = {}
-#     # Right plot: GDD values over time for a single reduction (all nodes)
-#     for node_base in GDDs_and_Kernels.keys():
-#         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
-#         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-#         max_gdds[node_base] = np.max(gdd_values)
-
-
-#     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-#     ax2.set_xlabel('Time')
-#     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-#     # ax2.legend()
-#     ax2.set_xlim([0, 2])
-#     ax2.grid(True)
-
-#     plt.show()
-#     # print(max_gdds)
-#     # max_GDD_1 = max_gdds['1']
-#     # max_GDD_2 = max_gdds['2']
-#     # print(max_GDD_1 - max_GDD_2)
-
-# selected_reduction = red_range[-1]
-# # order nodes by max GDD
-# max_gdds = {}
-# for node_base in GDDs_and_Kernels.keys():
-#     max_gdds[node_base] = np.max(GDDs_and_Kernels[node_base][selected_reduction]['gdd_values'])
-
-# sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
-
-# # get the nodes with the highest GDD
-# highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
-# highest_gdd_nodes
-
-# %%
-# def separate_subgraph_layout(G, set1, set2, separation_vector):
-#     """
-#     Calculate a layout that visually separates two sets of nodes in a graph.
-
-#     :param G: NetworkX graph
-#     :param set1: First set of nodes
-#     :param set2: Second set of nodes
-#     :param separation_vector: A tuple (dx, dy) specifying how much to separate the layouts
-#     :return: A dictionary of positions keyed by node
-#     """
-#     # Create subgraphs
-#     subgraph1 = G.subgraph(set1)
-#     subgraph2 = G.subgraph(set2)
-
-#     # Compute layouts for subgraphs
-#     layout1 = nx.spring_layout(subgraph1)
-#     layout2 = nx.spring_layout(subgraph2)
-
-#     # Shift the second layout
-#     layout2 = {node: (pos[0] + separation_vector[0], pos[1] + separation_vector[1]) for node, pos in layout2.items()}
-
-#     # Combine layouts
-#     combined_layout = {**layout1, **layout2}
-#     return combined_layout
-
-
-# def plot_diffusion_process_for_two_graphs(graphs,  laplacians, set1, set2, times, node_to_isolate, start_node=9):
-#     """
-#     Plots the diffusion process on two graphs at specified times from a single starting node.
-
-#     :param graphs: List of two NetworkX graphs
-#     :param laplacians: List of two Laplacian matrices corresponding to the graphs
-#     :param times: List of 3 times at which to visualize the diffusion
-#     :param start_node: Node from which the diffusion starts
-#     """
-#     if len(graphs) != 2 or len(times) != 3:
-#         print(len(graphs), len(times))
-#         raise ValueError("Function requires exactly two graphs and three time points.")
-    
-#     fig, axes = plt.subplots(2, 3, figsize=(15, 10))  # 2 rows, 3 columns
-#     fig.suptitle(f'Unperturbed graph (top), Knockdown of node {node_to_isolate} by factor {fixed_reduction} (bottom) s{rand_seed}', fontsize=25)
-
-
-#     # layout=nx.spring_layout(graphs[0])
-#     layout = separate_subgraph_layout(graphs[0], set1, set2, separation_vector=(4, 0))
-
-#     label_layout = {node: (x - 0.1, y) for node, (x, y) in layout.items()}  # Shift labels to the left
-
-#     for i, (G, L) in enumerate(zip(graphs, laplacians)):
-#         for j, t in enumerate(times):
-#             kernel = laplacian_exponential_diffusion_kernel(L, t)
-#             heat_values = kernel[start_node, :]
-
-#             if i == 1:  # If it's the second graph
-#                 # get index of smallest heat value
-#                 print(f'node with lowest heat == isolated node: {np.argmin(heat_values) == node_to_isolate}')
-#                 sorted_heat_values = np.sort(heat_values)
-#                 second_smallest_value = sorted_heat_values[1]  # Select the second smallest value
-#                 norm = mcolors.Normalize(vmin=second_smallest_value, vmax=max(heat_values), clip=True)
-#                 heat_values[node_to_isolate] = sorted_heat_values[0]
-#             else:
-#                 norm = mcolors.Normalize(vmin=min(heat_values), vmax=max(heat_values), clip=True)
-
-#             # norm = mcolors.Normalize(vmin=min(heat_values), vmax=max(heat_values), clip=True)
-#             mapper = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis)
-
-#             nx.draw_networkx_edges(G, layout, alpha=0.2, ax=axes[i, j])
-#             nx.draw_networkx_nodes(G, layout, node_size=200,
-#                                    node_color=[mapper.to_rgba(value) for value in heat_values],
-#                                    ax=axes[i, j])
-#             nx.draw_networkx_labels(G, label_layout, font_size=20, ax=axes[i, j])
-#             nx.draw_networkx_nodes(G, layout, nodelist=[node_to_isolate, start_node], node_size=300,
-#                                node_color=['blue', 'red'],  # Example: red color
-#                                ax=axes[i, j])
-#             axes[i, j].set_title(f"Graph {i+1}, t={round(t, 2)}", fontsize=20)
-#             axes[i, j].axis('off')
-
-#     plt.colorbar(mapper, ax=axes[1, 2], shrink=0.7, aspect=20, pad=0.02)
-#     plt.tight_layout()
-#     plt.show()
-
-# # Example usage
-# fixed_reduction_index = np.where(np.isclose(red_range, fixed_reduction))[0][0]
-# t_values = [0.1, max_gdd_times[fixed_reduction_index], 10]
-
-# weighted_graph_use = copy.deepcopy(original_weighted_graph_use)
-# weighted_lap_use = weighted_laplacian_matrix(weighted_graph_use)
-# knockdown_graph, knockdown_laplacian = knockdown_node(weighted_graph_use, node_to_isolate, reduced_weight=fixed_reduction)
-
-# seed_node = node_to_isolate + 1
-
-# # Example usage with 3 graphs and their Laplacians for 9 different times
-# plot_diffusion_process_for_two_graphs([weighted_graph_use, knockdown_graph], 
-#                                            [weighted_lap_use, knockdown_laplacian], set_1, set_2,
-#                                            t_values, start_node=seed_node, node_to_isolate=node_to_isolate)
-
-
-
-
-
-
-
 # %% COMPARING DIRECT KERNEL WITH KERNEL EIGENDECOMPOSITION
 # # start time
 # start_time = time.time()
@@ -1493,11 +1461,109 @@ if "SLURM_JOB_ID" not in os.environ:
 # print(f'Eigen-decomposition time: {eigentimes}')
 # print(f'Direct computation time: {directtimes}')
 
+# %%
+# from scipy.sparse.linalg import eigsh
+# from scipy.sparse import csr_matrix, issparse
+
+# def force_dense_eig_solver(L):
+#     if issparse(L):
+#         L = L.toarray()  # Convert sparse matrix to dense
+#     eigenvalues, eigenvectors = np.linalg.eigh(L)  # Use dense method
+#     return eigenvalues, eigenvectors
+
+# def force_sparse_eig_solver(L, k=6):  # You can adjust 'k' as needed
+#     # Ensure L is a sparse matrix for eigsh, if not, convert it.
+#     if not issparse(L):
+#         L = csr_matrix(L)  # Convert dense matrix to sparse format, choose appropriate sparse format like csr or csc
+#     eigenvalues, eigenvectors = eigsh(L, k=k)  # Use sparse method
+#     return eigenvalues, eigenvectors
+
+
+# def laplacian_exponential_kernel_eigendecomp(L, t, sparse=False):
+#     """
+#     Function to compute the Laplacian exponential diffusion kernel using eigen-decomposition
+#     The function takes the Laplacian matrix L and a time parameter t as inputs.
+#     """
+#     # Calculate the eigenvalues and eigenvectors of the Laplacian matrix
+#     if sparse:
+#         N = L.shape[0]
+#         eigenvalues, eigenvectors = force_sparse_eig_solver(L, k=N-1)
+#     else:
+#         eigenvalues, eigenvectors = force_dense_eig_solver(L)
+#     # Compute the matrix exponential using eigenvalues
+#     exp_eigenvalues = np.exp(-t * eigenvalues)
+#     # Reconstruct the matrix using the eigenvectors and the exponentiated eigenvalues
+#     kernel = eigenvectors @ np.diag(exp_eigenvalues) @ eigenvectors.T
+
+#     return kernel
+
+
+# t_values = np.linspace(0.01, 10, 50)
+# reduction = 0.05
+
+# for knockout_target in pathways_subset:
+
+#     t = 0.5
+
+#     start_time = time.time()
+#     knockdown_graph_aggro, knockdown_laplacian, _, _, _ = knockdown_pathway_nodes(weighted_G_cms_ALL, knockout_target, reduced_weight=reduction)
+
+#     # Calculate laplacian exponential diffusion kernel for knockdown graph for different t values using eigen-decomposition
+#     # knockdown_kernel_eigendecomp = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian, t, sparse=False) for t in t_values]
+#     knockdown_kernel_eigendecomp = laplacian_exponential_kernel_eigendecomp(knockdown_laplacian, t, sparse=False)
+
+
+#     # Mid-time between the methods
+#     mid_time = time.time()
+
+#     # knockdown_sparse_kernel_eigendecomp = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian, t, sparse=True) for t in t_values]
+#     knockdown_sparse_kernel_eigendecomp = laplacian_exponential_kernel_eigendecomp(knockdown_laplacian, t, sparse=True)
+
+#     mid2_time = time.time()
+
+#     # Calculate laplacian exponential diffusion kernel for knockdown graph for different t values using direct method
+#     # knockdown_kernel_direct = [laplacian_exponential_diffusion_kernel(knockdown_laplacian, t) for t in t_values]
+#     knockdown_kernel_direct = laplacian_exponential_diffusion_kernel(knockdown_laplacian, t)
+    
+
+#     # End time for direct method
+#     end_time = time.time()
+
+#     eigen_times = mid_time - start_time
+#     eigen_times_sparse = mid2_time - mid_time
+#     direct_times = end_time - mid2_time
+
+#     # Check if the results from both methods are close to each other
+#     are_close = np.allclose(knockdown_kernel_eigendecomp, knockdown_kernel_direct)
+
+#     are_close_sparse = np.allclose(knockdown_sparse_kernel_eigendecomp, knockdown_kernel_eigendecomp, atol=1e-1, rtol=1e-1)
+
+#     if are_close_sparse == False:
+#         # Print time taken by each method and the result of the comparison
+#         print(f'Eigen-decomposition time: {eigen_times}')
+#         print(f'Eigen-decomposition time (sparse): {eigen_times_sparse}')
+#         print(f'Direct computation time: {direct_times}\n')
+#         print(f'Are the results from direct and eigendecomp methods close? {are_close}')
+#         print(f'Are the results from sparse and eigendecomp methods close? {are_close_sparse}')
+
+#         A = knockdown_sparse_kernel_eigendecomp
+#         B = knockdown_kernel_eigendecomp
+
+#         C = knockdown_kernel_direct
+
+#         # Compute the Frobenius norm of the difference
+#         frobenius_norm = np.linalg.norm(A - B, 'fro')
+
+#         print("The Frobenius norm of the difference is:", frobenius_norm)
+
+#         frob_norm_direct = np.linalg.norm(B - C, 'fro')
+
+#         print("The Frobenius norm of the difference is (direct to eigenfull):", frob_norm_direct)
 
 
 
 
-
+# %%
 ### BELOW HERE IS THE CODE GRAVEYARD ##########################################
 
 
