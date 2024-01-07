@@ -4,3 +4,5 @@ This tool performs both network inference and integration in a multi-omic settin
 Target nodes and biological pathways are identified via significance testing of knockouts and diffusion analysis.
 
 The tool has been tested on colorectal cancer datasets.
+
+![Alt text](MONIKA.png)
