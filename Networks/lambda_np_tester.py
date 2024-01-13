@@ -413,76 +413,17 @@ if False:
 if True:
     for o_t in ['p', 't']:
         for cms in ['cms123', 'cmsALL']:
-            # for cms_type in ['cmsALL', 'cms123']:
-            #     for omics_type in ['t', 'p']:
-            # Parameters
-            p = 154
-            b_perc = 0.6
-            n = 1337             # nnot actual samples, just filename requirements
-            Q = 2000             # number of sub-samples
-
-            lowerbound = 0.01
-            upperbound = 0.9
-            granularity = 500 
-
-            fp_fn = 0
-            skew = 0
-            density = 0.03
-            seed = 42
-
-            # o_t =  't' # omics_type # commented out for loop
-            # cms = 'cmsALL' # cms_type # commented out for loop
-            # end_slice = 30
-
-
-            if o_t == 'p':
-                prior_bool = True
-                omics_type = 'proteomics'
-            elif o_t == 't':
-                prior_bool = True
-                omics_type = 'transcriptomics'
-
-            # Load omics edge counts
-            file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
-
-            with open(file_, 'rb') as f:
-                omics_edge_counts_all = pickle.load(f)
-
-            # divide each value in edge_counts_all by 2*Q
-            omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
-
-
-
-            # Load Omics Data
-            cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
-            cms_filename = 'Diffusion/data/transcriptomics_for_pig_ALL.csv'
-            cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
-
-            cms_array = cms_data.values
-
-
-
-            # LOad Omics Prior Matrix
-            if prior_bool == True:
-                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj2.csv', index_col=0)
-            else:
-                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj2.csv', index_col=0)
-                #only keep columns / rows that are in the omics data
-                cms_omics_prior = cms_omics_prior[cms_data.columns]
-                cms_omics_prior = cms_omics_prior.reindex(index=cms_data.columns)
-                cms_omics_prior = cms_omics_prior * 0
-
-            cms_omics_prior_matrix = cms_omics_prior.values
-            # # Check if there are any non-zero values in the prior matrix
-            # print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
-
             # # SYNSUSSYSNSS ##############################################
 
-            p = 200
-            n = 500
+            p = 150
+            n = 250
             fp_fn = 0.0
             seed = 42
             dens = 0.03
+
+            omics_type = 'synthetic'
+
+            prior_bool = True
 
 
             # Fixed parameters
@@ -492,7 +433,7 @@ if True:
             granularity = 100
             b_perc = 0.6
             skew = 0
-            filename_edges = 'Networks/net_results/net_results_sweep/net_results/synthetic_cmsALL_edge_counts_all_pnQ200_500_2000_0.01_0.5_ll100_b0.6_fpfn0.25_skew0_dens0.04_s3.pkl'
+            filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ150_{n}_2000_0.01_0.5_ll100_b{b_perc}_fpfn{fp_fn}_skew0.0_dens0.04_s42.pkl'
 
             with open(filename_edges, 'rb') as f:
                     omics_edge_counts_all = pickle.load(f)
@@ -542,7 +483,7 @@ if True:
                     lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
                     kpa = 0                                                                                                        # HERE
                     precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=True)
 
                     print(i, new_upperbound, o_t, cms)
                     print(f'lambda_np: {lambda_np}, lambda_wp: {lambda_wp}, density: {density}')
@@ -551,21 +492,21 @@ if True:
                     wp_lams.append(lambda_wp)
                 
                 # write densities to file
-                with open(f'Networks/net_results/Sendslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                with open(f'Networks/net_results/Sendslice_densities_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.pkl', 'wb') as f:
                     pickle.dump(densities, f)
                 # write np_lams to file
-                with open(f'Networks/net_results/Sendslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                with open(f'Networks/net_results/Sendslice_np_lams_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.pkl', 'wb') as f:
                     pickle.dump(np_lams, f)
                 # write wp_lams to file
-                with open(f'Networks/net_results/Sendslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                with open(f'Networks/net_results/Sendslice_wp_lams_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.pkl', 'wb') as f:
                     pickle.dump(wp_lams, f)
 
                 # load np_lams from file
-                with open(f'Networks/net_results/Sendslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                with open(f'Networks/net_results/Sendslice_np_lams_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.pkl', 'rb') as f:
                     np_lams = pickle.load(f)
 
                 # load wp_lams from file
-                with open(f'Networks/net_results/Sendslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                with open(f'Networks/net_results/Sendslice_wp_lams_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.pkl', 'rb') as f:
                     wp_lams = pickle.load(f)
 
 
@@ -580,10 +521,12 @@ if True:
                 plt.ylabel(r'$\lambda$', fontsize=12)
                 # plt.ylim(0.0, 0.5)
 
+                plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/Snp_wp_vs_end_slice_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.png')
+
                 plt.show()
 
                 # # load densities from file
-                with open(f'Networks/net_results/endslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                with open(f'Networks/net_results/Sendslice_densities_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.pkl', 'rb') as f:
                     densities = pickle.load(f)
                     
                 # plot density against end slice value
@@ -600,7 +543,7 @@ if True:
                 plt.tight_layout()
 
                 # save plot image to file
-                plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/Sdensity_vs_end_slice_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.png')
+                plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/Sdensity_vs_end_slice_{omics_type}_{cms}_N{n}_Q{Q}_b_perc{b_perc}_prior{prior_bool}.png')
 
                 plt.show()
             
@@ -689,31 +632,36 @@ if True:
 
 
 
-# # TESTING FOR NORMALITY
-# # perform shapiro-wilk test on each column
-# for i in range(cms_array.shape[1]):
-#     result = stats.shapiro(cms_array[:, i])
-#     print(result)
+# TESTING FOR NORMALITY
 
-# # get first 20 columns
-# cms_array = cms_array[:, 36]
-# # make QQ plot for this column
-# plt.figure(figsize=(12, 5))
-# stats.probplot(cms_array, dist="norm", plot=plt)
-# plt.title(f'Column {i+1}')
-# plt.tight_layout()
-# plt.show()
+# make a skewed multivariate distribution
+# cms_array = np.random.normal(size=(1000, p))
 
-# # print lowest value in this column
-# print(np.min(cms_array))
-# # print highest value in this column
-# print(np.max(cms_array)) 
 
-# # make QQ plots in a multiplot for the first 20 columns
-# plt.figure(figsize=(12, 5))
-# for i in range(cms_array.shape[1]):
-#     plt.subplot(2, 5, i+1)
-#     stats.probplot(cms_array[:, i], dist="norm", plot=plt)
-#     plt.title(f'Column {i+1}')
-# plt.tight_layout()
-# plt.show()
+# perform shapiro-wilk test on each column
+for i in range(cms_array.shape[1]):
+    result = stats.shapiro(cms_array[:, i])
+    print(result)
+
+# get first 20 columns
+cms_array = cms_array[:, 36]
+# make QQ plot for this column
+plt.figure(figsize=(12, 5))
+stats.probplot(cms_array, dist="norm", plot=plt)
+plt.title(f'Column {i+1}')
+plt.tight_layout()
+plt.show()
+
+# print lowest value in this column
+print(np.min(cms_array))
+# print highest value in this column
+print(np.max(cms_array)) 
+
+# make QQ plots in a multiplot for the first 20 columns
+plt.figure(figsize=(12, 5))
+for i in range(cms_array.shape[1]):
+    plt.subplot(2, 5, i+1)
+    stats.probplot(cms_array[:, i], dist="norm", plot=plt)
+    plt.title(f'Column {i+1}')
+plt.tight_layout()
+plt.show()

@@ -45,14 +45,13 @@ else:
 parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
 parser.add_argument('--koh', type=int, default=40, help='Number of hub nodes to knock out')
 parser.add_argument('--kob', type=int, default=5, help='Number of bottom nodes to knock out')
-parser.add_argument('--red_range', type=str, default='0.05, 0.05, 1', help='Range of reduction factors to investigate')
+parser.add_argument('--red_range', type=str, default='0.00,0.00,1', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 # parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
 parser.add_argument('--test_net', type=bool, default=False, help='Boolean for using test nets of various sizes')
-parser.add_argument('--pathway', type=bool, default=True, help='Boolean for Pathway Knockout')
-parser.add_argument('--permuter', type=bool, default=False, help='Boolean for permutation')
-parser.add_argument('--permu_range', type=str, default='5, 26', help='Range of reduction factors to investigate for permutation')
-parser.add_argument('--permu_runs', type=int, default=30, help='Number of runs for permutation random pathway knockout')
+parser.add_argument('--pathway', type=bool, default=False, help='Boolean for Pathway Knockout')
+parser.add_argument('--path_size_range', type=str, default='5,26', help='Range of reduction factors to investigate for permutation')
+parser.add_argument('--permu_runs', type=int, default=None, help='Number of runs for permutation random pathway knockout')
 parser.add_argument('--visualize', type=bool, default=False, help='Boolean for visualizing the network')
 parser.add_argument('--enrich_file', type=str, default='/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info_LinkedOmics.csv', help='Path to pathway enrichment file')
 
@@ -314,7 +313,7 @@ def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
 ###############################################################################
 # %% OMICS GRAPH
 def weighted_multi_omics_graph(cms, plot=False):
-    p = 154
+    p = 154 # 136_kpa_lowenddensity or something
     cms = cms
 
     if "SLURM_JOB_ID" in os.environ:
@@ -490,7 +489,7 @@ degree_dict = dict(weighted_G_cms_ALL.degree(weighted_G_cms_ALL.nodes()))
 hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:args.koh]
 low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:args.kob]
 
-if rank == 0:
+if rank == 0 and not args.permu_runs:
     print(f'hub nodes: {hub_nodes}')
     print(f'anti-hubs nodes: {low_nodes}')
 
@@ -545,26 +544,36 @@ def distribute_runs(total_runs, rank, size):
 
 
 def generate_node_combinations(G, num_nodes, total_combinations=10000):
-    random.seed(42)
+    local_random = random.Random(42)  # using a local instance of Random
+
     # Separate nodes by layer
     proteomics_nodes = [node for node in G.nodes() if node.endswith('.p')]
 
     unique_combinations = set()
     while len(unique_combinations) < total_combinations:
         # generate a new combination
-        # Randomly select half of the nodes from each layer, ensuring that for each selected node, its pair is also selected
-        random_proteomics_nodes = random.sample(proteomics_nodes, num_nodes)
+        # Randomly select half of the nodes from each layer
+        random_proteomics_nodes = local_random.sample(proteomics_nodes, num_nodes)
         random_transcriptomics_nodes = [node.replace('.p', '.t') for node in random_proteomics_nodes]  # Get corresponding nodes in the other layer
         
-        # Combine both sets of nodes
-        random_nodes = random_proteomics_nodes + random_transcriptomics_nodes
-        unique_combinations.add(random_nodes)
+        # Combine both sets of nodes and convert them to a tuple (immutable)
+        random_nodes_tuple = tuple(random_proteomics_nodes + random_transcriptomics_nodes)
+        unique_combinations.add(random_nodes_tuple)
 
     return list(unique_combinations)
 
 
-
-def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red_range, t_values, orig_aggro_kernel, orig_gdd_values, run_idx, pathway_df=None):
+def run_knockout_analysis(G_aggro, 
+                          G_stable, 
+                          knockout_type, 
+                          knockout_target, 
+                          red_range, 
+                          t_values, 
+                          orig_aggro_kernel, 
+                          orig_nonmes_kernel, 
+                          orig_gdd_values,  
+                          pathway_df=None,
+                          run_idx=None):
     results = {}
 
     if knockout_type == 'runtype_node' or knockout_type == 'runtype_pathway':
@@ -582,13 +591,13 @@ def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red
             knockdown_func = knockdown_node_both_layers if knockout_type == 'runtype_node' else knockdown_pathway_nodes
 
             knockdown_graph_aggro, knockdown_laplacian_aggro, _, _, _ = knockdown_func(G_aggro, knockout_target, reduced_weight=reduction)
-            knockdown_non_mesench, knockdown_laplacian_non_mesench, _, _, _ = knockdown_func(G_stable, knockout_target, reduced_weight=reduction)
+            knockdown_graph_stable, knockdown_laplacian_stable, _, _, _ = knockdown_func(G_stable, knockout_target, reduced_weight=reduction)
 
             # Calculate diffusion kernels and GDD
             diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-            diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+            diff_kernel_knock_stable = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_stable, t) for t in t_values]
 
-            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+            gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_stable) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
             gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
 
             results[knockout_target][reduction] = {
@@ -613,16 +622,15 @@ def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red
             results[f'random_{num_rand_nodes}_run_{run_index}'] = {}
 
             for reduction in red_range:
-                # print(f"Random Pathway Knockout: size {knockout_target}, run {_} with reduction factor: {reduction}")
                 # Perform the knockout
                 knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(G_aggro, node_list, reduced_weight=reduction)
-                knockdown_non_mesench, knockdown_laplacian_non_mesench,_,_,_ = knockdown_random_nodes(G_stable, node_list, reduced_weight=reduction)
+                knockdown_graph_stable, knockdown_laplacian_stable,_,_,_ = knockdown_random_nodes(G_stable, node_list, reduced_weight=reduction)
 
                 # Calculate diffusion kernels and GDD
                 diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-                diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
+                diff_kernel_knock_stable = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_stable, t) for t in t_values]
 
-                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_non_mesench) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_stable) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
                 gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
 
                 try:
@@ -650,7 +658,23 @@ def run_knockout_analysis(G_aggro, G_stable, knockout_type, knockout_target, red
 # file_path = '/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/data/Joy_enrichment/results data folder attempt 281223/trans/gem/gProfiler_hsapiens_28-12-2023_11-20-54 am.gem.txt'
 
 # joy_path_df = pd.read_csv(file_path, sep='\t')
+
+# # split 'Genes' column into individual genes
+# joy_path_df['Genes'] = joy_path_df['Genes'].str.split(',')
+# # for each row, get the length of the list in 'Genes' column
+# joy_path_df['Gene Count'] = joy_path_df['Genes'].apply(lambda x: len(x))
+# # sort by 'Gene Count' column
+# joy_path_df = joy_path_df.sort_values(by='Gene Count', ascending=False)
+
 # joy_path_df.head()
+
+# # print number of rows where 'Gene Count' is between 5 and 25
+# print(len(joy_path_df[(joy_path_df['Gene Count'] >= 5) & (joy_path_df['Gene Count'] <= 25)]))
+
+# # rename 'Description' column to 'description'
+# joy_path_df = joy_path_df.rename(columns={'Description': 'description'})
+# # rename 'Gene Count' column to '# genes'
+# joy_path_df = joy_path_df.rename(columns={'Gene Count': '# genes'})
 
 # %%
 full_crit_paths = ['Angiogenesis', 'Regulation of angiogenesis', 'Positive regulation of angiogenesis', 'Sprouting angiogenesis', 
@@ -671,7 +695,12 @@ pathways = crit_paths
 if "SLURM_JOB_ID" not in os.environ:
     args.enrich_file = '/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/Pathway_Enrichment_Info_LinkedOmics.csv'
 
+    args.pathway = True
+    args.koh = 0
+
 if args.pathway:
+    if args.koh == 0:
+        args.koh = 1000000000000
     pathway_df = pd.read_csv(args.enrich_file) # '/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/Pathway_Enrichment_Info.csv'
     pathway_df = pathway_df.drop_duplicates(subset='description', keep='first')
 
@@ -686,9 +715,11 @@ if args.pathway:
     # filtered_pathway_df = pathway_df[pathway_df['description'].isin(joy_path_df['Description'])]
 
     # keep only rows which have a perc overlap above 0.5
-    filtered_pathway_df = filtered_pathway_df[filtered_pathway_df['perc_overlap'] >= 0.3]
-    # Filter the dataframe to include only pathways with '# genes' between 1 and 25
-    filtered_pathway_df = filtered_pathway_df[(filtered_pathway_df['# genes'] >= 5) & (filtered_pathway_df['# genes'] <= 25)]
+    # filtered_pathway_df = filtered_pathway_df[filtered_pathway_df['perc_overlap'] >= 0.3]
+    # Filter the dataframe to include only pathways with '# genes' between min_size and max_size
+    min_size, max_size = int(args.path_size_range.split(',')[0]), int(args.path_size_range.split(',')[1])
+
+    filtered_pathway_df = filtered_pathway_df[(filtered_pathway_df['# genes'] >= min_size) & (filtered_pathway_df['# genes'] <= max_size)]
 
     # Add unique pathways from the filtered list until you reach args.koh
     for pathway in filtered_pathway_df['description'].tolist():
@@ -697,64 +728,23 @@ if args.pathway:
         if pathway not in pathways:
             pathways.append(pathway)
 
-    # OVERRIDING THE PATHWAY LENGTHS
-    permutation_range = args.permu_range.split(',')
-    permutation_range = range(int(permutation_range[0]), int(permutation_range[1])) 
-    pathway_lengths = permutation_range # We redefined for full range, usually just as long as the pathways_subsets
+
+
+    matches = pathway_df['description'].isin(pathways)
+    interest_pathway_df = pathway_df[matches]
 
     if "SLURM_JOB_ID" in os.environ:
         # Distribute pathways across ranks
         pathways_subset = distribute_pathways(pathways, rank, size)
-        rand_lengths_subset = distribute_pathways(pathway_lengths, rank, size)
         
         print(f'pathways for rank {rank}: {pathways_subset}')
-        print(f'random pathway size for rank {rank}: {rand_lengths_subset}')
     
         
     else: #Otherwise, if run locally
         pathways_subset = pathways
-        rand_lengths_subset = pathway_lengths
 
         print(f'pathways for rank {rank}: {pathways_subset}')
-        print(f'rand pathways for rank {rank}: {rand_lengths_subset}')
 
-
-    # ## CONNECTED COMPONENTS CHECK ###
-    # all_path_disc = []
-    # all_rand_disc = []
-    # reduction = 0.05
-    # for pathway in pathways_subset:
-    #     knockdown_graph_aggro, knockdown_laplacian_aggro, num_disconnected_components, connected_components_lengths, total_path_nodes  = knockdown_pathway_nodes(weighted_G_cms_ALL, pathway, reduced_weight=reduction)
-    #     print(f'pathway: {pathway[:10]}, num_discon_comps: {num_disconnected_components}, connect_comps_lens: {connected_components_lengths}, total_path_nodes: {total_path_nodes}')
-    #     print(f'pathway: {num_disconnected_components}, total_path_nodes: {total_path_nodes}')
-    #     all_path_disc.append(num_disconnected_components)
-
-    #     avg_discs_rand = []
-    #     for _ in range(1):
-    #         random_graph_aggro, random_laplacian_aggro, num_disconnected_components, connected_components_lengths, total_path_nodes  = knockdown_random_nodes(weighted_G_cms_ALL, total_path_nodes, reduced_weight=reduction, seed=_)
-    #         print(f'random: num_discon_comps: {num_disconnected_components}, connect_comps_lens: {connected_components_lengths}, total_path_nodes: {total_path_nodes}')
-    #         print(random_laplacian_aggro)
-    #         avg_discs_rand.append(num_disconnected_components)
-    #     avg_discs_rand = np.mean(avg_discs_rand)
-    #     print(f'random: {avg_discs_rand}, total_path_nodes: {total_path_nodes}')
-    #     all_rand_disc.append(avg_discs_rand)
-
-    # # plot connected components
-    # plt.plot(all_path_disc, label='pathways')
-    # plt.plot(all_rand_disc, label='random')
-    # plt.legend()
-    # plt.show()
-
-    # knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(weighted_G_cms_ALL, 0, reduced_weight=reduction, seed=42)
-    # knockdown_non_mesench, knockdown_laplacian_non_mesench,_,_,_ = knockdown_random_nodes(weighted_G_cms_123, 0, reduced_weight=reduction, seed=42)
-
-
-    # print(knockdown_laplacian_aggro.shape)
-    # print(knockdown_laplacian_non_mesench.shape)
-
-    # # Calculate diffusion kernels and GDD
-    # diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
-    # diff_kernel_knock_non_mesench = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_non_mesench, t) for t in t_values]
 
 
 # %%
@@ -769,6 +759,8 @@ else:
     rank = 0
     size = 1
 
+# if "SLURM_JOB_ID" not in os.environ:
+    # args.test_net = True
 
 # RUN on test net
 if args.test_net:
@@ -784,16 +776,16 @@ if args.test_net:
     # Initialize containers for results
     orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
     orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
-    orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
+    orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')**2
 else:
     # Initialize containers for results
     orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
     orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
-    orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')
+    orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')**2
 
 
 # get max orig_gdd_values
-max_orig_gdd_values = np.max(orig_gdd_values)
+max_orig_gdd_values = np.max(np.sqrt(orig_gdd_values))
 
 
 
@@ -826,22 +818,25 @@ local_target_results = {}
 if args.pathway:
     # PATHWAY KNOCKOUTS
     for pathway in pathways_subset:
-        pathway_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_pathway', pathway, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df)
+        pathway_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_pathway', pathway, red_range, t_values, orig_aggro_kernel, orig_non_mesench_kernel, orig_gdd_values, pathway_df)
         local_target_results.update(pathway_results)
 
-    if args.permuter:
+    if args.permu_runs:
         # RANDOM PATHWAY KNOCKOUTS (for permutation analysis)
         local_rand_results = {}
         
         # Determine the subset of run indices for each rank
-        total_runs = args.permu_runs  # Total number of unique node combinations
-        runs_per_rank = total_runs // size  # assuming size is the total number of ranks
+        run_indices = distribute_runs(args.permu_runs, rank, size)
 
-        run_indices = range(runs_per_rank * rank, runs_per_rank * (rank + 1))
+        pathway_sizes = args.path_size_range.split(',')
+        pathway_sizes = range(int(pathway_sizes[0]), int(pathway_sizes[1]))
+        
+        # print(f'pathway sizes for rank {rank}: {pathway_sizes}')
+        print(f'run indices for rank {rank}: {run_indices}')
 
         # Create a boolean series where each element is True if the 'description' column contains any of the pathway descriptions
-        for random_pathway_size in range(args.permu_range.split(',')[0], args.permu_range.split(',')[1]):
-            rand_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_random', random_pathway_size, red_range, t_values, orig_aggro_kernel, orig_gdd_values, pathway_df, run_idx=run_indices, num_runs=args.permu_runs)
+        for random_pathway_size in pathway_sizes:
+            rand_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_random', random_pathway_size, red_range, t_values, orig_aggro_kernel, orig_non_mesench_kernel, orig_gdd_values, pathway_df, run_idx=run_indices)
             
             local_rand_results.update(rand_results)
             
@@ -850,14 +845,14 @@ if args.pathway:
 else:
     for node in nodes_subset:
         # TESTING the knockout analysis function
-        node_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_node', node, red_range, t_values, orig_aggro_kernel, orig_gdd_values)
+        node_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_node', node, red_range, t_values, orig_aggro_kernel, orig_non_mesench_kernel, orig_gdd_values)
         local_target_results.update(node_results)
 
 
 # GATHERING RESULTS
 all_target_results = comm.gather(local_target_results, root=0)
 if args.pathway:
-    if args.permuter:
+    if args.permu_runs:
         all_rand_results = comm.gather(local_rand_results, root=0)
         all_results_list = [all_target_results, all_rand_results]
         filename_identifiers = ['target', 'random']
@@ -896,7 +891,7 @@ for i, all_results in enumerate(all_results_list):
 
 
     elif rank == 0 and "SLURM_JOB_ID" not in os.environ:
-        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}_permu{args.permu_runs}.pkl', 'wb') as f:
+        with open(f'diff_results/LOCAL_Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}_permu{args.permu_runs}.pkl', 'wb') as f:
             pkl.dump(local_target_results, f)
 
         # with open(f'diff_results/Pathway_{args.pathway}_random_node_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}.pkl', 'wb') as f:
@@ -924,120 +919,141 @@ MPI.Finalize()
 
 
 
+
+
+
+
+
+
+
+
+
+
 # %% SIGNIFICANCE TESTING
 
 if "SLURM_JOB_ID" not in os.environ:
 
     # args.pathway = True
-    unique_identifier = 'RPRSTCRRBARCTRmSATDS'
+    unique_identifier = 'RPRSTCRR'
 
-    if args.pathway:
-        # Load results and pathway information
-        with open('diff_results/Pathway_True_target_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permu30.pkl', 'rb') as f:
-            target_results = pkl.load(f)
-        with open('diff_results/Pathway_True_random_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permu30.pkl', 'rb') as f:
-            random_results = pkl.load(f)
+    # Load results and pathway information
+    with open('diff_results/Pathway_True_target_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permuNone.pkl', 'rb') as f:
+        target_results = pkl.load(f)
+    with open('diff_results/Pathway_True_random_RPRSTCRR_GDDs_ks308_permu10368.pkl', 'rb') as f:
+        random_results = pkl.load(f)
 
-        def get_pathway_length(pathway_name, df):
-            if pathway_name in df['description'].values:
-                row = df[df['description'] == pathway_name].iloc[0]
-                return len(row['genes'].split('|'))
+    # print keys of random results
+    print(random_results['random_11_run_1'][0.00]['max_gdd_trans'])
+    print(random_results.keys())
+    # print(len(random_results['random_11_run_1'][0.05]['max_gdd_trans']))
+
+        
+    def get_pathway_length(pathway_name, df):
+        if pathway_name in df['description'].values:
+            row = df[df['description'] == pathway_name].iloc[0]
+            return len(row['genes'].split('|'))
+        else:
+            # Handle the case where pathway_name is not found in df
+            # For example, return a default value or raise a custom error
+            return None  # or raise ValueError(f"Pathway '{pathway_name}' not found in dataframe")
+
+    # Function to parse random results keys
+    def parse_random_key(key):
+        parts = key.split('_')
+        return int(parts[1]), int(parts[3])  # length, run_number
+
+    # Organize random results by pathway length
+    random_results_by_length = {}  # {pathway_length: [list of max_gdd_trans values]}
+    for key, result in random_results.items():
+        length, run_number = parse_random_key(key)
+        max_gdd_trans = result[0.00]['max_gdd_trans']
+        if length not in random_results_by_length:
+            random_results_by_length[length] = []
+        random_results_by_length[length].append(max_gdd_trans)
+
+    # for key in random_results_by_length.keys():
+    #     print(len(random_results_by_length[key]))
+
+
+
+    # Calculate p-values
+    p_values = {}
+    for pathway, result in target_results.items():
+        target_max_gdd_trans = result[0.00]['max_gdd_trans']
+        pathway_length = get_pathway_length(pathway, interest_pathway_df)
+        if pathway_length is not None:
+            random_distribution = random_results_by_length.get(pathway_length, [])
+            if random_distribution:  # Ensure there are random results for this length
+                p_value = percentileofscore(random_distribution, target_max_gdd_trans, kind='mean') / 100
+                # if p_value == 0:
+                #     p_value = "<0.001"
+                p_values[pathway] = p_value
             else:
-                # Handle the case where pathway_name is not found in df
-                # For example, return a default value or raise a custom error
-                return None  # or raise ValueError(f"Pathway '{pathway_name}' not found in dataframe")
-
-        # Function to parse random results keys
-        def parse_random_key(key):
-            parts = key.split('_')
-            return int(parts[1]), int(parts[3])  # length, run_number
-
-        # Organize random results by pathway length
-        random_results_by_length = {}  # {pathway_length: [list of max_gdd_trans values]}
-        for key, result in random_results.items():
-            length, run_number = parse_random_key(key)
-            max_gdd_trans = result[0.05]['max_gdd_trans']
-            if length not in random_results_by_length:
-                random_results_by_length[length] = []
-            random_results_by_length[length].append(max_gdd_trans)
-
-
-   
-        # Calculate p-values
-        p_values = {}
-        for pathway, result in target_results.items():
-            target_max_gdd_trans = result[0.05]['max_gdd_trans']
-            pathway_length = get_pathway_length(pathway, interest_pathway_df)
-            if pathway_length is not None:
-                random_distribution = random_results_by_length.get(pathway_length, [])
-                if random_distribution:  # Ensure there are random results for this length
-                    p_value = percentileofscore(random_distribution, target_max_gdd_trans, kind='mean') / 100
-                    # if p_value == 0:
-                    #     p_value = "<0.001"
-                    p_values[pathway] = p_value
-                else:
-                    # Handle case where there are no random results for this length
-                    p_values[pathway] = None  # or some other placeholder
-            else:
-                print(f"Pathway length not found for {pathway}")
-                # Handle case where pathway length could not be determined
+                # Handle case where there are no random results for this length
                 p_values[pathway] = None  # or some other placeholder
+        else:
+            print(f"Pathway length {pathway_length} not found for {pathway}")
+            # Handle case where pathway length could not be determined
+            p_values[pathway] = None  # or some other placeholder
 
 
-        # Filter out None values from p_values
-        filtered_p_values = {k: v for k, v in p_values.items() if v is not None}
+    # Filter out None values from p_values
+    filtered_p_values = {k: v for k, v in p_values.items() if v is not None}
 
-        # Adjust for multiple testing on the filtered p-values
-        adjusted_p_values = multipletests(list(filtered_p_values.values()), method='fdr_bh')[1]
-        adjusted_p_values_dict = dict(zip(filtered_p_values.keys(), adjusted_p_values))
+    # Adjust for multiple testing on the filtered p-values
+    adjusted_p_values = multipletests(list(filtered_p_values.values()), method='fdr_bh')[1]
+    adjusted_p_values_dict = dict(zip(filtered_p_values.keys(), adjusted_p_values))
 
-        # Merge adjusted p-values back with the original set (assigning None where appropriate)
-        final_adjusted_p_values = {pathway: adjusted_p_values_dict.get(pathway, None) for pathway in p_values.keys()}
+    # Merge adjusted p-values back with the original set (assigning None where appropriate)
+    final_adjusted_p_values = {pathway: adjusted_p_values_dict.get(pathway, None) for pathway in p_values.keys()}
 
-        # Interpret results
-        significant_pathways = {pathway: adj_p for pathway, adj_p in final_adjusted_p_values.items() if adj_p is not None and adj_p <= 0.05}
+    # Interpret results
+    significant_pathways = {pathway: adj_p for pathway, adj_p in final_adjusted_p_values.items() if adj_p is not None and adj_p <= 0.05}
 
-        # Display significant pathways
-        print("Significant Pathways (adjusted p-value ≤ 0.05):")
-        for pathway, adj_p in significant_pathways.items():
-            print(f"{pathway}: {adj_p}")
-
-
-        # Create a DataFrame for target results including pathway length
-        data = []
-
-        # put max_orig_gdd_values in the first row
-        data.append(['ORIGINAL_MAX_GDD', max_orig_gdd_values, None, None])
-
-        for pathway, result in target_results.items():
-            max_gdd_trans = result[0.05]['max_gdd_trans']
-            p_value = p_values.get(pathway, None)  # Get the p-value, if available
-            pathway_length = get_pathway_length(pathway, interest_pathway_df)  # Get pathway length
-            data.append([pathway, max_gdd_trans, p_value, pathway_length])
-
-        # Creating the DataFrame with an additional column for pathway length
-        target_df = pd.DataFrame(data, columns=['Pathway', 'Max_GDD_Trans', 'P_Value', 'Pathway_Length'])
+    # Display significant pathways
+    print("Significant Pathways (adjusted p-value ≤ 0.05):")
+    for pathway, adj_p in significant_pathways.items():
+        print(f"{pathway}: {adj_p}")
 
 
-        # Sorting the DataFrame by Max_GDD_Trans in ascending order
-        target_df_sorted = target_df.sort_values(by='P_Value', ascending=True)
+    # Create a DataFrame for target results including pathway length
+    data = []
 
-        # Display the first few rows of the sorted DataFrame
-        print(target_df_sorted.head())
+    # put max_orig_gdd_values in the first row
+    data.append(['ORIGINAL_MAX_GDD', max_orig_gdd_values, None, None])
 
-        # write to csv
-        permu_runs = 30
-        target_df_sorted.to_csv(f'diff_results/Pathway_Knockouts_{unique_identifier}_permu_{permu_runs}.csv', index=False)
+    for pathway, result in target_results.items():
+        max_gdd_trans = result[0.00]['max_gdd_trans']
+        p_value = p_values.get(pathway, None)  # Get the p-value, if available
+        pathway_length = get_pathway_length(pathway, interest_pathway_df)  # Get pathway length
+        data.append([pathway, max_gdd_trans, p_value, pathway_length])
+
+    # Creating the DataFrame with an additional column for pathway length
+    target_df = pd.DataFrame(data, columns=['Pathway', 'Max_GDD_Trans', 'P_Value', 'Pathway_Length'])
 
 
-        # %%
-        # Filter for pathways with 0 p-value
-        zero_p_value_pathways = [pathway for pathway, p_val in p_values.items() if p_val != 0]
+    # Sorting the DataFrame by Max_GDD_Trans in ascending order
+    target_df_sorted = target_df.sort_values(by='P_Value', ascending=True)
 
+    # Display the first few rows of the sorted DataFrame
+    print(target_df_sorted.head())
+
+    # write to csv
+    permu_runs = 'whatevs'
+    target_df_sorted.to_csv(f'diff_results/PATHWAY_KNOCKOUTS_RESULTS_permu_{permu_runs}.csv', index=False)
+
+
+    
+    # Filter for pathways with 0 p-value
+    zero_p_value_pathways = [pathway for pathway, p_val in p_values.items() if p_val != 0]
+    curated_paths = ['Negative regulation of the PI3K/AKT network', 'Regulation of receptor signaling pathway via JAK-STAT', 
+    'Positive regulation of MAPK cascade']
+
+    if True: 
         # Plot distributions
-        for pathway in zero_p_value_pathways:
+        for pathway in curated_paths:
             # Get target max_gdd_trans value
-            target_max_gdd_trans = target_results[pathway][0.05]['max_gdd_trans']
+            target_max_gdd_trans = target_results[pathway][0.00]['max_gdd_trans']
 
             # Get pathway length
             pathway_length = get_pathway_length(pathway, interest_pathway_df)
@@ -1047,397 +1063,389 @@ if "SLURM_JOB_ID" not in os.environ:
 
             # Plotting
             plt.figure(figsize=(10, 6))
-            plt.hist(random_distribution, bins=30, alpha=0.7, label='Random Distribution')
+            plt.hist(random_distribution, bins=100, alpha=0.7, label='Random Distribution')
             plt.axvline(x=target_max_gdd_trans, color='r', linestyle='dashed', linewidth=2, label='Target Value')
             plt.title(f"Distribution for Pathway: {pathway} (Length: {pathway_length})")
             plt.xlabel('Max GDD Trans')
             plt.ylabel('Frequency')
+            # plt.xlim(0.94, 1.05)
             plt.legend()
             plt.show()
+
+    
+
+    # GDD PLOTTING
+    # Extract all target GDD values and sort them
+    all_gdd_values = [(pathway, result[0.00]['max_gdd_trans']) for pathway, result in target_results.items()]
+    sorted_gdd_values = sorted(all_gdd_values, key=lambda x: x[1])
+
+    # Select top 3 and bottom 3 targets based on GDD values
+    top_3_gdd = sorted_gdd_values[-3:]
+    bottom_3_gdd = sorted_gdd_values[:3]
+
+    # Plotting section adapted for the new structure
+    plt.figure(figsize=(20, 12))
+
+    # Plot for the top 3 GDD values
+    for target, gdd_value in top_3_gdd:
+        # Assuming the new code stores a list or similar iterable of GDD values
+        plt.plot(t_values, target_results[target][0.00]['gdd_values_trans'], label=f'Top {target} GDD')
+
+    # Plot for the bottom 3 GDD values
+    for target, gdd_value in bottom_3_gdd:
+        plt.plot(t_values, target_results[target][0.00]['gdd_values_trans'], label=f'Bottom {target} GDD')
+
+    plt.title('GDD Over Time (Trans) for Top 3 and Bottom 3 Targets')
+    plt.xlabel('Time')
+    plt.ylabel('GDD Value')
+    plt.legend()
+    plt.show()
+
+
+
+
+
+
+
+
+
+
+
+    # %%  NODE KNOCKOUT CODE
+    cms = 'cmsALL'
+
+    with open(f'diff_results/Pathway_False_target_YYETA_GDDs_ks308_permuNone.pkl', 'rb') as f:
+        node_knockouts = pkl.load(f)
+
+    print(f'node_knockouts: {node_knockouts.keys()}')
+    print(f'Reduction factors: {node_knockouts[list(node_knockouts.keys())[0]].keys()}')
+    # print(f'GDD values: {node_knockouts[list(node_knockouts.keys())[0]][0.05]}')
+
+    for key in node_knockouts.keys():
+        print(f'node {key}: {node_knockouts[key].keys()}')
+    # Choose the node and t_values for plotting
+    selected_node = np.random.choice(list(node_knockouts.keys()))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+
+    # Left plot: GDD values over time for various reductions (single node)
+    for reduction in node_knockouts[selected_node].keys():
+        gdd_values = node_knockouts[selected_node][reduction]['gdd_values_trans']
+        ax1.plot(t_values, gdd_values, label=f'Reduction {reduction}')
+
+    ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
+    ax1.set_xlabel('Time')
+    ax1.set_ylabel('GDD Value')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Choose a reduction factor from the list of reductions
+    selected_reduction = red_range[0]
+    selected_reduction = 0.00
+
+    max_gdds = {}
+    # Right plot: GDD values over time for a single reduction (all nodes)
+    for node_base in node_knockouts.keys():
+        gdd_values = node_knockouts[node_base][selected_reduction]['gdd_values_trans']
+        ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+        max_gdds[node_base] = np.max(gdd_values)
+
+    ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+    ax2.set_xlabel('Time')
+    # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+    # ax2.legend()
+    ax2.set_xlim([0, 2])
+    ax2.grid(True)
+
+    plt.show()
+    # print(max_gdds)
+    # max_GDD_1 = max_gdds['1']
+    # max_GDD_2 = max_gdds['2']
+    # print(max_GDD_1 - max_GDD_2)
+
+    # print max_gdds in ascending order
+    sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+    # print original max_gdd 
+    print(max_orig_gdd_values)
+    print(sorted_max_gdds)
+
+    summed_degrees = {}
+    for node in sorted_max_gdds.keys():
+        node_p = node + '.p'
+        node_t = node + '.t'
         
-        # %%
-
-        # GDD PLOTTING
-        # Extract all target GDD values and sort them
-        all_gdd_values = [(pathway, result[0.05]['max_gdd_trans']) for pathway, result in target_results.items()]
-        sorted_gdd_values = sorted(all_gdd_values, key=lambda x: x[1])
-
-        # Select top 3 and bottom 3 targets based on GDD values
-        top_3_gdd = sorted_gdd_values[-3:]
-        bottom_3_gdd = sorted_gdd_values[:3]
-
-        # Plotting section adapted for the new structure
-        plt.figure(figsize=(20, 12))
-
-        # Plot for the top 3 GDD values
-        for target, gdd_value in top_3_gdd:
-            # Assuming the new code stores a list or similar iterable of GDD values
-            plt.plot(t_values, target_results[target][0.05]['gdd_values_trans'], label=f'Top {target} GDD')
-
-        # Plot for the bottom 3 GDD values
-        for target, gdd_value in bottom_3_gdd:
-            plt.plot(t_values, target_results[target][0.05]['gdd_values_trans'], label=f'Bottom {target} GDD')
-
-        plt.title('GDD Over Time (Trans) for Top 3 and Bottom 3 Targets')
-        plt.xlabel('Time')
-        plt.ylabel('GDD Value')
-        plt.legend()
-        plt.show()
-
-
-
-
-
-
-
-    # # %% OLD CODE FOR GDD PLOTTING AND MAXIMUM GDD VALUE SORTING
-    # # t_values = np.linspace(0.01, 10, 500)
-    # # red_range = red_args.split(',')
-    # # # red_range = [float(i) for i in red_range]
-    # # red_range = [float(red_range[0]), float(red_range[1]), int(float(red_range[2]))]
-
-    # kernel_size = 272
-    # Pathway = True
-
-    # red_range = args.red_range.split(',')
-    # red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
-
-    # filename = f'diff_results/Pathway_{Pathway}_GDDs_{kernel_size}.pkl'
-
-
-    # if not "SLURM_JOB_ID" in os.environ:
-    #     with open(filename, 'rb') as f:
-    #         GDDs_and_Kernels = pkl.load(f)
-
-    #     first_key_outer = next(iter(GDDs_and_Kernels))
-    #     first_key_inner = next(iter(GDDs_and_Kernels[first_key_outer]))
-
-    #     print(GDDs_and_Kernels[first_key_outer][first_key_inner].keys())
-
-    #     orig_max_gdd = GDDs_and_Kernels[first_key_outer][first_key_inner]['max_gdd_orig']
+        # Accessing the degree for each node directly from the DegreeView
+        degree_p = weighted_G_cms_ALL.degree(node_p, weight='weight') if node_p in weighted_G_cms_ALL else 0
+        degree_t = weighted_G_cms_ALL.degree(node_t, weight='weight') if node_t in weighted_G_cms_ALL else 0
         
-    #     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
-    #     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
-    #     # Choose a reduction factor from the list of reductions
-    #     selected_reduction = red_range[1]
+        summed_degree = degree_p + degree_t
+        summed_degrees[node] = summed_degree
 
-    #     # Calculate max GDDs for each target (node or pathway) and sort them
-    #     max_gdds_trans = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']) for target in GDDs_and_Kernels}
-    #     max_gdds_disrupt = {target: np.max(GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']) for target in GDDs_and_Kernels}
+    # Print the summed degrees
+    print(summed_degrees)
 
-    #     sorted_max_gdds_trans = sorted(max_gdds_trans.items(), key=lambda item: item[1])
-    #     sorted_max_gdds_disrupt = sorted(max_gdds_disrupt.items(), key=lambda item: item[1], reverse=True)
+    # Make dataframe with node, max_gdd, and summed_degree
+    df = pd.DataFrame.from_dict(sorted_max_gdds, orient='index', columns=['max_gdd'])
+    # add row with original max_gdd
+    df.loc['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
+    # make column with max_gdd delta
+    df['max_gdd_delta'] = df['max_gdd'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd']
+    # make column with max_gdd / original_max_gdd
+    df['max_gdd_ratio'] = df['max_gdd'] / df.loc['ORIGINAL_MAX_GDD', 'max_gdd']
+    df['summed_degree'] = df.index.map(summed_degrees)
+    df = df.sort_values(by='max_gdd', ascending=True)
 
-    #     # Calculate the percentage of the original max GDD for each sorted max GDD
-    #     max_gdds_trans_percent = {target: (value / orig_max_gdd) * 100 for target, value in sorted_max_gdds_trans}
-    #     max_gdds_disrupt_percent = {target: 'N/A' for target, value in sorted_max_gdds_disrupt}
+    print(df.head())
 
-    #     half_point = int(len(sorted_max_gdds_disrupt) / 2)
-    #     targets_to_show = 3
+    # write to file
+    df.to_csv(f'diff_results/NODE_KNOCKOUTS_RESULTS.csv', index=True)
 
-    #     # Select top 3 and bottom 3 targets for each case
-    #     top_3_trans = [target for target, _ in sorted_max_gdds_trans[-targets_to_show:]]
-    #     bottom_3_trans = [target for target, _ in sorted_max_gdds_trans[:targets_to_show]]
-    #     top_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[-targets_to_show:]]
-    #     bottom_3_disrupt = [target for target, _ in sorted_max_gdds_disrupt[:targets_to_show]]
-
-    #     fig, axes = plt.subplots(2, 2, figsize=(20, 12), dpi=300)  # Creating 4 plots
-    #     (ax1, ax2), (ax3, ax4) = axes
-
-    #     # Plot GDD values for top 3 and bottom 3 targets (Trans)
-    #     for target in top_3_trans + bottom_3_trans:
-    #         gdd_values_trans = GDDs_and_Kernels[target][selected_reduction]['gdd_values_trans']
-    #         ax1.plot(t_values, gdd_values_trans, label=f'target {target}')
-
-    #     # Plot GDD values for top 3 and bottom 3 targets (Disrupt)
-    #     for target in top_3_disrupt + bottom_3_disrupt:
-    #         gdd_values_disrupt = GDDs_and_Kernels[target][selected_reduction]['gdd_values_disrupt']
-    #         ax3.plot(t_values, gdd_values_disrupt, label=f'target {target}')
-
-    #     ax1.set_title(f'GDD Over Time (Trans)\nTop 3 and Bottom 3 targets')
-    #     ax1.set_xlabel('Time')
-    #     ax1.set_ylabel('GDD Value (Trans)')
-    #     ax1.legend()
-    #     ax1.grid(True)
-
-    #     ax3.set_title(f'GDD Over Time (Disrupt)\nTop 3 and Bottom 3 targets')
-    #     ax3.set_xlabel('Time')
-    #     ax3.set_ylabel('GDD Value (Disrupt)')
-    #     ax3.legend()
-    #     ax3.grid(True)
-
-    #     plt.show()
-
-    # def write_to_csv(data, percent_data, filename):
-    #     """
-    #     Writes the data to a CSV file with three columns.
-    #     :param data: List of tuples, where each tuple contains two elements (key, value)
-    #     :param percent_data: Dictionary with the percentage values
-    #     :param filename: Name of the CSV file to be written
-    #     """
-    #     with open(filename, mode='w', newline='') as file:
-    #         writer = csv.writer(file)
-    #         for key, value in data:
-    #             writer.writerow([key, value, percent_data[key]])
-
-    # # Write to CSV files
-    # write_to_csv(sorted_max_gdds_trans, max_gdds_trans_percent, f'diff_results/max_gdds_trans_Pathway_{Pathway}_{kernel_size}.csv')
-    # write_to_csv(sorted_max_gdds_disrupt, max_gdds_disrupt_percent, f'diff_results/max_gdds_disrupt_Pathway_{Pathway}_{kernel_size}.csv')
+    # %% SAVE FOR LATER
+    # PLOT 2 (WEAKER KNOCKDOWN)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
 
 
-    # %% OLD NODE CODE, as far as I can tell
-    # cms = 'cmsALL'
-    # kernel_size = 20
+    # make another plot as ax2 but for reduction factor = 0.8
+    selected_reduction = red_range[-1]
 
-    # if not "SLURM_JOB_ID" in os.environ:
-    #     with open(f'diff_results/GDDs_and_Kernels_268.pkl', 'rb') as f:
-    #         GDDs_and_Kernels = pkl.load(f)
-
-    #     print(f'GDDs_and_Kernels: {GDDs_and_Kernels.keys()}')
-    #     print(f'Reduction factors: {GDDs_and_Kernels[list(GDDs_and_Kernels.keys())[0]].keys()}')
-
-    #     # Choose the node and t_values for plotting
-    #     selected_node = np.random.choice(list(GDDs_and_Kernels.keys()))
-
-    #     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
-
-    #     # Left plot: GDD values over time for various reductions (single node)
-    #     for reduction in GDDs_and_Kernels[selected_node].keys():
-    #         gdd_values = GDDs_and_Kernels[selected_node][reduction]['gdd_values']
-    #         ax1.plot(t_values, gdd_values, label=f'Reduction {reduction}')
-
-    #     ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
-    #     ax1.set_xlabel('Time')
-    #     ax1.set_ylabel('GDD Value')
-    #     ax1.legend()
-    #     ax1.grid(True)
-
-    #     # Choose a reduction factor from the list of reductions
-    #     selected_reduction = red_range[1]
-
-    #     max_gdds = {}
-    #     # Right plot: GDD values over time for a single reduction (all nodes)
-    #     for node_base in GDDs_and_Kernels.keys():
-    #         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
-    #         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-    #         max_gdds[node_base] = np.max(gdd_values)
-
-    #     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-    #     ax2.set_xlabel('Time')
-    #     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-    #     # ax2.legend()
-    #     ax2.set_xlim([0, 2])
-    #     ax2.grid(True)
-
-    #     plt.show()
-    #     # print(max_gdds)
-    #     # max_GDD_1 = max_gdds['1']
-    #     # max_GDD_2 = max_gdds['2']
-    #     # print(max_GDD_1 - max_GDD_2)
-
-    #     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
-
-    #     # PLOT 2 (WEAKER KNOCKDOWN)
-    #     # make another plot as ax2 but for reduction factor = 0.8
-    #     selected_reduction = red_range[-1]
-
-    #     max_gdds = {}
-    #     # Right plot: GDD values over time for a single reduction (all nodes)
-    #     for node_base in GDDs_and_Kernels.keys():
-    #         gdd_values = GDDs_and_Kernels[node_base][selected_reduction]['gdd_values']
-    #         ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-    #         max_gdds[node_base] = np.max(gdd_values)
+    max_gdds = {}
+    # Right plot: GDD values over time for a single reduction (all nodes)
+    for node_base in node_knockouts.keys():
+        gdd_values = node_knockouts[node_base][selected_reduction]['gdd_values']
+        ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+        max_gdds[node_base] = np.max(gdd_values)
 
 
-    #     ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-    #     ax2.set_xlabel('Time')
-    #     # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-    #     # ax2.legend()
-    #     ax2.set_xlim([0, 2])
-    #     ax2.grid(True)
+    ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+    ax2.set_xlabel('Time')
+    # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+    # ax2.legend()
+    ax2.set_xlim([0, 2])
+    ax2.grid(True)
 
-    #     plt.show()
-    #     # print(max_gdds)
-    #     # max_GDD_1 = max_gdds['1']
-    #     # max_GDD_2 = max_gdds['2']
-    #     # print(max_GDD_1 - max_GDD_2)
+    plt.show()
+    # print(max_gdds)
+    # max_GDD_1 = max_gdds['1']
+    # max_GDD_2 = max_gdds['2']
+    # print(max_GDD_1 - max_GDD_2)
 
-    # selected_reduction = red_range[-1]
-    # # order nodes by max GDD
-    # max_gdds = {}
-    # for node_base in GDDs_and_Kernels.keys():
-    #     max_gdds[node_base] = np.max(GDDs_and_Kernels[node_base][selected_reduction]['gdd_values'])
+    selected_reduction = red_range[-1]
+    # order nodes by max GDD
+    max_gdds = {}
+    for node_base in node_knockouts.keys():
+        max_gdds[node_base] = np.max(node_knockouts[node_base][selected_reduction]['gdd_values'])
 
-    # sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+    sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
 
-    # # get the nodes with the highest GDD
-    # highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
-    # highest_gdd_nodes
-
-    # %%
-    # VISUALIZE DIFFUSION
-
-    def multiplex_net_viz(M, ax, diff_colors=False, node_colors=None, node_sizes=None, node_coords=None):
-
-        dark_red = "#8B0000"  # Dark red color
-        dark_blue = "#00008B"  # Dark blue color
-
-        # Iterate over nodes in the 'PROTEIN' layer
-        # Initialize a dictionary to hold node colors
-        for node in M.iter_nodes(layer='PROTEIN'):
-            if not diff_colors:
-                node_colors[(node, 'PROTEIN')] = dark_red
-
-        # Iterate over nodes in the 'RNA' layer
-        for node in M.iter_nodes(layer='RNA'):
-            if not diff_colors:
-                node_colors[(node, 'RNA')] = dark_blue
+    # get the nodes with the highest GDD
+    highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
+    highest_gdd_nodes
 
 
-        edge_color = "#505050"  # A shade of gray, for example
-
-        # Initialize a dictionary to hold edge colors
-        edge_colors = {}
-
-        # Assign colors to edges in the 'PROTEIN' and 'RNA' layers
-        # Assuming edges are between nodes within the same layer
-            
-        layer_colors = {'PROTEIN': "red", 'RNA': "blue"}
-
-        fig = pn.draw(net=M,
-                ax=ax,
-                show=False, 
-                nodeColorDict=node_colors,
-                nodeLabelDict={nl: None for nl in M.iter_node_layers()},  # Set all node labels to None explicitly
-                nodeLabelRule={},  # Clear any label rules
-                defaultNodeLabel=None,  # Set default label to None
-                nodeSizeDict=node_sizes,
-                # nodeSizeRule={"rule":"degree", "scalecoeff":0.00001},
-                nodeCoords=node_coords,
-                edgeColorDict=edge_colors,
-                defaultEdgeAlpha=0.25,
-                layerColorDict=layer_colors,
-                defaultLayerAlpha=0.075,
-                # layerLabelRule={},  # Clear any label rules
-                # defaultLayerLabel=None,  # Set default label to None
-                # azim=45,
-                elev=25)
-
-        print(type(fig))
-
-        return fig
-
-    # %%
 
 
-    def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None):
-        # Load the pickle file
-        with open('diff_results/Pathway_False_target_BB_GDDs_ks272.pkl', 'rb') as f:
-            results = pkl.load(f)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# %%
+# VISUALIZE DIFFUSION
+args.visualize = True
+
+def multiplex_net_viz(M, ax, diff_colors=False, node_colors=None, node_sizes=None, node_coords=None):
+
+    dark_red = "#8B0000"  # Dark red color
+    dark_blue = "#00008B"  # Dark blue color
+
+    # Iterate over nodes in the 'PROTEIN' layer
+    # Initialize a dictionary to hold node colors
+    for node in M.iter_nodes(layer='PROTEIN'):
+        if not diff_colors:
+            node_colors[(node, 'PROTEIN')] = dark_red
+
+    # Iterate over nodes in the 'RNA' layer
+    for node in M.iter_nodes(layer='RNA'):
+        if not diff_colors:
+            node_colors[(node, 'RNA')] = dark_blue
+
+
+    edge_color = "#505050"  # A shade of gray, for example
+
+    # Initialize a dictionary to hold edge colors
+    edge_colors = {}
+
+    # Assign colors to edges in the 'PROTEIN' and 'RNA' layers
+    # Assuming edges are between nodes within the same layer
         
-        time_resolved_kernels = results['BIRC2'][0.05]['vis_kernels'][:12]
+    layer_colors = {'PROTEIN': "red", 'RNA': "blue"}
+
+    fig = pn.draw(net=M,
+            ax=ax,
+            show=False, 
+            nodeColorDict=node_colors,
+            nodeLabelDict={nl: None for nl in M.iter_node_layers()},  # Set all node labels to None explicitly
+            nodeLabelRule={},  # Clear any label rules
+            defaultNodeLabel=None,  # Set default label to None
+            nodeSizeDict=node_sizes,
+            # nodeSizeRule={"rule":"degree", "scalecoeff":0.00001},
+            nodeCoords=node_coords,
+            edgeColorDict=edge_colors,
+            defaultEdgeAlpha=0.1,
+            layerColorDict=layer_colors,
+            defaultLayerAlpha=0.075,
+            # layerLabelRule={},  # Clear any label rules
+            # defaultLayerLabel=None,  # Set default label to None
+            # azim=45,
+            elev=25)
+
+    print(type(fig))
+
+    return fig
+
+# %%
 
 
-        # Assume 'weighted_G_cms_ALL' is your graph
-        node_order = list(weighted_G.nodes())
-        # get indices of nodes that end with '.t'
-        t_indices = [i for i, node in enumerate(node_order) if node.endswith('.t')]
-        #consistent node positions
-        prot_nodes = [node for node in weighted_G.nodes() if node.endswith('.p')]
-        prot_node_positions = nx.spring_layout(weighted_G.subgraph(prot_nodes))  # Adjust as necessary
-
-        # Set up a 3x3 subplot grid with 3D projection
-        fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 20), subplot_kw={'projection': '3d'})
-        axs = axes.flatten()  # Flatten the axes array for easy iteration
-        fig.suptitle('Network Diffusion over 25 Time Points')
-
-        # Define the suffixes for each layer
-        suffixes = {'PROTEIN': '.p', 'RNA': '.t'}
-
-        # Create an index mapping from the suffixed node name to its index
-        node_indices = {node: i for i, node in enumerate(node_order)}
-        node_colors = {}  
-        node_sizes = {} 
-        node_coords = {}
-
-        for node, pos in prot_node_positions.items():
-            stripped_node = node.rstrip('.t')  # Remove the suffix to match identifiers in M
-            node_coords[stripped_node] = pos
-
-        for nl in M.iter_node_layers():  # Iterating over all node-layer combinations
-            node, layer = nl  # Split the node-layer tuple
-            neighbors = list(M._iter_neighbors_out(nl, dims=None))  # Get all neighbors for the node-layer tuple
-            degree = len(neighbors)  # The degree is the number of neighbors
-            
-            # Assign to node sizes
-            node_sizes[nl] = 0.0001 * degree**2  # 0.0015 * degree # Adjust the scaling factor as needed
-
-        print(node_sizes)
+def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None):
+    # Load the pickle file
+    with open('diff_results/Pathway_False_target_BB_GDDs_ks272.pkl', 'rb') as f:
+        results = pkl.load(f)
+    
+    # with open('diff_results/Pathway_False_target_BCGGS_GDDs_ks308_permuNone.pkl', 'rb') as f:
+    #     results = pkl.load(f)
+    
+    print(results.keys())
+    time_resolved_kernels = results['BIRC2'][0.05]['vis_kernels'][:12] # BAK1
 
 
-        j = 271
-        global_max = max(kernel.max() for kernel in time_resolved_kernels)
-        norm = Normalize(vmin=0, vmax=1)
-        # print(global_max)
-        # Ensure you have a list of the 25 time-resolved kernels named 'time_resolved_kernels'
-        for idx, (ax, kernel) in enumerate(zip(axs, time_resolved_kernels)):
-            # if idx % 5 == 0:
-            # Create the unit vector e_j with 1 at the jth index and 0 elsewhere
-            e_j = np.zeros(len(weighted_G.nodes()))
-            e_j[j] = 100
+    # Assume 'weighted_G_cms_ALL' is your graph
+    node_order = list(weighted_G.nodes())
+    # get indices of nodes that end with '.t'
+    t_indices = [i for i, node in enumerate(node_order) if node.endswith('.t')]
+    #consistent node positions
 
-            # e_j = np.ones(len(weighted_G_cms_ALL.nodes()))
-            
-            # Multiply the kernel with e_j to simulate diffusion from node j
-            diffusion_state = kernel @ e_j
-            # order the diffusion state in descending order
-            diffusion_state = sorted(diffusion_state, reverse=True)
+    nodes_with_degree = [node for node, degree in weighted_G_cms_ALL.degree() if degree > 0 and node.endswith('.p')]
 
-            # Now, update node colors and sizes based on diffusion_state
-            for layer in M.iter_layers():  # Iterates through all nodes in M
-                # Determine the layer of the node for color and size settings
-                for node in M.iter_nodes(layer=layer):
-                    # Append the appropriate suffix to the node name to match the format in node_order
-                    suffixed_node = node + suffixes[layer]
-                    # Use the suffixed node name to get the corresponding index from the node_order
-                    index = node_indices[suffixed_node]
+    # Create a subgraph with these nodes
+    subgraph = weighted_G_cms_ALL.subgraph(nodes_with_degree)
 
-                    # Map the diffusion state to a color and update node_colors and node_sizes
-                    color = plt.cm.viridis(diffusion_state[index])  # Mapping color based on diffusion state
-                    node_colors[(node, layer)] = color
-                    # node_sizes[(node, layer)] = 0.03  # Or some logic to vary size with diffusion state
+    # Now calculate the layout using only the nodes in the subgraph
+    pos = nx.spring_layout(subgraph)
 
-            # Now use your updated visualization function with the new colors and sizes
-            diff_fig = multiplex_net_viz(M, ax, diff_colors=True, node_colors=node_colors, node_sizes=node_sizes, node_coords=node_coords)
+    print(pos)
 
-            ax.set_title(f"Time Step {idx*20}")
+    # If you want to use the same positions for the nodes in the original graph, you can do so. 
+    # The orphan nodes will be assigned a default position as they are not included in the subgraph.
+    prot_node_positions = pos.copy()
+    for node in weighted_G_cms_ALL.nodes():
+        if node not in prot_node_positions and node.endswith('.p'):
+            print(node)
+            prot_node_positions[node] = (0, 0)  # or any other default position
 
-            # ax.imshow(diff_fig)
 
-            # # Draw the graph with node colors based on the diffusion state
-            # nx.draw(weighted_G_cms_ALL, pos, ax=ax, node_size=50,
-            #         node_color=norm(diffusion_state), cmap=plt.cm.viridis,
-            #         edge_color=(0, 0, 0, 0.5), width=1.0)  # Use a simple color for edges for clarity
+    # Set up a 3x3 subplot grid with 3D projection
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 10), subplot_kw={'projection': '3d'}, dpi = 600)
+    axs = axes.flatten()  # Flatten the axes array for easy iteration
+    # fig.suptitle('Network Diffusion over 25 Time Points')
 
-            # # # print maximum value of kernel at this time step
-            # # print(f'max kernel value at time step {idx}: {kernel.max()}')
+    # Define the suffixes for each layer
+    suffixes = {'PROTEIN': '.p', 'RNA': '.t'}
 
-            # # Set a title for each subplot indicating the time step
-            # ax.set_title(f"Time Step {idx*20}")
+    # Create an index mapping from the suffixed node name to its index
+    node_indices = {node: i for i, node in enumerate(node_order)}
+    node_colors = {}  
+    node_sizes = {} 
+    node_coords = {}
 
-        # Adjust layout to prevent overlap
-        # plt.tight_layout()
-        # plt.subplots_adjust(top=0.95)  # Adjust the top space to fit the main title
-        plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), ax=axs.ravel().tolist(), orientation='vertical')
+    for node, pos in prot_node_positions.items():
+        stripped_node = node.rstrip('.t')  # Remove the suffix to match identifiers in M
+        node_coords[stripped_node] = pos
 
-        # savethefigure
-        plt.savefig('diffusion_figure.svg') # make rc.param no font export
+    for nl in M.iter_node_layers():  # Iterating over all node-layer combinations
+        node, layer = nl  # Split the node-layer tuple
+        neighbors = list(M._iter_neighbors_out(nl, dims=None))  # Get all neighbors for the node-layer tuple
+        degree = len(neighbors)  # The degree is the number of neighbors
+        
+        # Assign to node sizes
+        node_sizes[nl] = 0.05 # 0.0001 * degree**2  # 0.0015 * degree # Adjust the scaling factor as needed
 
-        # Display the figure
-        plt.show()
+    print(node_sizes)
 
-    if args.visualize:
-        multiplex_diff_viz(pymnet_ALL, weighted_G_cms_ALL)
+
+    j = 271
+    global_max = max(kernel.max() for kernel in time_resolved_kernels)
+    norm = Normalize(vmin=0, vmax=1)
+    # print(global_max)
+    # Ensure you have a list of the 25 time-resolved kernels named 'time_resolved_kernels'
+    for idx, (ax, kernel) in enumerate(zip(axs, time_resolved_kernels)):
+        # if idx % 5 == 0:
+        # Create the unit vector e_j with 1 at the jth index and 0 elsewhere
+        e_j = np.zeros(len(weighted_G.nodes()))
+        e_j[j] = 100
+
+        # e_j = np.ones(len(weighted_G_cms_ALL.nodes()))
+        
+        # Multiply the kernel with e_j to simulate diffusion from node j
+        diffusion_state = kernel @ e_j
+        # order the diffusion state in descending order
+        diffusion_state = sorted(diffusion_state, reverse=True)
+
+        # Now, update node colors and sizes based on diffusion_state
+        for layer in M.iter_layers():  # Iterates through all nodes in M
+            # Determine the layer of the node for color and size settings
+            for node in M.iter_nodes(layer=layer):
+                # Append the appropriate suffix to the node name to match the format in node_order
+                suffixed_node = node + suffixes[layer]
+                # Use the suffixed node name to get the corresponding index from the node_order
+                index = node_indices[suffixed_node]
+
+                # Map the diffusion state to a color and update node_colors and node_sizes
+                color = plt.cm.viridis(diffusion_state[index])  # Mapping color based on diffusion state
+                node_colors[(node, layer)] = color
+                # node_sizes[(node, layer)] = 0.03  # Or some logic to vary size with diffusion state
+
+        # Now use your updated visualization function with the new colors and sizes
+        diff_fig = multiplex_net_viz(M, ax, diff_colors=True, node_colors=node_colors, node_sizes=node_sizes, node_coords=node_coords)
+
+        ax.set_title(f"Time Step {idx*20}")
+
+        # ax.imshow(diff_fig)
+
+        # # Draw the graph with node colors based on the diffusion state
+        # nx.draw(weighted_G_cms_ALL, pos, ax=ax, node_size=50,
+        #         node_color=norm(diffusion_state), cmap=plt.cm.viridis,
+        #         edge_color=(0, 0, 0, 0.5), width=1.0)  # Use a simple color for edges for clarity
+
+        # # # print maximum value of kernel at this time step
+        # # print(f'max kernel value at time step {idx}: {kernel.max()}')
+
+        # # Set a title for each subplot indicating the time step
+        # ax.set_title(f"Time Step {idx*20}")
+
+    # Adjust layout to prevent overlap
+    # plt.tight_layout()
+    # plt.subplots_adjust(top=0.95)  # Adjust the top space to fit the main title
+    # plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), ax=axs.ravel().tolist(), orientation='vertical')
+
+    # savethefigure
+    plt.savefig('diffusion_figure.png', dpi=600) # make rc.param no font export
+
+    print('wot')
+    # Display the figure
+    plt.show()
+
+if args.visualize:
+    multiplex_diff_viz(pymnet_ALL, weighted_G_cms_ALL)
 
 
 # %% COMPARING DIRECT KERNEL WITH KERNEL EIGENDECOMPOSITION

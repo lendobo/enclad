@@ -119,15 +119,38 @@ class QJSweeper:
         covariance_mat = inv(adjusted_precision)
 
         # PRIOR MATRIX
-        prior_matrix = np.zeros((p, p))
-        for i in range(p):
-            for j in range(i, p):
-                if adj_matrix[i, j] != 0 and np.random.rand() < (1 - fp_fn_chance):
-                    prior_matrix[i, j] = 1
-                    prior_matrix[j, i] = 1
-                elif adj_matrix[i, j] == 0 and np.random.rand() < fp_fn_chance:
-                    prior_matrix[i, j] = 1
-                    prior_matrix[j, i] = 1
+        # p = len(adj_matrix)  # assuming adj_matrix is already defined
+
+        # Count the total number of edges in adj_matrix
+        total_edges = np.sum(adj_matrix) // 2  # divide by 2 for undirected graph
+
+        # Calculate the number of edges to flip (25% of total edges)
+        num_edges_to_flip = int(total_edges * fp_fn_chance)
+
+        # Create a copy of adj_matrix to start forming prior_matrix
+        prior_matrix = np.copy(adj_matrix)
+
+        # Randomly select edges to turn into FNs (1 to 0)
+        edges = np.transpose(np.where(adj_matrix == 1))
+        np.random.shuffle(edges)
+
+        num_edges_to_flip = min(num_edges_to_flip, len(edges))
+
+        for i in range(num_edges_to_flip):
+            x, y = edges[i]
+            prior_matrix[x, y] = 0
+            prior_matrix[y, x] = 0  # for undirected graph
+
+        # Randomly select non-edges to turn into FPs (0 to 1)
+        non_edges = np.transpose(np.where(adj_matrix == 0))
+        np.random.shuffle(non_edges)
+        for i in range(num_edges_to_flip):
+            x, y = non_edges[i]
+            if x != y:  # ensure not to fill diagonal
+                prior_matrix[x, y] = 1
+                prior_matrix[y, x] = 1  # for undirected graph
+
+        # Ensure diagonal remains 0
         np.fill_diagonal(prior_matrix, 0)
 
 
@@ -146,6 +169,13 @@ class QJSweeper:
                 data[:, col] += skewnorm.rvs(-skew, size=n)  # Left skew
             for col in right_skew_columns:
                 data[:, col] += skewnorm.rvs(skew, size=n)  # Right skew
+
+            # add outliers
+            num_outliers = int(0.05 * data.shape[0])
+            outlier_indices = np.random.choice(data.shape[0], size=num_outliers, replace=False)
+            outlier_columns = np.random.choice(data.shape[1], size=num_outliers, replace=True)
+            data[outlier_indices, outlier_columns] += np.random.normal(loc=0, scale=2, size=num_outliers)
+
 
         return data, prior_matrix, adj_matrix
     
@@ -364,9 +394,6 @@ if __name__ == "__main__":
             with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
 
-            # saving the prior matrix
-            with open(f'net_results/prior_mat_{args.run_type}_{args.cms}_{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
-                pickle.dump(prior_matrix, f)
 
             # Transfer results to $HOME
             os.system("cp -r net_results/ $HOME/thesis_code/Networks/")

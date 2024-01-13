@@ -571,7 +571,7 @@ print(f'rppa_df Inf: {np.isinf(prot_df_all_transformed).sum().sum()}')
 rna_df_all_transformed = rna_df_all_transformed.fillna(rna_df_all_transformed.mean())
 prot_df_all_transformed = prot_df_all_transformed.fillna(prot_df_all_transformed.mean())
 rna_df_123_transformed = rna_df_123_transformed.fillna(rna_df_123_transformed.mean())
-prot_df_123_transformed = prot_df_123_transformed.fillsna(prot_df_123_transformed.mean())
+prot_df_123_transformed = prot_df_123_transformed.fillna(prot_df_123_transformed.mean())
 
 
 # write to csv
@@ -658,36 +658,46 @@ percentage_positive = (sum(i > 0 for i in subtraction_results) / len(subtraction
 
 print(f'Percentage of positive values: {percentage_positive}%')
 
-# # %%
-# import numpy as np
-# import scipy.stats as stats
-# # Create a dataset that is a skewed normal distribution
+# %%
+import numpy as np
+import scipy.stats as stats
+# Create a dataset that is a skewed normal distribution
 
-# data = stats.skewnorm.rvs(0, size=1000)
+data = stats.skewnorm.rvs(1, size=154)
 
-# # skew in oposite direction
-# data = -data
+# skew in oposite direction
+data = -data
 
-
-# # Plot the histogram
-# fig, ax = plt.subplots()
-# ax.hist(data, bins=50)
-# ax.set_title('Skewed normal distribution')
-# plt.show()
-
-# # Perform the Shapiro-Wilk test
-# stat, p = stats.shapiro(data)
-# print(f'Statistic: {stat}, p-value: {p}')
-
-# # QQ-plot
-# fig, ax = plt.subplots()
-# stats.probplot(data, dist="norm", plot=ax)
-# ax.set_title(f'QQ-plot (W: {round(stat, 3)})')
-# plt.show()
+# add outliers
+num_outliers = int(0.05 * data.shape[0])
+outlier_indices = np.random.choice(data.shape[0], size=num_outliers, replace=False)
+data[outlier_indices] += np.random.normal(loc=0, scale=2, size=num_outliers)
 
 
+# Plot the histogram
+fig, ax = plt.subplots()
+ax.hist(data, bins=50)
+ax.set_title('Skewed normal distribution')
+plt.show()
+
+# Perform the Shapiro-Wilk test
+stat, p = stats.shapiro(data)
+print(f'SW Statistic: {stat}, p-value: {p}')
+
+# Perform Kolmogorov Smirnov test
+stat, p = stats.kstest(data, 'norm', args=(data.mean(), data.std()))
+print(f'KS Statistic: {stat}, p-value: {p}')
 
 
+# QQ-plot
+fig, ax = plt.subplots()
+stats.probplot(data, dist="norm", plot=ax)
+ax.set_title(f'QQ-plot (W: {round(stat, 3)})')
+plt.show()
+
+
+
+# %%
 
 
 
@@ -766,3 +776,5 @@ print(L@L@L@L)
 
 
 
+
+# %%

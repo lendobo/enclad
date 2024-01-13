@@ -14,7 +14,10 @@ from collections import defaultdict
 import os
 import sys
 
-from tqdm import tqdm
+# from tqdm import tqdm
+import tqdm
+from multiprocessing import Pool
+from itertools import product
 
 # original_stdout = sys.stdout
 # sys.stdout = open('Networks/net_results/Piglasso_Logs.txt', 'w')
@@ -31,6 +34,7 @@ def analysis(data,
         granularity, 
         edge_counts_all, 
         prior_bool=False,
+        man_param=False,
         adj_matrix=None, 
         run_type='SYNTHETIC',
         kneepoint_adder=0,
@@ -60,20 +64,19 @@ def analysis(data,
 
     # LAMBDAS
     lambda_np, theta_mat = estimate_lambda_np(select_edge_counts_all, Q, select_lambda_range)
-    man = False
-    if run_type == 'OMICS':
-        man= True
-        if man:
-            lambda_np =  1
-            if verbose:
-                # print('manually set lambda_np: ', lambda_np)
-                print(f'manual Lambda_np: {man}')
+    man = man_param
+    if man:
+        lambda_np =  1
+        if verbose:
+            # print('manually set lambda_np: ', lambda_np)
+            print(f'manual Lambda_np: {man}')
     
     if prior_bool == True:
         lambda_wp, tau_tr, mus = estimate_lambda_wp(select_edge_counts_all, Q, select_lambda_range, prior_matrix)
         # lambda_wp = 0.076
     else:
         lambda_wp = 0
+        tau_tr = 1e+5
 
     if verbose:
         print('lambda_np: ', lambda_np)
@@ -133,9 +136,9 @@ def analysis(data,
             print('Evaluation metrics: ', evaluation_metrics)
             print('\n\n\n')
 
-        return precision_matrix, edge_counts, density, lambda_np, lambda_wp, evaluation_metrics
+        return precision_matrix, edge_counts, density, lambda_np, lambda_wp, evaluation_metrics, tau_tr
     
-    return precision_matrix, edge_counts, density, lambda_np, lambda_wp
+    return precision_matrix, edge_counts, density, lambda_np, lambda_wp, tau_tr
     
 
 
@@ -144,92 +147,40 @@ def analysis(data,
 rank=1
 size=1
 # ################################################# SYNTHETIC PART #################################################
-    
-if False:
-    ################################################# VARYING SAMPLE SIZE for fixed network #################################################
-    p = 137
-    n_values = [750] # [50, 100, 200, 400, 750, 1000, 2000]
-    b_perc = 0.6
-    b = [int(b_perc * n) for n in n_values]   # size of sub-samples
-    Q = 1200          # number of sub-samples
-
-    lowerbound = 0.01
-    upperbound = 0.5
-    granularity = 100
-    lambda_range = np.linspace(lowerbound, upperbound, granularity)
-
-    fp_fn = 0.0
-    skew = 0
-    density = 0.03
-    seed = 42
-
-    evalu = {}
-    for n,b in zip(n_values, b):
-        print(f'NETWORK SIZE for samples: {n} and variables: {p} and b: {b}')
-        filename_edges = f'Networks/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
-        with open(filename_edges, 'rb') as f:
-            synth_edge_counts_all = pickle.load(f)
-        # divide each value in edge_counts_all by 2*Q
-        synth_edge_counts_all = synth_edge_counts_all / (2 * Q)  # EDGE_DIVIDER
-
-        # filename_prior = f'Networks/net_results/prior_mat_synthetic_cmsALL_{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
-        # with open(filename_prior, 'rb') as f:
-        #     synth_prior_matrix = pickle.load(f)
-
-        # # Generate synthetic data and prior matrix
-        synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=density, seed=seed)
-        # synth_prior_matrix = synth_prior_matrix * 0
-
-        _, _, _, _, _, temp_evalu = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, lowerbound, upperbound, granularity, 
-        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False)
-
-        evalu[n] = temp_evalu
-
-    if False:
-        # make plot of evaluation metrics vs n
-        plt.figure(figsize=(12, 5))
-        plt.subplot(1, 2, 1)
-        plt.plot(n_values, [evalu[n]['f1_score'] for n in n_values], color='red', alpha=0.8)
-        plt.scatter(n_values, [evalu[n]['f1_score'] for n in n_values], color='red', alpha=0.8)
-        plt.title(f'F1-Score vs N for synthetic data')
-        plt.xlabel('Sample Size N', fontsize=12)
-        plt.ylabel('F1-Score', fontsize=12)
-        plt.ylim(0.3, 1.1)
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-
-        plt.subplot(1, 2, 2)
-        plt.plot(n_values, [evalu[n]['recall'] for n in n_values], color='red', alpha=0.8)
-        plt.scatter(n_values, [evalu[n]['recall'] for n in n_values], color='red', alpha=0.8)
-        plt.title(f'Recall vs N for synthetic data', fontsize=12)
-        plt.xlabel('Sample Size N', fontsize=12)
-        plt.ylabel('Recall', fontsize=12)
-        plt.ylim(0.3, 1.1)
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-        plt.tight_layout()
-        plt.show()
 
 
-if False:
+
+if True:
+    run = False
     # COMPLETE SWEEP
+    # code should compare: increasing B_perc and effect on performance at low sample size vs high sample size
+    # for 250 samples, which combination of b_perc and manual lambda (T, F) and fp_fn is best?
+    # Then we have to assess our fp_fn from the tau parameter
+        # How does overlap (x axis) correlate with tau (y axis)? NEXT ONE 
+    # Finally, make a call on instability G
     # Parameter arrays
-    p_values = [100, 200, 400]
-    n_values = [50, 100, 250, 500, 1000, 2000]
-    fp_fn_values = [0.0, 0.25, 0.5, 0.75, 1]
-    seed_values = [1, 2, 3, 42]
-    dens_values = [0.03, 0.04]
+
+    # INCREASE P as well
+
+    # CONCLUSIONS
+    # for low sample size (250), b_perc between 0.7 and 0.8 is best. Since we also have sampl size of 350, let's assume 0.7 is optimal
+    # manual lambda vs inferred?
+
+    p_values = [150]
+    n_values = [75, 250, 500, 750, 1000] # [100, 300, 500, 700, 900, 1100]
+    b_perc_values = [0.6, 0.65, 0.7]
+    fp_fn_values = [0.0, 0.05, 0.15, 0.25, 0.35, 1]
+    seed_values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    dens_values = [0.04]
 
 
     # Fixed parameters
-    Q = 2000
+    Q = 1200
     llo = 0.01
     lhi = 0.5
     lamlen = 100
-    b_perc = 0.6
     skew = 0
+    prior_bool = True
 
     lambda_range = np.linspace(llo, lhi, lamlen)
 
@@ -237,175 +188,294 @@ if False:
     f1_scores = {}
     recall_scores = {}
 
-    missing_combinations = []
-    missing_counts = defaultdict(lambda: defaultdict(int)) 
+    if "SLURM_JOB_ID" not in os.environ:
+        dir_prefix = 'Networks/'
+    else:
+        dir_prefix = ''
 
-    # Loop over each parameter combination
-    for n in tqdm(n_values):
+    if run == True:
+        def worker_function(params):
+            p, n, b_perc, fp_fn, seed, dens, man = params
+
+            # Your fixed parameters
+            Q = 1200
+            llo = 0.01
+            lhi = 0.5
+            lamlen = 100
+            skew = 0
+            prior_bool = True
+            lambda_range = np.linspace(llo, lhi, lamlen)
+
+            # Calculate the size of sub-samples (b)
+            b = int(b_perc * n)
+            
+            # Construct filename for edge counts
+            filename_edges = f'{dir_prefix}net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{llo}_{lhi}_ll{lamlen}_b{b_perc}_fpfn0.0_skew0_dens{dens}_s{seed}.pkl'
+            param_key = (p, n, b_perc, fp_fn, seed, dens, str(man))
+
+            if not os.path.isfile(filename_edges):
+                return None  # File does not exist
+
+            with open(filename_edges, 'rb') as f:
+                synth_edge_counts_all = pickle.load(f)
+
+            # Process the edge counts
+            synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
+
+            synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
+
+            overlap = 2 * (np.sum((synth_prior_matrix == 1) & (synth_adj_matrix == 1)) / (np.sum(synth_prior_matrix == 1) + np.sum(synth_adj_matrix == 1)))
+
+            if fp_fn == 1:
+                synth_prior_matrix = synth_prior_matrix * 0
+                prior_bool = False
+
+            # Run your analysis
+            _, _, _, _, _, temp_evalu, tau_tr = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
+                                                synth_edge_counts_all, prior_bool=prior_bool, man_param=man, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False, verbose=False)
+
+            return {
+                'param_key': param_key,
+                'f1_score': temp_evalu['f1_score'],
+                'recall': temp_evalu['recall'],
+                'overlap': overlap,
+                'tau_tr': tau_tr
+            }
+        
+        def update_progress(*a):
+            pbar.update()
+
+
+        if __name__ == "__main__":
+            parameter_combinations = list(product(p_values, n_values, b_perc_values, fp_fn_values, seed_values, dens_values, [True, False]))
+
+            with Pool() as pool:
+                pbar = tqdm.tqdm(total=len(parameter_combinations))
+                results = [pool.apply_async(worker_function, args=(params,), callback=update_progress) for params in parameter_combinations]
+                
+                # Close the pool and wait for each task to complete
+                pool.close()
+                pool.join()
+                pbar.close()
+
+            # Extract the results from each async result object
+            results = [res.get() for res in results]
+
+            # Organize results
+            organized_results = {result['param_key']: {'f1_score': result['f1_score'], 'recall': result['recall'], 'overlap': result['overlap'], 'tau_tr': result['tau_tr']} 
+                                for result in results if result is not None}
+
+            # save to file
+            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results.pkl', 'wb') as f:
+                pickle.dump(organized_results, f)
+
+            print("Organized results saved.")
+
+    post_process = True
+    if post_process == True:
+        # Load the organized results
+        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results.pkl', 'rb') as f:
+            organized_results = pickle.load(f)
+
+        # Initialize dictionaries for average scores and SDs
+        average_f1_scores = {}
+        SD_f1_scores = {}
+        average_recall_scores = {}
+        SD_recall_scores = {}
+
+        average_overlap_scores = {}
+
+        f1_counts = {}
+
+        # Loop over parameter combinations
         for p in p_values:
-            for fp_fn in fp_fn_values:
-                for seed in seed_values:
-                    for dens in dens_values:
-                        # Calculate the size of sub-samples (b)
-                        b = int(b_perc * n)
-                        
-                        # Construct filename for edge counts
-                        filename_edges = f'Networks/net_results/net_results_sweep/net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{llo}_{lhi}_ll{lamlen}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{dens}_s{seed}.pkl'
-                        
-                        # Check if file exists before trying to open it
-                        if not os.path.isfile(filename_edges):
-                            missing_combination = f"p={p}, n={n}, fp_fn={fp_fn}, seed={seed}"
-                            missing_combinations.append(missing_combination)
+            for n in n_values:
+                for b_perc in b_perc_values:
+                    for fp_fn in fp_fn_values:
+                        for man in ['True', 'False']:
+                            f1_scores_for_average = []
+                            recall_scores_for_average = []
+                            overlap_scores_for_average = []
 
-                            # Increment missing counts
-                            missing_counts['p'][p] += 1
-                            missing_counts['n'][n] += 1
-                            missing_counts['fp_fn'][fp_fn] += 1
-                            missing_counts['seed'][seed] += 1
+                            # New key without seed and dens
+                            new_key = (p, n, b_perc, fp_fn, man)
+                            f1_counts[new_key] = 0
 
-                            continue  # Skip this file and go to the next one
-                        
+                            # Loop over seeds and densities
+                            for seed in seed_values:
+                                for dens in dens_values:
+                                    key = (p, n, b_perc, fp_fn, seed, dens, man)
+                                    result = organized_results.get(key)
+                                    if result:  # Check if the result exists
+                                        f1_scores_for_average.append(result['f1_score'])
+                                        recall_scores_for_average.append(result['recall'])
+                                        overlap_scores_for_average.append(result['overlap'])
 
-                        # Load the edge counts
-                        with open(filename_edges, 'rb') as f:
-                            synth_edge_counts_all = pickle.load(f)
-                        
-                        # Process the edge counts (your specific processing logic here)
-                        synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
-
-                        synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
-                        
-                        if fp_fn == 1:
-                            synth_prior_matrix = synth_prior_matrix * 0
-                        # Assuming you have a way to calculate or retrieve temp_evalu, focusing on 'f1_score'
-                        # For example:
-                        _, _, _, _, _, temp_evalu = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
-                        synth_edge_counts_all, prior_bool=True, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False, verbose = False)
-                        
-                        # Extract 'f1_score' and add to f1_scores dictionary
-                        param_key = (p, n, fp_fn, seed, dens)
-                        f1_scores[param_key] = temp_evalu['f1_score']
-                        recall_scores[param_key] = temp_evalu['recall']
-
-    # save to file
-    with open('Networks/net_results/net_results_sweep/f1_scores.pkl', 'wb') as f:
-        pickle.dump(f1_scores, f)
-
-    with open('Networks/net_results/net_results_sweep/recall_scores.pkl', 'wb') as f:
-        pickle.dump(recall_scores, f)
+                                        # Increment the f1 count
+                                        f1_counts[new_key] += 1
 
 
-    average_f1_scores = {}
-    average_recall_scores = {}
 
-    for p in p_values:
-        for n in n_values:
-            for fp_fn in fp_fn_values:
-                f1_scores_for_average = []
-                recall_scores_for_average = []
-
-                # Collecting all f1 scores for the specific (p, n, fp_fn) across seeds and densities
-                for seed in seed_values:
-                    for dens in dens_values:
-                        key = (p, n, fp_fn, seed, dens)  # Including dens in the key
-                        if key in f1_scores:  # Check if the score exists
-                            f1_scores_for_average.append(f1_scores[key])
-                            recall_scores_for_average.append(recall_scores[key])
-
-                # Calculating the average if there are scores available
-                if f1_scores_for_average:  # Check if there are any scores to average
-                    average_f1_scores[(p, n, fp_fn)] = sum(f1_scores_for_average) / len(f1_scores_for_average)
-                    average_recall_scores[(p, n, fp_fn)] = sum(recall_scores_for_average) / len(recall_scores_for_average)
-                else:
-                    # Handle case where there are no scores (all data for this combination is missing)
-                    average_f1_scores[(p, n, fp_fn)] = None  # or some other indicator of missing data
-                    average_recall_scores[(p, n, fp_fn)] = None  # or some other indicator of missing data
-
-    # Now, average_f1_scores will have an average if there's at least one score, or None if all are missing
-
-    # save to file
-    with open('Networks/net_results/net_results_sweep/average_f1_scores.pkl', 'wb') as f:
-        pickle.dump(average_f1_scores, f)
-    
-    with open('Networks/net_results/net_results_sweep/average_recall_scores.pkl', 'wb') as f:
-        pickle.dump(average_recall_scores, f)
+                            # Calculating the average and SD
+                            if f1_scores_for_average:
+                                average_f1_scores[new_key] = np.mean(f1_scores_for_average)
+                                SD_f1_scores[new_key] = np.std(f1_scores_for_average)
+                                average_recall_scores[new_key] = np.mean(recall_scores_for_average)
+                                SD_recall_scores[new_key] = np.std(recall_scores_for_average)
+                                average_overlap_scores[new_key] = np.mean(overlap_scores_for_average)
+                            else:
+                                # Handle missing data
+                                average_f1_scores[new_key] = None
+                                SD_f1_scores[new_key] = None
+                                average_recall_scores[new_key] = None
+                                SD_recall_scores[new_key] = None
+                                average_overlap_scores[new_key] = None
 
 
-    # write missing combinations to file
-    with open('Networks/net_results/net_results_sweep/missing_combinations.txt', 'w') as f:
-        for combination in missing_combinations:
-            f.write(combination + '\n')
 
-    # Identify parameters that are missing in all cases
-    total_combinations = len(p_values) * len(n_values) * len(fp_fn_values) * len(seed_values)
-    consistently_missing_params = {param: val for param, counts in missing_counts.items() for val, count in counts.items() if count == total_combinations}
+        # Now, average_f1_scores will have an average if there's at least one score, or None if all are missing
 
-    # # Print or log the results
-    # print("Missing parameter combinations:", missing_combinations)
-    # print("Consistently missing parameters:", consistently_missing_params)
+        # save to file
+        with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'wb') as f:
+            pickle.dump(average_f1_scores, f)
 
+        with open(f'{dir_prefix}net_results/net_results_sweep/SD_f1_scores.pkl', 'wb') as f:
+            pickle.dump(SD_f1_scores, f)
+        
+        with open(f'{dir_prefix}net_results/net_results_sweep/average_recall_scores.pkl', 'wb') as f:
+            pickle.dump(average_recall_scores, f)
 
+        with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'wb') as f:
+            pickle.dump(SD_recall_scores, f)
+
+        # # # # # 
+        # write f1 counts to a txt file
+        with open(f'{dir_prefix}net_results/net_results_sweep/f1_counts.txt', 'w') as f:
+            for item in f1_counts.items():
+                f.write(f'{item}\n')
 
 
     # Load average f1 and recall scores from file
-    with open('Networks/net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
+    with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
         average_f1_scores = pickle.load(f)
 
-    with open('Networks/net_results/net_results_sweep/average_recall_scores.pkl', 'rb') as f:
+    with open(f'{dir_prefix}net_results/net_results_sweep/average_recall_scores.pkl', 'rb') as f:
         average_recall_scores = pickle.load(f)
 
-    # Define parameter values from the provided data
-    p_values = [100, 200, 400]
-    n_values = [50, 100, 250, 500, 1000, 2000]
-    fp_fn_values = [0, 0.25, 0.5, 0.75, 1]
+    # load SDs
+    with open(f'{dir_prefix}net_results/net_results_sweep/SD_f1_scores.pkl', 'rb') as f:
+        SD_f1_scores = pickle.load(f)
 
-    # Create the plots, 3 rows for each p value and 2 columns for F1 and Recall
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12, 12), sharex=True, sharey='row')
+    with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'rb') as f:
+        SD_recall_scores = pickle.load(f)
 
-    for i, p in enumerate(p_values):
+
+    # PLOTTING
+    if False: # B_PERC PLOTTING
+        n = 250  # Fixed sample size
+        p = 150  # Fixed number of variables
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
+
+        # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
-            # Extracting f1 and recall scores for each n value for the current p and fp_fn setting
-            f1_scores = [average_f1_scores.get((p, n, fp_fn)) for n in n_values]
-            recall_scores = [average_recall_scores.get((p, n, fp_fn)) for n in n_values]
-            
-            # Plotting the lines for the current fp_fn setting in F1 and Recall plots
-            axes[i, 0].plot(n_values, f1_scores, label=f'Prior Overlap={(1 - fp_fn) * 100}%')
-            axes[i, 0].scatter(n_values, f1_scores)  # adding points to indicate actual F1 values
-            
-            axes[i, 1].plot(n_values, recall_scores, label=f'Prior Overlap={(1 - fp_fn) * 100}%')
-            axes[i, 1].scatter(n_values, recall_scores)  # adding points to indicate actual Recall values
-            
-            # Setting titles and labels
-            if i == 0:
-                axes[i, 0].set_title('Average F1 Score')
-                axes[i, 1].set_title('Average Recall Score')
+            for i, man in enumerate([False, True]):
+                f1_scores = []
+                recall_scores = []
+                f1_errors = []
+                recall_errors = []
 
-            axes[i, 0].set_ylabel(f'P = {p}', fontsize=12)
-            # make x-xais log2 scale
-            axes[i, 0].set_xscale('log', basex=2)
-            # make the x labels the exponents of 2
-            axes[i, 0].set_xticks(n_values)
-            axes[i, 0].set_xticklabels(n_values, fontsize=12)
-            
-            # axes[i, 1].set_ylabel(f'p = {p}')
+                for b_perc in b_perc_values:
+                    # Accessing the scores using the correct keys
+                    key = (p, n, b_perc, fp_fn, str(man))
+                    f1_scores.append(average_f1_scores.get(key))
+                    recall_scores.append(average_recall_scores.get(key))
+                    f1_errors.append(SD_f1_scores.get(key, 0))  # Default to 0 if no SD available
+                    recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
 
-    axes[-1, 0].set_xlabel('Sample Size N', fontsize=12)
-    axes[-1, 1].set_xlabel('Sample Size N', fontsize=12)
-    axes[0, 0].legend(loc='upper right')
-    # axes[0, 1].legend(loc='upper right')
+                # Plot F1 scores in the first column with error bars
+                axes[i, 0].errorbar(b_perc_values, f1_scores, yerr=f1_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 0].set_title(f'F1 Scores, Manual={man}')
+                axes[i, 0].set_xlabel('b_perc')
+                axes[i, 0].set_ylabel('F1 Score')
+                axes[i, 0].legend(loc='best')
+                axes[i, 0].grid(alpha=0.3)
 
-    # remove 'fp_fn = 1' from legend
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    handles = handles[:-1]
-    labels = labels[:-1]
-    axes[0, 0].legend(handles, labels, loc='upper left')
+                # Plot Recall scores in the second column with error bars
+                axes[i, 1].errorbar(b_perc_values, recall_scores, yerr=recall_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 1].set_title(f'Recall Scores, Manual={man}')
+                axes[i, 1].set_xlabel('b_perc')
+                axes[i, 1].set_ylabel('Recall Score')
+                axes[i, 1].legend(loc='best')
+                axes[i, 1].grid(alpha=0.3)
 
-    # Adjusting layout
-    plt.tight_layout()
-    # set grid for all subplots
-    for ax in axes.flatten():
-        ax.grid(alpha=0.3)
-    plt.show()
+        plt.tight_layout()
+        plt.show()
+
+    if False: # N VALUE PLOTTING
+        b_perc = 0.6  # Fixed b_perc
+        p = 150  # Fixed number of variables
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
+
+        # Iterate over fp_fn values and plot
+        for fp_fn in fp_fn_values:
+            for i, man in enumerate([False, True]):
+                f1_scores = []
+                recall_scores = []
+                f1_errors = []
+                recall_errors = []
+
+                for n in n_values:
+                    # Accessing the scores using the correct keys
+                    key = (p, n, b_perc, fp_fn, str(man))
+                    f1_scores.append(average_f1_scores.get(key))
+                    recall_scores.append(average_recall_scores.get(key))
+                    f1_errors.append(SD_f1_scores.get(key, 0))  # Default to 0 if no SD available
+                    recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
+
+                # Plot F1 scores in the first column with error bars
+                axes[i, 0].errorbar(n_values, f1_scores, yerr=f1_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 0].set_title(f'F1 Scores, Manual={man}')
+                axes[i, 0].set_xlabel('b_perc')
+                axes[i, 0].set_ylabel('F1 Score')
+                axes[i, 0].legend(loc='best')
+                axes[i, 0].grid(alpha=0.3)
+
+                # Plot Recall scores in the second column with error bars
+                axes[i, 1].errorbar(n_values, recall_scores, yerr=recall_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 1].set_title(f'Recall Scores, Manual={man}')
+                axes[i, 1].set_xlabel('b_perc')
+                axes[i, 1].set_ylabel('Recall Score')
+                axes[i, 1].legend(loc='best')
+                axes[i, 1].grid(alpha=0.3)
+
+        plt.tight_layout()
+        plt.show()
+
+
+    if True: # TAU vs OVERLAP PLOTTING
+        # plot 'overlap' vs 'tau_tr'
+        overlap_values = []
+        tau_tr_values = []
+        for key, value in organized_results.items():
+            # check if overlap is 0.0
+            if value['overlap'] == 0.0:
+                continue
+            overlap_values.append(value['overlap'])
+            tau_tr_values.append(value['tau_tr'])
+
+        plt.figure(figsize=(12, 5))
+        plt.scatter(overlap_values, tau_tr_values, color='red', alpha=0.8)
+        plt.title(f'Overlap vs tau_tr for synthetic data')
+        plt.xlabel('Overlap', fontsize=12)
+        plt.ylabel('tau_tr', fontsize=12)
+        plt.grid()
+        ax = plt.gca()
+        ax.grid(alpha=0.2)
+        plt.tight_layout()
+        plt.show()
+
+
+
 
 
 
@@ -413,7 +483,7 @@ if False:
 print('hello1')
 
 ################################################## OMICS DATA PART #################################################
-if True:
+if False:
     for o_t in ['p', 't']:
         for cms in ['cms123', 'cmsALL']:
             # for cms_type in ['cmsALL', 'cms123']:
@@ -432,6 +502,8 @@ if True:
             skew = 0
             density = 0.03
             seed = 42
+
+            man = True
 
             # o_t =  't' # omics_type # commented out for loop
             # cms = 'cmsALL' # cms_type # commented out for loop
@@ -514,8 +586,8 @@ if True:
 
                     lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
                     kpa = 0                                                                                                        # HERE
-                    precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+                    precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', kneepoint_adder=kpa, plot=False)
 
                     print(i, new_upperbound, o_t, cms)
                     print(f'lambda_np: {lambda_np}, lambda_wp: {lambda_wp}, density: {density}')
@@ -577,7 +649,7 @@ if True:
                 # plt.show()
             
             else:
-                end_slice = 250
+                end_slice = 100
                 sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
                 # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
@@ -586,9 +658,8 @@ if True:
                 lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
 
                                                                                                                         # HERE
-                precision_mat, edge_counts, density, lambda_np, lambda_wp = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, run_type='OMICS', kneepoint_adder=0, plot=False, verbose=True)
-
+                precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
+                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', kneepoint_adder=0, plot=True, verbose=True)
 
             # get adjacency from precision matrix
             adj_matrix = (np.abs(precision_mat) > 1e-5).astype(int)
@@ -653,23 +724,23 @@ if True:
             # # # Show the plot
             # # plt.show()
 
-proteomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154.csv', index_col=0)
-transcriptomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154.csv', index_col=0)
-proteomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cms123_adj_matrix_p154.csv', index_col=0)
-transcriptomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cms123_adj_matrix_p154.csv', index_col=0)
+    proteomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154.csv', index_col=0)
+    transcriptomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154.csv', index_col=0)
+    proteomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cms123_adj_matrix_p154.csv', index_col=0)
+    transcriptomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cms123_adj_matrix_p154.csv', index_col=0)
 
-# compare similarity of all networks to each other
-proteomics_ALL_net = proteomics_ALL_net.values
-transcriptomics_ALL_net = transcriptomics_ALL_net.values
-proteomics_123_net = proteomics_123_net.values
-transcriptomics_123_net = transcriptomics_123_net.values
+    # compare similarity of all networks to each other
+    proteomics_ALL_net = proteomics_ALL_net.values
+    transcriptomics_ALL_net = transcriptomics_ALL_net.values
+    proteomics_123_net = proteomics_123_net.values
+    transcriptomics_123_net = transcriptomics_123_net.values
 
-print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
-print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
-print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
-print(f'Similarity of transcriptomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, proteomics_123_net)}')
-print(f'Similarity of transcriptomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, transcriptomics_123_net)}')
-print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
+    print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
+    print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
+    print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
+    print(f'Similarity of transcriptomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, proteomics_123_net)}')
+    print(f'Similarity of transcriptomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, transcriptomics_123_net)}')
+    print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
 
 
 
