@@ -37,7 +37,6 @@ def analysis(data,
         man_param=False,
         adj_matrix=None, 
         run_type='SYNTHETIC',
-        kneepoint_adder=0,
         plot=False,
         verbose=False):
 
@@ -48,9 +47,9 @@ def analysis(data,
     if run_type == 'SYNTHETIC':
         l_hi = right_knee_point_index # set at knee-point index
     else:
-        l_hi = right_knee_point_index + kneepoint_adder  
+        l_hi = right_knee_point_index  
         if verbose:
-            # print(f'\nADDER (right): + {kneepoint_adder}')
+
             print(f'right_knee_point_index: {right_knee_point_index}')
         # print(f'selected l_hi: {lambda_range[l_hi]}')
     
@@ -90,8 +89,8 @@ def analysis(data,
         print('Density: ', density)
 
     if plot == True:
-        scalar_edges = np.sum(edge_counts_all, axis=(0, 1))
-        scalar_select_edges = np.sum(select_edge_counts_all, axis=(0, 1))
+        scalar_edges = np.sum(edge_counts_all, axis=(0, 1)) / (2 * Q)
+        scalar_select_edges = np.sum(select_edge_counts_all, axis=(0, 1)) / (2 * Q)
 
         if False: # PLOTTING THE TOTAL + THE SELECT RANGE
             # create a 1 x 2 multiplot. on the left, plot both scalar aedes and scalar_select edges. On the right, just scalar_select_edges
@@ -102,7 +101,7 @@ def analysis(data,
             plt.title(f'#edges vs lambda for {run_type} data,p={p},n={n}')
             plt.xlabel('Lambda')
             plt.ylabel('Number of edges')
-            plt.ylim(0, 8000)
+            # plt.ylim(0, 8000)
             plt.grid()
             ax = plt.gca()
             ax.grid(alpha=0.2)
@@ -117,14 +116,14 @@ def analysis(data,
             ax.grid(alpha=0.2)
             plt.tight_layout()
             plt.show()
-        if True: # PLOTTING JUST THE TOTAL (WITH RED)
+        if True: # PLOTTING JUST THE TOTAL (WITHOUT RED)
             plt.figure(figsize=(8, 6), dpi=300)
             plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
             plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
             plt.title(rf'Edge Counts vs $\lambda$')
             plt.xlabel(r'$ \lambda$', fontsize=15)
             plt.ylabel('Edge Counts', fontsize=12)
-            plt.ylim(0, 8000)
+            # plt.ylim(0, 8000)
             plt.grid(alpha=0.2)
             plt.tight_layout()
             plt.show()
@@ -151,7 +150,7 @@ size=1
 
 
 if True:
-    run = False
+    run = True
     # COMPLETE SWEEP
     # code should compare: increasing B_perc and effect on performance at low sample size vs high sample size
     # for 250 samples, which combination of b_perc and manual lambda (T, F) and fp_fn is best?
@@ -167,11 +166,12 @@ if True:
     # manual lambda vs inferred?
 
     p_values = [150]
-    n_values = [75, 250, 500, 750, 1000] # [100, 300, 500, 700, 900, 1100]
-    b_perc_values = [0.6, 0.65, 0.7]
-    fp_fn_values = [0.0, 0.05, 0.15, 0.25, 0.35, 1]
-    seed_values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    n_values = [250] # [50, 100, 300, 500, 700, 900, 1100] # [75, 250, 500, 750, 1000] 
+    b_perc_values = [0.6] # [0.6, 0.65, 0.7, 0.75]
+    fp_fn_values = [0.0] # [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1] # Try without 0.1 in plotting
+    seed_values = [1] # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     dens_values = [0.04]
+    man_values = [False]
 
 
     # Fixed parameters
@@ -220,11 +220,13 @@ if True:
                 synth_edge_counts_all = pickle.load(f)
 
             # Process the edge counts
-            synth_edge_counts_all = synth_edge_counts_all / (2 * Q)
+            synth_edge_counts_all = synth_edge_counts_all #  / (2 * Q)
 
             synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
 
-            overlap = 2 * (np.sum((synth_prior_matrix == 1) & (synth_adj_matrix == 1)) / (np.sum(synth_prior_matrix == 1) + np.sum(synth_adj_matrix == 1)))
+            overlap = np.sum((synth_prior_matrix == 1) & (synth_adj_matrix == 1)) / (np.sum(synth_prior_matrix == 1))
+            print(overlap)
+
 
             if fp_fn == 1:
                 synth_prior_matrix = synth_prior_matrix * 0
@@ -233,6 +235,9 @@ if True:
             # Run your analysis
             _, _, _, _, _, temp_evalu, tau_tr = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
                                                 synth_edge_counts_all, prior_bool=prior_bool, man_param=man, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False, verbose=False)
+
+            # print('scores', temp_evalu['f1_score'], temp_evalu['recall'])
+            # print('tau_tr', tau_tr)
 
             return {
                 'param_key': param_key,
@@ -247,7 +252,7 @@ if True:
 
 
         if __name__ == "__main__":
-            parameter_combinations = list(product(p_values, n_values, b_perc_values, fp_fn_values, seed_values, dens_values, [True, False]))
+            parameter_combinations = list(product(p_values, n_values, b_perc_values, fp_fn_values, seed_values, dens_values, man_values))
 
             with Pool() as pool:
                 pbar = tqdm.tqdm(total=len(parameter_combinations))
@@ -266,7 +271,7 @@ if True:
                                 for result in results if result is not None}
 
             # save to file
-            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results.pkl', 'wb') as f:
+            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'wb') as f:
                 pickle.dump(organized_results, f)
 
             print("Organized results saved.")
@@ -274,7 +279,7 @@ if True:
     post_process = True
     if post_process == True:
         # Load the organized results
-        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results.pkl', 'rb') as f:
+        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
             organized_results = pickle.load(f)
 
         # Initialize dictionaries for average scores and SDs
@@ -292,7 +297,7 @@ if True:
             for n in n_values:
                 for b_perc in b_perc_values:
                     for fp_fn in fp_fn_values:
-                        for man in ['True', 'False']:
+                        for man in [str(man) for man in man_values]:
                             f1_scores_for_average = []
                             recall_scores_for_average = []
                             overlap_scores_for_average = []
@@ -348,6 +353,9 @@ if True:
         with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'wb') as f:
             pickle.dump(SD_recall_scores, f)
 
+        with open(f'{dir_prefix}net_results/net_results_sweep/average_overlap_scores.pkl', 'wb') as f:
+            pickle.dump(average_overlap_scores, f)
+
         # # # # # 
         # write f1 counts to a txt file
         with open(f'{dir_prefix}net_results/net_results_sweep/f1_counts.txt', 'w') as f:
@@ -355,6 +363,7 @@ if True:
                 f.write(f'{item}\n')
 
 
+    # UNCOMMENT TO LOAD F1 scores averages FROM FILE
     # Load average f1 and recall scores from file
     with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
         average_f1_scores = pickle.load(f)
@@ -372,13 +381,13 @@ if True:
 
     # PLOTTING
     if False: # B_PERC PLOTTING
-        n = 250  # Fixed sample size
+        n = 300  # Fixed sample size
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
         # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
-            for i, man in enumerate([False, True]):
+            for i, man in enumerate(man_values):
                 f1_scores = []
                 recall_scores = []
                 f1_errors = []
@@ -411,14 +420,14 @@ if True:
         plt.tight_layout()
         plt.show()
 
-    if False: # N VALUE PLOTTING
+    if True: # N VALUE PLOTTING
         b_perc = 0.6  # Fixed b_perc
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
         # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
-            for i, man in enumerate([False, True]):
+            for i, man in enumerate(man_values):
                 f1_scores = []
                 recall_scores = []
                 f1_errors = []
@@ -452,7 +461,7 @@ if True:
         plt.show()
 
 
-    if True: # TAU vs OVERLAP PLOTTING
+    if False: # TAU vs OVERLAP PLOTTING
         # plot 'overlap' vs 'tau_tr'
         overlap_values = []
         tau_tr_values = []
@@ -462,6 +471,7 @@ if True:
                 continue
             overlap_values.append(value['overlap'])
             tau_tr_values.append(value['tau_tr'])
+            print(value['overlap'], value['tau_tr'])
 
         plt.figure(figsize=(12, 5))
         plt.scatter(overlap_values, tau_tr_values, color='red', alpha=0.8)
@@ -480,12 +490,11 @@ if True:
 
 
 
-print('hello1')
 
 ################################################## OMICS DATA PART #################################################
 if False:
     for o_t in ['p', 't']:
-        for cms in ['cms123', 'cmsALL']:
+        for cms in ['cmsALL', 'cms123']:
             # for cms_type in ['cmsALL', 'cms123']:
             #     for omics_type in ['t', 'p']:
             # Parameters
@@ -503,7 +512,7 @@ if False:
             density = 0.03
             seed = 42
 
-            man = True
+            man = False
 
             # o_t =  't' # omics_type # commented out for loop
             # cms = 'cmsALL' # cms_type # commented out for loop
@@ -522,7 +531,7 @@ if False:
                 omics_edge_counts_all = pickle.load(f)
 
             # divide each value in edge_counts_all by 2*Q
-            omics_edge_counts_all = omics_edge_counts_all / (2 * Q)
+            omics_edge_counts_all = omics_edge_counts_all
 
 
 
@@ -537,15 +546,19 @@ if False:
 
             # LOad Omics Prior Matrix
             if prior_bool == True:
-                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj2.csv', index_col=0)
+                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj90perc.csv', index_col=0)
+                # print density of prior
+                complete_g = (p * (p - 1))
+                prior_density = np.sum(cms_omics_prior.values) / complete_g
+                print(f'prior density: {prior_density}')
             else:
-                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj2.csv', index_col=0)
+                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj90perc.csv', index_col=0)
                 #only keep columns / rows that are in the omics data
                 cms_omics_prior = cms_omics_prior[cms_data.columns]
                 cms_omics_prior = cms_omics_prior.reindex(index=cms_data.columns)
                 cms_omics_prior = cms_omics_prior * 0
 
-            cms_omics_prior_matrix = cms_omics_prior.values
+            cms_omics_prior_matrix = cms_omics_prior.values * 0.9
             # # Check if there are any non-zero values in the prior matrix
             # print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
 
@@ -587,7 +600,7 @@ if False:
                     lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
                     kpa = 0                                                                                                        # HERE
                     precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', kneepoint_adder=kpa, plot=False)
+                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=False, verbose=False)
 
                     print(i, new_upperbound, o_t, cms)
                     print(f'lambda_np: {lambda_np}, lambda_wp: {lambda_wp}, density: {density}')
@@ -649,7 +662,7 @@ if False:
                 # plt.show()
             
             else:
-                end_slice = 100
+                end_slice = 400
                 sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
                 # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
@@ -659,7 +672,10 @@ if False:
 
                                                                                                                         # HERE
                 precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', kneepoint_adder=0, plot=True, verbose=True)
+                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=True, verbose=True)
+
+            # print tau_tr value
+            # print(f'tau_tr: {tau_tr}')
 
             # get adjacency from precision matrix
             adj_matrix = (np.abs(precision_mat) > 1e-5).astype(int)
@@ -670,9 +686,9 @@ if False:
             # # save adjacency matrix
             # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}.csv')
 
-            # compare similarity of adj_matrix and prior matrix using evaluate_reconstruction
-            evaluation_metrics = evaluate_reconstruction(cms_omics_prior_matrix, adj_matrix.values)
-            print(f'Similarity of inferred net to prior: {evaluation_metrics}\n\n')
+            # # compare similarity of adj_matrix and prior matrix using evaluate_reconstruction
+            # evaluation_metrics = evaluate_reconstruction(cms_omics_prior_matrix, adj_matrix.values)
+            # print(f'Similarity of inferred net to prior: {evaluation_metrics}\n\n')
 
 
 
@@ -724,23 +740,23 @@ if False:
             # # # Show the plot
             # # plt.show()
 
-    proteomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154.csv', index_col=0)
-    transcriptomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154.csv', index_col=0)
-    proteomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cms123_adj_matrix_p154.csv', index_col=0)
-    transcriptomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cms123_adj_matrix_p154.csv', index_col=0)
+    # proteomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154.csv', index_col=0)
+    # transcriptomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154.csv', index_col=0)
+    # proteomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cms123_adj_matrix_p154.csv', index_col=0)
+    # transcriptomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cms123_adj_matrix_p154.csv', index_col=0)
 
-    # compare similarity of all networks to each other
-    proteomics_ALL_net = proteomics_ALL_net.values
-    transcriptomics_ALL_net = transcriptomics_ALL_net.values
-    proteomics_123_net = proteomics_123_net.values
-    transcriptomics_123_net = transcriptomics_123_net.values
+    # # compare similarity of all networks to each other
+    # proteomics_ALL_net = proteomics_ALL_net.values
+    # transcriptomics_ALL_net = transcriptomics_ALL_net.values
+    # proteomics_123_net = proteomics_123_net.values
+    # transcriptomics_123_net = transcriptomics_123_net.values
 
-    print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
-    print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
-    print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
-    print(f'Similarity of transcriptomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, proteomics_123_net)}')
-    print(f'Similarity of transcriptomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, transcriptomics_123_net)}')
-    print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
+    # print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
+    # print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
+    # print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
+    # print(f'Similarity of transcriptomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, proteomics_123_net)}')
+    # print(f'Similarity of transcriptomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, transcriptomics_123_net)}')
+    # print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
 
 
 

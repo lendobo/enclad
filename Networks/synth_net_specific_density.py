@@ -4,11 +4,11 @@ import numpy as np
 
 # Desired density
 desired_densities = [0.02, 0.03, 0.04]
-desired_densities = [0.02, 0.03, 0.04, 0.1, 0.2]
+desired_densities = [0.02, 0.03, 0.04, 0.05, 0.1, 0.2]
 
 
 # Desired node sizes
-node_sizes = [100, 300, 500, 750, 1000]
+node_sizes = [100, 150, 300, 500, 750, 1000]
 
 results = np.zeros((len(node_sizes), len(desired_densities)))
 

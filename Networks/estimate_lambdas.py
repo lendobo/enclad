@@ -43,8 +43,44 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     N_k_matrix = np.sum(edge_counts_all, axis=2)
     p_k_matrix = N_k_matrix / (Q * J)
 
+    # Regularizing probabilities to avoid 0 or 1
+    epsilon = 1e-5
+    p_k_matrix = np.clip(p_k_matrix, epsilon, 1 - epsilon)
+
+    # check for NaNs or Infs in p_k_matrix
+    if np.isnan(p_k_matrix[:,:,None]).any():
+        print('NaNs in p_k_matrix')
+    if np.isinf(p_k_matrix[:,:,None]).any():
+        print('Infs in p_k_matrix')
+    # check for NaNs or Infs in  comb(Q, edge_counts_all)
+    if np.isnan(comb(Q, edge_counts_all)).any():
+        print('NaNs in comb(Q, edge_counts_all)')
+
+    p, _, J = edge_counts_all.shape
+    
     # Compute theta_lj_matrix, f_k_lj_matrix, and g_l_matrix for all lambdas simultaneously
-    theta_matrix = comb(Q, edge_counts_all) * (p_k_matrix[:, :, None] ** edge_counts_all) * ((1 - p_k_matrix[:, :, None]) ** (Q - edge_counts_all))
+    def log_comb(n, k):
+        """Compute the logarithm of combinations using gamma logarithm for numerical stability."""
+        return gammaln(n + 1) - gammaln(k + 1) - gammaln(n - k + 1)
+
+    bad_i = 0
+    for i in range(p):
+        for j in range(p):
+            for k in range(J):
+                if np.isinf(log_comb(Q, edge_counts_all[i, j, k])):
+                    if  i!= bad_i:
+                        print(f"Inf found at edge_counts_all[{i}, {j}, {k}] with value {edge_counts_all[i, j, k]}")
+                        bad_i = i
+
+    # Using log probabilities and exponentiation to improve numerical stability
+    log_theta_matrix = log_comb(Q, edge_counts_all) \
+                        + edge_counts_all * np.log(p_k_matrix[:, :, None]) \
+                        + (Q - edge_counts_all) * np.log(1 - p_k_matrix[:, :, None])
+
+    # Convert log_theta_matrix back to theta_matrix
+    theta_matrix = np.exp(log_theta_matrix)
+    
+    
     f_k_lj_matrix = edge_counts_all / Q
     g_matrix = 4 * f_k_lj_matrix * (1 - f_k_lj_matrix)
 
@@ -54,6 +90,10 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
     # Compute the score for each lambda using vectorized operations
     scores = np.sum(theta_matrix_reshaped * (1 - g_matrix_reshaped), axis=1)
+
+    # Check for extreme values or identical scores in scores array
+    if np.isnan(scores).any() or np.isinf(scores).any():
+        raise ValueError("Scores contain NaN or Inf values.")
 
     # Find the lambda that maximizes the score
     lambda_np = lambda_range[np.argmax(scores)]
@@ -107,6 +147,7 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     if Q == 0 or np.isclose(Q, 0):
         raise ValueError("Q is zero or very close to zero, which may lead to division by zero")
 
+    # prior_matrix = prior_matrix * 0.1
 
     p, _, _ = edge_counts_all.shape
     J = len(lambda_range)
@@ -143,6 +184,10 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     #psi (=prior mean)
     psis = wp_tr_weights * Q # expansion to multipe prior sources: add a third dimension of length r, corresponding to the number of prior sources
     # tau_tr (=SD of the prior distribution)
+    # print(f' SUM OF PSIS: {np.sum(psis)}')
+    # print(f' SUM OF MUS: {np.sum(mus)}')
+    # print(f'ERR: {np.sum(np.abs(mus - psis))}')
+    # print(f'LEN OF WP_TR_IDX: {len(wp_tr_idx)}')
     tau_tr = np.sum(np.abs(mus - psis)) / len(wp_tr_idx) # NOTE: eq. 12 alternatively, divide by np.sum(np.abs(wp_tr))
 
     # Ensure that tau_tr is not 0 or very close to 0

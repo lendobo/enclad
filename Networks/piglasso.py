@@ -77,12 +77,13 @@ class QJSweeper:
         np.random.seed(seed)
 
         density_params = {
-        0.02: [(100, 1), (300, 3), (500, 5), (750, 8), (1000, 10)],
-        0.03: [(100, 2), (300, 5), (500, 8), (750, 11), (1000, 15)],
-        0.04: [(100, 2), (300, 6), (500, 10), (750, 15), (1000, 20)],
-        0.1: [(100, 5), (300, 15), (500, 25), (750, 38), (1000, 50)],
-        0.2: [(100, 10), (300, 30), (500, 50), (750, 75), (1000, 100)]
-    }
+            0.02: [(100, 1), (150, 2), (300, 3), (500, 5), (750, 8), (1000, 10)],
+            0.03: [(100, 2), (150, 2), (300, 5), (500, 8), (750, 11), (1000, 15)],
+            0.04: [(100, 2), (150, 3), (300, 6), (500, 10), (750, 15), (1000, 20)],
+            0.05: [(100, 3), (150, 4), (300, 8), (500, 13), (750, 19), (1000, 25)],
+            0.1: [(100, 5), (150, 8), (300, 15), (500, 25), (750, 38), (1000, 50)],
+            0.2: [(100, 10), (150, 15), (300, 30), (500, 50), (750, 75), (1000, 100)]
+        }
 
         # Determine m based on p and the desired density
         m = 20  # Default value if p > 1000
@@ -92,15 +93,22 @@ class QJSweeper:
             if distance < closest_distance:
                 closest_distance = distance
                 m = m_value
-                
-
+        
+        
         # TRUE NETWORK
         G = nx.barabasi_albert_graph(p, m, seed=seed)
         adj_matrix = nx.to_numpy_array(G)
+        np.fill_diagonal(adj_matrix, 0)
+
+
+        # check if adj matrix is symmetric
+        if not np.allclose(adj_matrix, adj_matrix.T, atol=1e-8):
+            print('Adjacency matrix is not symmetric')
+            sys.exit(1)
 
         
         # PRECISION MATRIX
-        precision_matrix = adj_matrix
+        precision_matrix = np.copy(adj_matrix)
 
         # Try adding a small constant to the diagonal until the matrix is positive definite
         small_constant = 0.01
@@ -119,10 +127,10 @@ class QJSweeper:
         covariance_mat = inv(adjusted_precision)
 
         # PRIOR MATRIX
-        # p = len(adj_matrix)  # assuming adj_matrix is already defined
 
         # Count the total number of edges in adj_matrix
         total_edges = np.sum(adj_matrix) // 2  # divide by 2 for undirected graph
+        # print('Total edges: ', total_edges)
 
         # Calculate the number of edges to flip (25% of total edges)
         num_edges_to_flip = int(total_edges * fp_fn_chance)
@@ -130,28 +138,71 @@ class QJSweeper:
         # Create a copy of adj_matrix to start forming prior_matrix
         prior_matrix = np.copy(adj_matrix)
 
+        # Initialize a set to keep track of modified edges
+        modified_edges = set()
+
         # Randomly select edges to turn into FNs (1 to 0)
         edges = np.transpose(np.where(adj_matrix == 1))
         np.random.shuffle(edges)
 
-        num_edges_to_flip = min(num_edges_to_flip, len(edges))
+        # print('Number of edges: ', len(edges))
 
-        for i in range(num_edges_to_flip):
+        num_edges_to_flip = min(num_edges_to_flip, len(edges))
+        # print('NUMETOFLIP: ', num_edges_to_flip)
+
+        flipped_fns = 0
+        i = 0
+        while flipped_fns < num_edges_to_flip and i < len(edges):
             x, y = edges[i]
-            prior_matrix[x, y] = 0
-            prior_matrix[y, x] = 0  # for undirected graph
+            edge_tuple = (min(x, y), max(x, y))
+
+            if edge_tuple not in modified_edges:
+                prior_matrix[x, y] = 0
+                prior_matrix[y, x] = 0
+                modified_edges.add(edge_tuple)
+                flipped_fns += 1
+
+            i += 1
+
+        # print('FNs: ', flipped_fns, ' / ', total_edges, ' edges flipped to FNs')
+
 
         # Randomly select non-edges to turn into FPs (0 to 1)
         non_edges = np.transpose(np.where(adj_matrix == 0))
         np.random.shuffle(non_edges)
-        for i in range(num_edges_to_flip):
+
+        # Variable to keep track of the number of FPs added
+        
+        flipped_fps = 0
+        i = 0
+        while flipped_fps < num_edges_to_flip and i < len(non_edges):
             x, y = non_edges[i]
-            if x != y:  # ensure not to fill diagonal
+            edge_tuple = (min(x, y), max(x, y))
+
+            if x != y and edge_tuple not in modified_edges:
                 prior_matrix[x, y] = 1
-                prior_matrix[y, x] = 1  # for undirected graph
+                prior_matrix[y, x] = 1
+                modified_edges.add(edge_tuple)
+                # fps.add(edge_tuple)
+                flipped_fps += 1
+
+            i += 1
+
+
+        # print('FPs: ', flipped_fps, ' / ', total_edges, ' non-edges flipped to FPs')
+
 
         # Ensure diagonal remains 0
         np.fill_diagonal(prior_matrix, 0)
+        # np.fill_diagonal(adj_matrix, 0)
+
+
+        # # get density of adj matrix
+        # density_pri = np.sum(prior_matrix) / (p * p)
+        # print('Density of prior: ', density_pri)
+        # density_adj = np.sum(adj_matrix) / (p * p)
+        # print('Density of adj: ', density_adj)
+
 
 
         # DATA MATRIX

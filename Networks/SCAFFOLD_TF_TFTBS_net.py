@@ -188,8 +188,8 @@ def STRING_adjacency_matrix(nodes_df, edges_df):
 
 # Loading Edges
 edges_all_PROTS = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/FI_TRRUST_Edges.csv')
-STRING_edges_df = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/RPPA_prior_EDGES2.csv')
-STRING_nodes_df = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/RPPA_prior_NODES2.csv')
+STRING_edges_df = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/RPPA_prior_EDGES90perc.csv')
+STRING_nodes_df = pd.read_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/RPPA_prior_NODES90perc.csv')
 
 
 # # Construct the adjacency matrix from STRING
@@ -222,7 +222,7 @@ PPI_interactions = STRING_adjacency_matrix(STRING_nodes_df, STRING_edges_df)
 
 PPI_interactions.head()
 # write to csv
-PPI_interactions.to_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/RPPA_prior_adj2.csv', index=True)
+PPI_interactions.to_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/data/RPPA_prior_adj90perc.csv', index=True)
 
 
 # %%
