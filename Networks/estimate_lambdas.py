@@ -15,90 +15,48 @@ from piglasso import QJSweeper
 warnings.simplefilter('error', OptimizeWarning)
 
 def estimate_lambda_np(edge_counts_all, Q, lambda_range):
-    """
-    Estimates the lambda value for the non-prior edges.
-    Parameters
-    ----------
-    edge_counts_all : array-like, shape (p, p, J)
-        The edge counts of the optimized precision matrix for all lambdas.
-    Q : int
-        The number of sub-samples.
-    lambda_range : array-like, shape (J)
-        The range of lambda values.
+    p, _, J = edge_counts_all.shape  # Get the dimensions from edge_counts_all
 
-    Returns
-    -------
-    lambda_np : float
-        The lambda value for the non-prior edges.
-    p_k_matrix : array-like, shape (p, p)
-        The probability of an edge being present for each edge, calculated across all sub-samples and lambdas.
-    theta_matrix : array-like, shape (p, p, J)
-        The probability of z_k edges being present, given a certain lambda.
-    """
-    # Get the dimensions from edge_counts_all
-    p, _, _ = edge_counts_all.shape
-    J = len(lambda_range)
+    # Get the indices for the lower triangular part of the matrix, excluding the diagonal
+    lower_tri_indices = np.tril_indices(p, -1)
 
-    # Precompute the N_k_matrix and p_k_matrix, as they do not depend on lambda
-    N_k_matrix = np.sum(edge_counts_all, axis=2)
-    p_k_matrix = N_k_matrix / (Q * J)
+    # Extract the lower triangular part for each lambda
+    N_k_matrix = np.zeros((p * (p - 1) // 2, J))
+    for k in range(J):
+        N_k_matrix[:, k] = edge_counts_all[:, :, k][lower_tri_indices]
 
-    # Regularizing probabilities to avoid 0 or 1
-    epsilon = 1e-5
-    p_k_matrix = np.clip(p_k_matrix, epsilon, 1 - epsilon)
+    # Calculate the empirical probability p_k for each edge for each lambda
+    p_k_matrix = N_k_matrix / Q
+    p_k_matrix = np.clip(p_k_matrix, 1e-5, 1 - 1e-5)  # Regularize probabilities to avoid 0 or 1
 
-    # check for NaNs or Infs in p_k_matrix
-    if np.isnan(p_k_matrix[:,:,None]).any():
-        print('NaNs in p_k_matrix')
-    if np.isinf(p_k_matrix[:,:,None]).any():
-        print('Infs in p_k_matrix')
-    # check for NaNs or Infs in  comb(Q, edge_counts_all)
-    if np.isnan(comb(Q, edge_counts_all)).any():
-        print('NaNs in comb(Q, edge_counts_all)')
+    # Calculate theta_matrix using the lower triangular indices for each lambda
+    theta_matrix = np.zeros_like(N_k_matrix)
+    for k in range(J):
+        edge_counts_lambda = N_k_matrix[:, k]
+        log_theta = log_comb(Q, edge_counts_lambda) \
+                    + edge_counts_lambda * np.log(p_k_matrix[:, k]) \
+                    + (Q - edge_counts_lambda) * np.log(1 - p_k_matrix[:, k])
+        theta_matrix[:, k] = np.exp(log_theta)
 
-    p, _, J = edge_counts_all.shape
-    
-    # Compute theta_lj_matrix, f_k_lj_matrix, and g_l_matrix for all lambdas simultaneously
-    def log_comb(n, k):
-        """Compute the logarithm of combinations using gamma logarithm for numerical stability."""
-        return gammaln(n + 1) - gammaln(k + 1) - gammaln(n - k + 1)
-
-    bad_i = 0
-    for i in range(p):
-        for j in range(p):
-            for k in range(J):
-                if np.isinf(log_comb(Q, edge_counts_all[i, j, k])):
-                    if  i!= bad_i:
-                        print(f"Inf found at edge_counts_all[{i}, {j}, {k}] with value {edge_counts_all[i, j, k]}")
-                        bad_i = i
-
-    # Using log probabilities and exponentiation to improve numerical stability
-    log_theta_matrix = log_comb(Q, edge_counts_all) \
-                        + edge_counts_all * np.log(p_k_matrix[:, :, None]) \
-                        + (Q - edge_counts_all) * np.log(1 - p_k_matrix[:, :, None])
-
-    # Convert log_theta_matrix back to theta_matrix
-    theta_matrix = np.exp(log_theta_matrix)
-    
-    
-    f_k_lj_matrix = edge_counts_all / Q
+    # Calculate f_k and g for each edge across all lambda values
+    f_k_lj_matrix = N_k_matrix / Q
     g_matrix = 4 * f_k_lj_matrix * (1 - f_k_lj_matrix)
 
     # Reshape the matrices for vectorized operations
-    theta_matrix_reshaped = theta_matrix.reshape(J, -1)
-    g_matrix_reshaped = g_matrix.reshape(J, -1)
+    theta_matrix_reshaped = theta_matrix.reshape(-1, J)
+    g_matrix_reshaped = g_matrix.reshape(-1, J)
 
-    # Compute the score for each lambda using vectorized operations
-    scores = np.sum(theta_matrix_reshaped * (1 - g_matrix_reshaped), axis=1)
-
-    # Check for extreme values or identical scores in scores array
-    if np.isnan(scores).any() or np.isinf(scores).any():
-        raise ValueError("Scores contain NaN or Inf values.")
+    # Compute the score for each lambda
+    scores = np.sum(theta_matrix_reshaped * (1 - g_matrix_reshaped), axis=0)
 
     # Find the lambda that maximizes the score
     lambda_np = lambda_range[np.argmax(scores)]
     
     return lambda_np, theta_matrix
+
+def log_comb(n, k):
+    """Compute the logarithm of combinations using gamma logarithm for numerical stability."""
+    return gammaln(n + 1) - gammaln(k + 1) - gammaln(n - k + 1)
 
 def find_invalid_values(arr):
     if np.any(np.isnan(arr)):
