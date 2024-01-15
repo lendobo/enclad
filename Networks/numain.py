@@ -146,11 +146,8 @@ def analysis(data,
 rank=1
 size=1
 # ################################################# SYNTHETIC PART #################################################
-
-
-
-if True:
-    run = True
+if False:
+    run = False
     # COMPLETE SWEEP
     # code should compare: increasing B_perc and effect on performance at low sample size vs high sample size
     # for 250 samples, which combination of b_perc and manual lambda (T, F) and fp_fn is best?
@@ -166,10 +163,10 @@ if True:
     # manual lambda vs inferred?
 
     p_values = [150]
-    n_values = [1100] # [50, 100, 300, 500, 700, 900, 1100] # [75, 250, 500, 750, 1000] 
-    b_perc_values = [0.6] # [0.6, 0.65, 0.7, 0.75]
-    fp_fn_values = [0.0] # [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1] # Try without 0.1 in plotting
-    seed_values = [3] # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    n_values = [50, 100, 300, 500, 700, 900, 1100] # [75, 250, 500, 750, 1000] 
+    b_perc_values = [0.6, 0.65, 0.7, 0.75]
+    fp_fn_values = [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1] # Try without 0.1 in plotting
+    seed_values = np.arange(1, 31, 1)
     dens_values = [0.05]
     man_values = [False]
 
@@ -225,7 +222,6 @@ if True:
             synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
 
             overlap = np.sum((synth_prior_matrix == 1) & (synth_adj_matrix == 1)) / (np.sum(synth_prior_matrix == 1))
-            print(overlap)
 
 
             if fp_fn == 1:
@@ -236,9 +232,11 @@ if True:
             _, _, _, lambda_np, lambda_wp, temp_evalu, tau_tr = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
                                                 synth_edge_counts_all, prior_bool=prior_bool, man_param=man, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False, verbose=False)
 
-            print('F1 SCORE', temp_evalu['f1_score'])
-            print(f'NP: {lambda_np}, WP: {lambda_wp}')
-            print('tau_tr', tau_tr)
+            # print('F1 SCORE', temp_evalu['f1_score'])
+            # print(f'NP: {lambda_np}, WP: {lambda_wp}')
+            # print('tau_tr', tau_tr)
+            # print(f'overlap: {overlap}')
+
 
             return {
                 'param_key': param_key,
@@ -277,7 +275,7 @@ if True:
 
             print("Organized results saved.")
 
-    post_process = False
+    post_process = True
     if post_process == True:
         # Load the organized results
         with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
@@ -422,7 +420,7 @@ if True:
         plt.show()
 
     if False: # N VALUE PLOTTING
-        b_perc = 0.6  # Fixed b_perc
+        b_perc = 0.65  # Fixed b_perc
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
@@ -458,27 +456,43 @@ if True:
                 axes[i, 1].legend(loc='best')
                 axes[i, 1].grid(alpha=0.3)
 
+                # remove legend of top plots
+                axes[0, 0].legend().set_visible(False)
+                axes[0, 1].legend().set_visible(False)
+                axes[1, 1].legend().set_visible(False)
+
         plt.tight_layout()
         plt.show()
 
 
-    if False: # TAU vs OVERLAP PLOTTING
-        # plot 'overlap' vs 'tau_tr'
-        overlap_values = []
-        tau_tr_values = []
+    if True: # TAU vs OVERLAP PLOTTING
+        # Organize data by 'overlap'
+        organized_data = {}
         for key, value in organized_results.items():
-            # check if overlap is 0.0
             if value['overlap'] == 0.0:
                 continue
-            overlap_values.append(value['overlap'])
-            tau_tr_values.append(value['tau_tr'])
-            print(value['overlap'], value['tau_tr'])
+            overlap = value['overlap']
+            tau_tr = value['tau_tr']
+            if overlap not in organized_data:
+                organized_data[overlap] = []
+            organized_data[overlap].append(tau_tr)
 
+        # Calculate mean and standard deviation for each 'overlap'
+        overlap_values = []
+        mean_tau_tr_values = []
+        error_tau_tr_values = []
+        for overlap, tau_tr_list in organized_data.items():
+            overlap_values.append(overlap)
+            mean_tau_tr_values.append(np.mean(tau_tr_list))
+            error_tau_tr_values.append(np.std(tau_tr_list))
+
+        # Plotting
         plt.figure(figsize=(12, 5))
-        plt.scatter(overlap_values, tau_tr_values, color='red', alpha=0.8)
-        plt.title(f'Overlap vs tau_tr for synthetic data')
+        plt.errorbar(overlap_values, mean_tau_tr_values, yerr=error_tau_tr_values, fmt='o', color='purple', alpha=0.5)
+        plt.plot(overlap_values, mean_tau_tr_values, color='purple', alpha=0.5)
+        plt.title(f'Average tau_tr vs Overlap for synthetic data with error bars')
         plt.xlabel('Overlap', fontsize=12)
-        plt.ylabel('tau_tr', fontsize=12)
+        plt.ylabel('Average tau_tr', fontsize=12)
         plt.grid()
         ax = plt.gca()
         ax.grid(alpha=0.2)
@@ -493,20 +507,21 @@ if True:
 
 
 ################################################## OMICS DATA PART #################################################
-if False:
-    for o_t in ['p']:
-        for cms in ['cmsALL']:
+if True:
+    for o_t in ['p', 't']:
+        for cms in ['cmsALL', 'cms123']:
             # for cms_type in ['cmsALL', 'cms123']:
             #     for omics_type in ['t', 'p']:
             # Parameters
             p = 154
-            b_perc = 0.6
+            b_perc = 0.65
             n = 1337             # nnot actual samples, just filename requirements
-            Q = 2000             # number of sub-samples
+            Q = 1000             # number of sub-samples
 
             lowerbound = 0.01
-            upperbound = 0.9
-            granularity = 500 
+            upperbound = 1.5
+            granularity = 500
+            lambda_range = np.linspace(lowerbound, upperbound, granularity)
 
             fp_fn = 0
             skew = 0
@@ -514,6 +529,8 @@ if False:
             seed = 42
 
             man = False
+            smooth_bool = False
+            net_dens = 'low_dens'
 
             # o_t =  't' # omics_type # commented out for loop
             # cms = 'cmsALL' # cms_type # commented out for loop
@@ -531,19 +548,29 @@ if False:
             with open(file_, 'rb') as f:
                 omics_edge_counts_all = pickle.load(f)
 
-            # divide each value in edge_counts_all by 2*Q
-            omics_edge_counts_all = omics_edge_counts_all
+            if smooth_bool == True:
+                # smooth the data
+                window_size = 30
+                def smooth_data(data, window_size):
+                    return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
+                p = omics_edge_counts_all.shape[0]  # Assuming the shape is (p, p, len(lambda_range))
+                smoothed_edge_counts_all = np.zeros((p, p, len(lambda_range) - window_size + 1))
+
+                for i in range(p):
+                    for j in range(p):
+                        smoothed_edge_counts_all[i, j] = smooth_data(omics_edge_counts_all[i, j], window_size)
+
+                omics_edge_counts_all = smoothed_edge_counts_all
+                # # divide each value in edge_counts_all by 2*Q
+                # omics_edge_counts_all = omics_edge_counts_all
 
 
             # Load Omics Data
-            cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
-            cms_filename = 'Diffusion/data/transcriptomics_for_pig_ALL.csv'
+            # cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
             cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
 
             cms_array = cms_data.values
-
-
 
             # LOad Omics Prior Matrix
             if prior_bool == True:
@@ -560,12 +587,12 @@ if False:
                 cms_omics_prior = cms_omics_prior * 0
 
             cms_omics_prior_matrix = cms_omics_prior.values * 0.9
-            # # Check if there are any non-zero values in the prior matrix
-            # print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
+            # Check if there are any non-zero values in the prior matrix
+            print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
 
             p = cms_array.shape[1]
             n = cms_array.shape[0]
-            b = int(0.6 * n)
+            b = int(0.65 * n)
 
             # scale and center 
             cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
@@ -585,8 +612,9 @@ if False:
                 densities = []
                 np_lams = []
                 wp_lams = []
+                tau_trs = []
                 no_end_slices = 400
-                slicer_range = range(250, no_end_slices)
+                slicer_range = range(200, no_end_slices)
                 x_axis = []
                 i = 0
                 for end_slice in slicer_range:
@@ -596,7 +624,8 @@ if False:
                     # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
                     new_granularity = sliced_omics_edge_counts_all.shape[2]
                     new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
-                    x_axis.append(new_upperbound)
+                    # x_axis.append(new_upperbound)
+                    x_axis.append(end_slice)
 
                     lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
                     kpa = 0                                                                                                        # HERE
@@ -608,62 +637,84 @@ if False:
                     densities.append(density)
                     np_lams.append(lambda_np)
                     wp_lams.append(lambda_wp)
+                    tau_trs.append(tau_tr)
                 
                 # write densities to file
-                with open(f'Networks/net_results/Sendslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                with open(f'Networks/net_results/endslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'wb') as f:
                     pickle.dump(densities, f)
                 # write np_lams to file
-                with open(f'Networks/net_results/Sendslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                with open(f'Networks/net_results/endslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'wb') as f:
                     pickle.dump(np_lams, f)
                 # write wp_lams to file
-                with open(f'Networks/net_results/Sendslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'wb') as f:
+                with open(f'Networks/net_results/endslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'wb') as f:
                     pickle.dump(wp_lams, f)
+                # write tau_trs to file
+                with open(f'Networks/net_results/endslice_tau_trs_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'wb') as f:
+                    pickle.dump(tau_trs, f)
 
-                # # load np_lams from file
-                # with open(f'Networks/net_results/endslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
-                #     np_lams = pickle.load(f)
 
-                # # load wp_lams from file
-                # with open(f'Networks/net_results/endslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
-                #     wp_lams = pickle.load(f)
+                # # # 
+               
+                # Load np_lams and wp_lams from file
+                with open(f'Networks/net_results/endslice_np_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'rb') as f:
+                    np_lams = pickle.load(f)
+                with open(f'Networks/net_results/endslice_wp_lams_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'rb') as f:
+                    wp_lams = pickle.load(f)
 
-                # # plot both np_lams and wp_lams against end slice value
-                # plt.figure(figsize=(12, 5))
-                # plt.plot(x_axis, np_lams, color='red', alpha=0.8, label=r'$\lambda_{np}$')
-                # plt.scatter(x_axis, np_lams, color='red', alpha=0.8)
-                # plt.plot(x_axis, wp_lams, color='blue', alpha=0.8, label=r'$\lambda_{wp}$')
-                # plt.scatter(x_axis, wp_lams, color='blue', alpha=0.8)
-                # plt.title(f'$\lambda_np$ and $\lambda_wp$ vs end slice value for {omics_type} data, Q = {Q}')
-                # plt.xlabel('End slice value', fontsize=12)
-                # plt.ylabel(r'$\lambda$', fontsize=12)
-                # # plt.ylim(0.0, 0.5)
-
-                plt.show()
-
-                # # load densities from file
-                with open(f'Networks/net_results/endslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.pkl', 'rb') as f:
+                # Load tau_trs and densities from file
+                with open(f'Networks/net_results/endslice_tau_trs_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'rb') as f:
+                    tau_trs = pickle.load(f)
+                with open(f'Networks/net_results/endslice_densities_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}.pkl', 'rb') as f:
                     densities = pickle.load(f)
-                    
-                # plot density against end slice value
-                plt.figure(figsize=(12, 5))
+
+                # Create a figure with 3 subplots
+                plt.figure(figsize=(18, 5))  # Adjust the size as needed
+
+                # First subplot for np_lams and wp_lams
+                plt.subplot(1, 3, 1)  # 1 row, 3 columns, first subplot
+                plt.plot(x_axis, np_lams, color='red', alpha=0.8, label=r'$\lambda_{np}$')
+                plt.scatter(x_axis, np_lams, color='red', alpha=0.8)
+                plt.plot(x_axis, wp_lams, color='blue', alpha=0.8, label=r'$\lambda_{wp}$')
+                plt.scatter(x_axis, wp_lams, color='blue', alpha=0.8)
+                plt.title(f'$\lambda_np$ and $\lambda_wp$ vs end slice value for {omics_type} data, Q = {Q}')
+                plt.xlabel('End slice value', fontsize=12)
+                plt.ylabel(r'$\lambda$', fontsize=12)
+                plt.legend()
+                plt.grid()
+
+                # Second subplot for tau_trs
+                plt.subplot(1, 3, 2)  # 1 row, 3 columns, second subplot
+                plt.plot(x_axis, tau_trs, color='purple', alpha=0.65)
+                plt.scatter(x_axis, tau_trs, color='purple', alpha=0.65)
+                plt.title(fr'$\tau_{{tr}}$ vs end slice value for {omics_type} data, Q = {Q}')
+                plt.xlabel('End slice value', fontsize=12)
+                plt.ylabel(r'$\tau_{tr}$', fontsize=12)
+                plt.grid()
+
+                # Third subplot for densities
+                plt.subplot(1, 3, 3) # 1 row, 3 columns, third subplot
                 plt.plot(x_axis, densities, color='red', alpha=0.8)
                 plt.scatter(x_axis, densities, color='red', alpha=0.8)
                 plt.title(f'Density vs end slice value for {omics_type} data, Q = {Q}')
                 plt.xlabel('End slice value', fontsize=12)
                 plt.ylabel('Density', fontsize=12)
-                # plt.ylim(0.0, 0.5)
                 plt.grid()
-                ax = plt.gca()
-                ax.grid(alpha=0.2)
+
                 plt.tight_layout()
 
-                # save plot image to file
-                plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/density_vs_end_slice_{omics_type}_{cms}_Q{Q}_prior{prior_bool}.png')
+                # Show the figure
 
-                # plt.show()
+                plt.show()
+                # Save the figure to file
+
+                plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/multiplot_3col_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}_smoothing{smooth_bool}.png')
+
             
             else:
-                end_slice = 400
+                if net_dens == 'high_dens':
+                    end_slice = 325
+                else:
+                    end_slice = 250
                 sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
                 # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
@@ -684,8 +735,8 @@ if False:
             adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
 
             # # WRITE ADJACAENCY MATRIX TO FILE
-            # # save adjacency matrix
-            # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}.csv')
+            # save adjacency matrix
+            # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{net_dens}.csv')
 
             # # compare similarity of adj_matrix and prior matrix using evaluate_reconstruction
             # evaluation_metrics = evaluate_reconstruction(cms_omics_prior_matrix, adj_matrix.values)
@@ -741,23 +792,23 @@ if False:
             # # # Show the plot
             # # plt.show()
 
-    # proteomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154.csv', index_col=0)
-    # transcriptomics_ALL_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154.csv', index_col=0)
-    # proteomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/proteomics_cms123_adj_matrix_p154.csv', index_col=0)
-    # transcriptomics_123_net = pd.read_csv('Networks/net_results/inferred_adjacencies/transcriptomics_cms123_adj_matrix_p154.csv', index_col=0)
+    proteomics_ALL_net = pd.read_csv(f'Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154_Lambda_np{not man}.csv', index_col=0)
+    transcriptomics_ALL_net = pd.read_csv(f'Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154_Lambda_np{not man}.csv', index_col=0)
+    proteomics_123_net = pd.read_csv(f'Networks/net_results/inferred_adjacencies/proteomics_cms123_adj_matrix_p154_Lambda_np{not man}.csv', index_col=0)
+    transcriptomics_123_net = pd.read_csv(f'Networks/net_results/inferred_adjacencies/transcriptomics_cms123_adj_matrix_p154_Lambda_np{not man}.csv', index_col=0)
 
-    # # compare similarity of all networks to each other
-    # proteomics_ALL_net = proteomics_ALL_net.values
-    # transcriptomics_ALL_net = transcriptomics_ALL_net.values
-    # proteomics_123_net = proteomics_123_net.values
-    # transcriptomics_123_net = transcriptomics_123_net.values
+    # compare similarity of all networks to each other
+    proteomics_ALL_net = proteomics_ALL_net.values
+    transcriptomics_ALL_net = transcriptomics_ALL_net.values
+    proteomics_123_net = proteomics_123_net.values
+    transcriptomics_123_net = transcriptomics_123_net.values
 
-    # print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
-    # print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
-    # print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
-    # print(f'Similarity of transcriptomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, proteomics_123_net)}')
-    # print(f'Similarity of transcriptomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, transcriptomics_123_net)}')
-    # print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
+    print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
+    print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
+    print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
+    print(f'Similarity of transcriptomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, proteomics_123_net)}')
+    print(f'Similarity of transcriptomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(transcriptomics_ALL_net, transcriptomics_123_net)}')
+    print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
 
 
 

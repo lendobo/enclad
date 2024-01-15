@@ -20,6 +20,9 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
     # Get the indices for the lower triangular part of the matrix, excluding the diagonal
     lower_tri_indices = np.tril_indices(p, -1)
 
+    # edge_counts_all = edge_counts_all / (2 * Q)
+
+
     # Extract the lower triangular part for each lambda
     N_k_matrix = np.zeros((p * (p - 1) // 2, J))
     for k in range(J):
@@ -51,7 +54,7 @@ def estimate_lambda_np(edge_counts_all, Q, lambda_range):
 
     # Find the lambda that maximizes the score
     lambda_np = lambda_range[np.argmax(scores)]
-    
+
     return lambda_np, theta_matrix
 
 def log_comb(n, k):
@@ -65,6 +68,59 @@ def find_invalid_values(arr):
         return "Inf found", arr[np.isinf(arr)]
     return "No invalid values found"
 
+
+# def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
+#     p, _, J = edge_counts_all.shape  # Shape of edge_counts_all
+
+#     # Lower triangular indices (excluding diagonal)
+#     lower_tri_indices = np.tril_indices(p, -1)
+
+#     # Extracting the lower triangular part for each lambda
+#     N_k_matrix = np.zeros((p * (p - 1) // 2, J))
+#     for k in range(J):
+#         N_k_matrix[:, k] = edge_counts_all[:, :, k][lower_tri_indices]  # Shape (p*(p-1)/2, J)
+
+#     # Empirical probability matrix for each edge for each lambda
+#     p_k_matrix = N_k_matrix / Q  # Shape (p *(p-1)/2, J)
+#     p_k_matrix = np.clip(p_k_matrix, 1e-5, 1 - 1e-5) # Regularizing probabilities
+
+#     # Reshape the prior matrix to contain only the lower triangular part
+#     prior_vector = prior_matrix[lower_tri_indices]  # Shape (p*(p-1)/2,)
+
+#     # Count matrix for each edge across lambdas
+#     count_mat = N_k_matrix  # Already in the required shape
+
+#     # Calculation of mus and variances for the data distribution
+#     mus = p_k_matrix * Q  # Shape (p*(p-1)/2, J)
+#     variances = p_k_matrix * (1 - p_k_matrix) * Q  # Shape (p*(p-1)/2, J)
+#     variances = np.clip(variances, 1e-10, np.inf)
+
+#     # Prior distribution parameters
+#     psis = prior_vector * Q  # Shape (p*(p-1)/2,)
+#     tau_tr = np.sum(np.abs(mus - psis[:, None])) / mus.shape[0]  # Scalar
+#     tau_tr = np.clip(tau_tr, 1e-10, np.inf)
+
+#     # Posterior distribution parameters
+#     post_mus = (mus * tau_tr**2 + psis[:, None] * variances) / (variances + tau_tr**2)  # Shape (p*(p-1)/2, J)
+#     post_var = (variances * tau_tr**2) / (variances + tau_tr**2)  # Shape (p*(p-1)/2, J)
+
+#     # Normal distribution CDF calculations
+#     epsilon = 1e-5
+#     z_scores_plus = (count_mat + epsilon - post_mus) / np.sqrt(post_var)
+#     z_scores_minus = (count_mat - epsilon - post_mus) / np.sqrt(post_var)
+#     thetas = 0.5 * (erf(z_scores_plus / np.sqrt(2)) - erf(z_scores_minus / np.sqrt(2)))  # Shape (p*(p-1)/2, J)
+
+#     # Scoring function
+#     freq_mat = count_mat / Q  # Shape (p*(p-1)/2, J)
+#     g_mat = 4 * freq_mat * (1 - freq_mat)  # Shape (p*(p-1)/2, J)
+#     scores = np.sum(thetas * (1 - g_mat), axis=0)  # Shape (J,)
+
+#     # Finding the lambda that maximizes the score
+#     lambda_wp = lambda_range[np.argmax(scores)]
+
+#     return lambda_wp, tau_tr, post_mus
+
+# OLD LAMBDA WP
 def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     """
     Estimates the lambda value for the prior edges.
@@ -110,31 +166,33 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     p, _, _ = edge_counts_all.shape
     J = len(lambda_range)
 
+    # edge_counts_all = edge_counts_all / (2 * Q)
+
     N_k_matrix = np.sum(edge_counts_all, axis=2)
     p_k_matrix = N_k_matrix / (Q * J) # EDGE_DIVIDER
 
     # reshape the prior matrix to only contain the edges in the lower triangle of the matrix
     wp_tr_idx = [(i, j) for i, j in combinations(range(p), 2) if prior_matrix[i, j] != 0] # THIS SETS THE INDICES FOR ALL VECTORIZED OPERATIONS
-    
+
     # wp_tr_weights and p_k_vec give the prob of an edge in the prior and the data, respectively
     wp_tr_weights = np.array([prior_matrix[ind[0], ind[1]] for ind in wp_tr_idx])
     p_k_vec = np.array([p_k_matrix[ind[0], ind[1]] for ind in wp_tr_idx])
     for i, p_k in enumerate(p_k_vec):
         if p_k < 1e-5:
             p_k_vec[i] = 1e-5
-    
+
 
     count_mat = np.zeros((J, len(wp_tr_idx))) # Stores counts for each edge across lambdas (shape: lambdas x edges)
     for l in range(J):
         count_mat[l,:] =  [edge_counts_all[ind[0], ind[1], l] for ind in wp_tr_idx]
 
-    # Alternative code for count_mat (=z_mat)
+    # # Alternative code for count_mat (=z_mat)
     # wp_tr_rows, wp_tr_cols = zip(*wp_tr)  # Unzip the wp_tr tuples into two separate lists
     # z_mat = zks[wp_tr_rows, wp_tr_cols, np.arange(len(lambda_range))[:, None]]
 
 
     ######### DATA DISTRIBUTION #####################################################################
-    # calculate mus, vars 
+    # calculate mus, vars
     mus = p_k_vec * Q
     variances = p_k_vec * (1 - p_k_vec) * Q
 
@@ -167,9 +225,9 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     # Ensure the inputs to erf are within a valid range
     z_scores_plus = np.clip(z_scores_plus, -np.inf, np.inf)
     z_scores_minus = np.clip(z_scores_minus, -np.inf, np.inf)
-    
+
     # Compute CDF values using the error function
-    # By subtracting 2 values of the CDF, the 1s cancel 
+    # By subtracting 2 values of the CDF, the 1s cancel
     thetas = 0.5 * (erf(z_scores_plus / np.sqrt(2)) - erf(z_scores_minus / np.sqrt(2)))
     # print('shape of thetas: ', {thetas.shape})
 
@@ -191,8 +249,40 @@ def estimate_lambda_wp(edge_counts_all, Q, lambda_range, prior_matrix):
     lambda_wp = lambda_range[np.argmax(scores)]
 
     # print(lambda_wp)
-    
+
     return lambda_wp, tau_tr, mus
+
+
+
+
+
+
+
+
+
+# Shapes of variables:
+# - edge_counts_all: (p, p, J)
+# - Q: scalar
+# - lambda_range: (J)
+# - prior_matrix: (p, p)
+# - wp_tr_idx: List of tuples representing lower triangular indices
+# - wp_tr_weights: (r), where r is the number of non-zero entries in the lower triangle of prior_matrix
+# - p_k_vec: (r, J)
+# - count_mat: (J, r)
+# - mus: (r, J)
+# - variances: (r, J)
+# - psis: (r)
+# - tau_tr: scalar
+# - post_mus: (r, J)
+# - post_var: (r, J)
+# - z_scores_plus: (J, r)
+# - z_scores_minus: (J, r)
+# - thetas: (J, r)
+# - freq_mat: (J, r)
+# - g_mat: (J, r)
+# - scores: (J)
+# - lambda_wp: scalar
+
 
 
 # Define a linear function for curve fitting
@@ -204,7 +294,7 @@ def fit_lines_and_get_error(index, lambdas, edge_counts, left_bound, right_bound
     left_data = lambdas[left_bound:index+1]
     right_data = lambdas[index:right_bound]
 
-    if len(left_data) < 3 or len(right_data) < 3:
+    if len(left_data) < 10 or len(right_data) < 10:
         return np.inf
 
     # Fit lines to the left and right of current index within bounds
@@ -221,15 +311,15 @@ def fit_lines_and_get_error(index, lambdas, edge_counts, left_bound, right_bound
         print(f'RIGHT DATA: problematic curve fit for lambda kneepoints: at lambda index {index}')
         print(f'right indices len: {len(right_data)}')
         params_right = (0,0)
-    
+
     # Calculate fit errors within bounds
     error_left = np.sum((linear_func(left_data, *params_left) - edge_counts[left_bound:index+1]) ** 2)
     error_right = np.sum((linear_func(right_data, *params_right) - edge_counts[index:right_bound]) ** 2)
-    
+
     return error_left + error_right
 
 def find_knee_point(lambda_range, edge_counts_all, left_bound, right_bound):
-    errors = [fit_lines_and_get_error(i, lambda_range, edge_counts_all, left_bound, right_bound) 
+    errors = [fit_lines_and_get_error(i, lambda_range, edge_counts_all, left_bound, right_bound)
               for i in range(left_bound, right_bound)]
     knee_point_index = np.argmin(errors) + left_bound
     return knee_point_index
@@ -241,16 +331,16 @@ def find_all_knee_points(lambda_range, edge_counts_all):
     # Find the main knee point across the full range
     main_knee_point_index = find_knee_point(lambda_range, edge_counts_all, 0, len(lambda_range))
     main_knee_point = lambda_range[main_knee_point_index]
-    
+
     # For the left knee point, consider points to the left of the main knee point
     left_knee_point_index = find_knee_point(lambda_range, edge_counts_all, 0, main_knee_point_index)
     left_knee_point = lambda_range[left_knee_point_index]
-    
+
     # For the right knee point, consider points to the right of the main knee point
     # Update the bounds to ensure the fit_lines_and_get_error function considers only the right subset
     right_knee_point_index = find_knee_point(lambda_range, edge_counts_all, main_knee_point_index, len(lambda_range))
     right_knee_point = lambda_range[right_knee_point_index]
-    
+
     return left_knee_point, main_knee_point, right_knee_point, left_knee_point_index, main_knee_point_index, right_knee_point_index
 
 # Main code
@@ -258,9 +348,9 @@ if __name__ == "__main__":
     #### Main code ####
     p = 154
     n = 1337 # [50, 100, 200, 400, 750, 1000, 2000]
-    b_perc = 0.6
-    b = b_perc * n   # size of sub-samples
-    Q = 2000          # number of sub-samples
+    b_perc = 0.65
+    b = int(b_perc * n)   # size of sub-samples
+    Q = 1200          # number of sub-samples
 
     lowerbound = 0.01
     upperbound = 0.9
@@ -272,14 +362,12 @@ if __name__ == "__main__":
     density = 0.03
     seed = 42
 
-    typer =  'proteomics' # 'synthetic'
+    omics_type =  'proteomics' # 'synthetic'
+    cms = 'cmsALL'
 
-    filename_edges = f'Networks/net_results/{typer}_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
+    filename_edges = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
     with open(filename_edges, 'rb') as f:
         edge_counts_all = pickle.load(f)
-
-    # divide each value in edge_counts_all by 2*Q
-    edge_counts_all = edge_counts_all / (2 * Q)
 
 
     left_knee_point, main_knee_point, right_knee_point, left_knee_point_index, knee_point_index, right_knee_point_index = find_all_knee_points(lambda_range, edge_counts_all)
@@ -290,6 +378,12 @@ if __name__ == "__main__":
     # We will now plot the additional lines: the right red line and the left magenta line
     # Sum the edge counts across all nodes
     edge_counts_all = np.sum(edge_counts_all, axis=(0, 1))
+
+    window_size = 100
+    def smooth_data(data, window_size):
+        return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
+    edge_counts_all = smooth_data(edge_counts_all, window_size)
+    lambda_range = lambda_range[:len(edge_counts_all)]
 
     plt.figure(figsize=(8, 6), dpi=300)
     plt.scatter(lambda_range, edge_counts_all, color='grey', label='Edge Counts', alpha = 0.4)
@@ -330,7 +424,7 @@ if __name__ == "__main__":
     plt.xlabel(r'$ \lambda$', fontsize=15)
     plt.ylabel('Edge Counts', fontsize=12)
     plt.title('Knee Points and Fitted Lines')
-    plt.ylim(0, 8000)
+    # plt.ylim(0, 8000)
     plt.legend()
     plt.grid(alpha=0.2)
     plt.tight_layout()

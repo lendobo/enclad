@@ -82,8 +82,10 @@ class QJSweeper:
             0.04: [(100, 2), (150, 3), (300, 6), (500, 10), (750, 15), (1000, 20)],
             0.05: [(100, 3), (150, 4), (300, 8), (500, 13), (750, 19), (1000, 25)],
             0.1: [(100, 5), (150, 8), (300, 15), (500, 25), (750, 38), (1000, 50)],
+            0.15: [(100, 8), (150, 11), (300, 23), (500, 38), (750, 56), (1000, 75)],
             0.2: [(100, 10), (150, 15), (300, 30), (500, 50), (750, 75), (1000, 100)]
         }
+
 
         # Determine m based on p and the desired density
         m = 20  # Default value if p > 1000
@@ -298,20 +300,20 @@ class QJSweeper:
 
         # Call the R function from Python
         weighted_glasso = ro.globalenv['weighted_glasso']
-        # try:
-        result = weighted_glasso(S, penalty_matrix, nobs)   
-        # Check for an error message returned from R
-        if 'error_message' in result.names:
-            error_message = result.rx('error_message')[0][0]
-            print(f"R Error: {error_message}", file=sys.stderr, flush=True)
+        try:
+            result = weighted_glasso(S, penalty_matrix, nobs)   
+            # Check for an error message returned from R
+            if 'error_message' in result.names:
+                error_message = result.rx('error_message')[0][0]
+                print(f"R Error: {error_message}", file=sys.stderr, flush=True)
+                return np.zeros((p, p)), np.zeros((p, p)), 0
+            else:
+                precision_matrix = np.array(result.rx('precision_matrix')[0])
+                edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
+                return edge_counts, precision_matrix, 1
+        except Exception as e:
+            print(f"Unexpected error: {e}", file=sys.stderr, flush=True)
             return np.zeros((p, p)), np.zeros((p, p)), 0
-        else:
-            precision_matrix = np.array(result.rx('precision_matrix')[0])
-            edge_counts = (np.abs(precision_matrix) > 1e-5).astype(int)
-            return edge_counts, precision_matrix, 1
-        # except Exception as e:
-        #     print(f"Unexpected error: {e}", file=sys.stderr, flush=True)
-        #     return np.zeros((p, p)), np.zeros((p, p)), 0
 
 
 

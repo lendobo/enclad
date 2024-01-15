@@ -16,3 +16,8 @@ fp_fn_values = np.linspace(0.0, 1, 11)
 print(fp_fn_values)
 
 print(1e+5)
+
+booli = True
+
+# print opposite of booli
+print(not booli)    

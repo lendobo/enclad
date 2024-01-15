@@ -166,20 +166,20 @@ if True:
     # manual lambda vs inferred?
 
     p_values = [150]
-    n_values =  [250] # [75, 250, 500, 750, 1000] # [100, 300, 500, 700, 900, 1100]
-    b_perc_values = [0.6] # [0.6, 0.65, 0.7]
-    fp_fn_values = [0.0] # [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1]
-    seed_values = [1] # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    dens_values = [0.04]
-    man_values = [True]
+    n_values = [50, 100, 300, 500, 700, 900, 1100] # [75, 250, 500, 750, 1000] 
+    b_perc_values = [0.6, 0.65, 0.7, 0.75]
+    fp_fn_values = [0.0]# [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1] # Try without 0.1 in plotting
+    seed_values = [42] # np.arange(1, 31, 1)
+    dens_values = [0.15]
+    man_values = [False]
 
 
     # Fixed parameters
-    Q = 1200
-    llo = 0.01
-    lhi = 0.5
-    lamlen = 100
-    skew = 0
+    Q = 1000
+    llo = 0.0
+    lhi = 1.5
+    lamlen = 500
+    skew = 0.0
     prior_bool = True
 
     lambda_range = np.linspace(llo, lhi, lamlen)
@@ -198,11 +198,11 @@ if True:
             p, n, b_perc, fp_fn, seed, dens, man = params
 
             # Your fixed parameters
-            Q = 1200
-            llo = 0.01
-            lhi = 0.5
-            lamlen = 100
-            skew = 0
+            Q = 1000
+            llo = 0.0
+            lhi = 1.5
+            lamlen = 500
+            skew = 0.0
             prior_bool = True
             lambda_range = np.linspace(llo, lhi, lamlen)
 
@@ -210,7 +210,7 @@ if True:
             b = int(b_perc * n)
             
             # Construct filename for edge counts
-            filename_edges = f'{dir_prefix}net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{llo}_{lhi}_ll{lamlen}_b{b_perc}_fpfn0.0_skew0_dens{dens}_s{seed}.pkl'
+            filename_edges = f'{dir_prefix}net_results/synthetic_cmsALL_edge_counts_all_pnQ{p}_{n}_{Q}_{llo}_{lhi}_ll{lamlen}_b{b_perc}_fpfn0.0_skew{skew}_dens{dens}_s{seed}.pkl'
             param_key = (p, n, b_perc, fp_fn, seed, dens, str(man))
 
             if not os.path.isfile(filename_edges):
@@ -219,13 +219,17 @@ if True:
             with open(filename_edges, 'rb') as f:
                 synth_edge_counts_all = pickle.load(f)
 
-            # Process the edge counts
-            synth_edge_counts_all = synth_edge_counts_all #  / (2 * Q)
+            end_slice = 1
+            sliced_synth_edge_counts_all = synth_edge_counts_all[:,:,:-end_slice]
+
+            # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
+            new_granularity = sliced_synth_edge_counts_all.shape[2]
+            new_upperbound = llo + (lhi - llo) * (new_granularity - 1) / (lamlen - 1)
+            lambda_range = np.linspace(llo, new_upperbound, new_granularity)
 
             synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
 
             overlap = np.sum((synth_prior_matrix == 1) & (synth_adj_matrix == 1)) / (np.sum(synth_prior_matrix == 1))
-            print(f'overlap: {overlap}')
 
 
             if fp_fn == 1:
@@ -233,11 +237,15 @@ if True:
                 prior_bool = False
 
             # Run your analysis
-            _, _, _, _, _, temp_evalu, tau_tr = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
-                                                synth_edge_counts_all, prior_bool=prior_bool, man_param=man, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=False, verbose=True)
+            _, _, _, lambda_np, lambda_wp, temp_evalu, tau_tr = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
+                                                sliced_synth_edge_counts_all, prior_bool=prior_bool, man_param=man, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=True, verbose=False)
 
-            print('scores', temp_evalu['f1_score'], temp_evalu['recall'])
+            print('F1 SCORE', temp_evalu['f1_score'])
+            print('RECALL', temp_evalu['recall'])
+            print(f'NP: {lambda_np}, WP: {lambda_wp}')
             print('tau_tr', tau_tr)
+            print(f'overlap: {overlap}')
+
 
             return {
                 'param_key': param_key,
@@ -270,16 +278,16 @@ if True:
             organized_results = {result['param_key']: {'f1_score': result['f1_score'], 'recall': result['recall'], 'overlap': result['overlap'], 'tau_tr': result['tau_tr']} 
                                 for result in results if result is not None}
 
-            # # save to file
-            # with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results.pkl', 'wb') as f:
-            #     pickle.dump(organized_results, f)
+            # save to file
+            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'wb') as f:
+                pickle.dump(organized_results, f)
 
-            # print("Organized results saved.")
+            print("Organized results saved.")
 
-    post_process = False
+    post_process = True
     if post_process == True:
         # Load the organized results
-        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results.pkl', 'rb') as f:
+        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
             organized_results = pickle.load(f)
 
         # Initialize dictionaries for average scores and SDs
@@ -297,7 +305,7 @@ if True:
             for n in n_values:
                 for b_perc in b_perc_values:
                     for fp_fn in fp_fn_values:
-                        for man in ['True', 'False']:
+                        for man in [str(man) for man in man_values]:
                             f1_scores_for_average = []
                             recall_scores_for_average = []
                             overlap_scores_for_average = []
@@ -353,6 +361,9 @@ if True:
         with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'wb') as f:
             pickle.dump(SD_recall_scores, f)
 
+        with open(f'{dir_prefix}net_results/net_results_sweep/average_overlap_scores.pkl', 'wb') as f:
+            pickle.dump(average_overlap_scores, f)
+
         # # # # # 
         # write f1 counts to a txt file
         with open(f'{dir_prefix}net_results/net_results_sweep/f1_counts.txt', 'w') as f:
@@ -360,31 +371,31 @@ if True:
                 f.write(f'{item}\n')
 
 
-    ## UNCOMMENT TO LOAD F1 scores averages FROM FILE
-    # # Load average f1 and recall scores from file
-    # with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
-    #     average_f1_scores = pickle.load(f)
+    # UNCOMMENT TO LOAD F1 scores averages FROM FILE
+    # Load average f1 and recall scores from file
+    with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
+        average_f1_scores = pickle.load(f)
 
-    # with open(f'{dir_prefix}net_results/net_results_sweep/average_recall_scores.pkl', 'rb') as f:
-    #     average_recall_scores = pickle.load(f)
+    with open(f'{dir_prefix}net_results/net_results_sweep/average_recall_scores.pkl', 'rb') as f:
+        average_recall_scores = pickle.load(f)
 
-    # # load SDs
-    # with open(f'{dir_prefix}net_results/net_results_sweep/SD_f1_scores.pkl', 'rb') as f:
-    #     SD_f1_scores = pickle.load(f)
+    # load SDs
+    with open(f'{dir_prefix}net_results/net_results_sweep/SD_f1_scores.pkl', 'rb') as f:
+        SD_f1_scores = pickle.load(f)
 
-    # with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'rb') as f:
-    #     SD_recall_scores = pickle.load(f)
+    with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'rb') as f:
+        SD_recall_scores = pickle.load(f)
 
 
     # PLOTTING
     if False: # B_PERC PLOTTING
-        n = 250  # Fixed sample size
+        n = 300  # Fixed sample size
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
         # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
-            for i, man in enumerate([False, True]):
+            for i, man in enumerate(man_values):
                 f1_scores = []
                 recall_scores = []
                 f1_errors = []
@@ -418,13 +429,13 @@ if True:
         plt.show()
 
     if False: # N VALUE PLOTTING
-        b_perc = 0.6  # Fixed b_perc
+        b_perc = 0.65  # Fixed b_perc
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
         # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
-            for i, man in enumerate([False, True]):
+            for i, man in enumerate(man_values):
                 f1_scores = []
                 recall_scores = []
                 f1_errors = []
@@ -454,32 +465,52 @@ if True:
                 axes[i, 1].legend(loc='best')
                 axes[i, 1].grid(alpha=0.3)
 
+                # remove legend of top plots
+                axes[0, 0].legend().set_visible(False)
+                axes[0, 1].legend().set_visible(False)
+                axes[1, 1].legend().set_visible(False)
+
         plt.tight_layout()
         plt.show()
 
 
     if False: # TAU vs OVERLAP PLOTTING
-        # plot 'overlap' vs 'tau_tr'
-        overlap_values = []
-        tau_tr_values = []
+        # Organize data by 'overlap'
+        organized_data = {}
         for key, value in organized_results.items():
-            # check if overlap is 0.0
             if value['overlap'] == 0.0:
                 continue
-            overlap_values.append(value['overlap'])
-            tau_tr_values.append(value['tau_tr'])
-            print(value['overlap'], value['tau_tr'])
+            overlap = value['overlap']
+            tau_tr = value['tau_tr']
+            if overlap not in organized_data:
+                organized_data[overlap] = []
+            organized_data[overlap].append(tau_tr)
 
+        # Calculate mean and standard deviation for each 'overlap'
+        overlap_values = []
+        mean_tau_tr_values = []
+        error_tau_tr_values = []
+        for overlap, tau_tr_list in organized_data.items():
+            overlap_values.append(overlap)
+            mean_tau_tr_values.append(np.mean(tau_tr_list))
+            error_tau_tr_values.append(np.std(tau_tr_list))
+
+        # Plotting
         plt.figure(figsize=(12, 5))
-        plt.scatter(overlap_values, tau_tr_values, color='red', alpha=0.8)
-        plt.title(f'Overlap vs tau_tr for synthetic data')
+        plt.errorbar(overlap_values, mean_tau_tr_values, yerr=error_tau_tr_values, fmt='o', color='purple', alpha=0.5)
+        plt.plot(overlap_values, mean_tau_tr_values, color='purple', alpha=0.5)
+        plt.title(f'Average tau_tr vs Overlap for synthetic data with error bars')
         plt.xlabel('Overlap', fontsize=12)
-        plt.ylabel('tau_tr', fontsize=12)
+        plt.ylabel('Average tau_tr', fontsize=12)
         plt.grid()
         ax = plt.gca()
         ax.grid(alpha=0.2)
         plt.tight_layout()
         plt.show()
+
+
+
+
 
 
 
