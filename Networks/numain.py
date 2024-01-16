@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import networkx as nx
 import scipy.stats as stats
 from collections import Counter
@@ -146,7 +147,7 @@ def analysis(data,
 rank=1
 size=1
 # ################################################# SYNTHETIC PART #################################################
-if False:
+if True:
     run = False
     # COMPLETE SWEEP
     # code should compare: increasing B_perc and effect on performance at low sample size vs high sample size
@@ -164,15 +165,15 @@ if False:
 
     p_values = [150]
     n_values = [50, 100, 300, 500, 700, 900, 1100] # [75, 250, 500, 750, 1000] 
-    b_perc_values = [0.6, 0.65, 0.7, 0.75]
-    fp_fn_values = [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1] # Try without 0.1 in plotting
-    seed_values = np.arange(1, 31, 1)
+    b_perc_values = [0.6, 0.65, 0.7]
+    fp_fn_values = [0.0, 0.6, 0.8, 1] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1] # Try without 0.1 in plotting
+    seed_values = list(range(1, 31))
     dens_values = [0.05]
-    man_values = [False]
+    man_values = [False, True]
 
 
     # Fixed parameters
-    Q = 1200
+    Q = 1000
     llo = 0.01
     lhi = 0.5
     lamlen = 100
@@ -195,7 +196,7 @@ if False:
             p, n, b_perc, fp_fn, seed, dens, man = params
 
             # Your fixed parameters
-            Q = 1200
+            Q = 1000
             llo = 0.01
             lhi = 0.5
             lamlen = 100
@@ -241,9 +242,13 @@ if False:
             return {
                 'param_key': param_key,
                 'f1_score': temp_evalu['f1_score'],
+                'precision': temp_evalu['precision'],
                 'recall': temp_evalu['recall'],
+                'jaccard_similarity': temp_evalu['jaccard_similarity'],
                 'overlap': overlap,
-                'tau_tr': tau_tr
+                'tau_tr': tau_tr,
+                'lambda_np': lambda_np,
+                'lambda_wp': lambda_wp
             }
         
         def update_progress(*a):
@@ -270,12 +275,12 @@ if False:
                                 for result in results if result is not None}
 
             # save to file
-            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'wb') as f:
+            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}_withjaccetc.pkl', 'wb') as f:
                 pickle.dump(organized_results, f)
 
             print("Organized results saved.")
 
-    post_process = True
+    post_process = False
     if post_process == True:
         # Load the organized results
         with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
@@ -377,10 +382,15 @@ if False:
     with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'rb') as f:
         SD_recall_scores = pickle.load(f)
 
+    # load overlap scores 
+    with open (f'{dir_prefix}net_results/net_results_sweep/average_overlap_scores.pkl', 'rb') as f:
+        average_overlap_scores = pickle.load(f)
+    
+
 
     # PLOTTING
     if False: # B_PERC PLOTTING
-        n = 300  # Fixed sample size
+        n = 700  # Fixed sample size
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
@@ -419,7 +429,16 @@ if False:
         plt.tight_layout()
         plt.show()
 
-    if False: # N VALUE PLOTTING
+    if True: # N VALUE PLOTTING
+        def reversed_colormap(cmap_name):
+            cmap = plt.cm.get_cmap(cmap_name)
+            colors = cmap(np.arange(cmap.N))
+            colors = np.flipud(colors)
+            return mcolors.LinearSegmentedColormap.from_list('reversed_' + cmap_name, colors)
+
+        # Use the custom function to reverse the 'Blues' colormap
+        reversed_blues = reversed_colormap('Blues')
+
         b_perc = 0.65  # Fixed b_perc
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
@@ -427,6 +446,14 @@ if False:
         # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
             for i, man in enumerate(man_values):
+                if fp_fn < 1.0:
+                    exponent = 3
+                    scaled_fp_fn = fp_fn ** exponent
+                    color = reversed_blues(scaled_fp_fn)
+                    alpha = 1
+                else:
+                    color = 'firebrick'
+                    alpha = 1
                 f1_scores = []
                 recall_scores = []
                 f1_errors = []
@@ -441,31 +468,39 @@ if False:
                     recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
 
                 # Plot F1 scores in the first column with error bars
-                axes[i, 0].errorbar(n_values, f1_scores, yerr=f1_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 0].errorbar(n_values, f1_scores, yerr=f1_errors, fmt='-o', color=color,alpha=alpha, markersize=4,label=f'overlap={round(average_overlap_scores[key], 1)}')
                 axes[i, 0].set_title(f'F1 Scores, Manual={man}')
-                axes[i, 0].set_xlabel('b_perc')
+                axes[i, 0].set_xlabel('Sample Size')
                 axes[i, 0].set_ylabel('F1 Score')
                 axes[i, 0].legend(loc='best')
                 axes[i, 0].grid(alpha=0.3)
 
                 # Plot Recall scores in the second column with error bars
-                axes[i, 1].errorbar(n_values, recall_scores, yerr=recall_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 1].errorbar(n_values, recall_scores, yerr=recall_errors, fmt='-o', color=color,alpha=alpha, markersize=4,label=f'overlap={round(average_overlap_scores[key], 1)}')
                 axes[i, 1].set_title(f'Recall Scores, Manual={man}')
-                axes[i, 1].set_xlabel('b_perc')
+                axes[i, 1].set_xlabel('Sample Size')
                 axes[i, 1].set_ylabel('Recall Score')
                 axes[i, 1].legend(loc='best')
-                axes[i, 1].grid(alpha=0.3)
+                axes[i, 1].grid(alpha=0.2)
 
                 # remove legend of top plots
                 axes[0, 0].legend().set_visible(False)
-                axes[0, 1].legend().set_visible(False)
+                axes[1, 0].legend().set_visible(False)
                 axes[1, 1].legend().set_visible(False)
+
+        xticks = [0, 100, 300, 500, 700, 900, 1100]
+        for ax in axes.flatten():  # Apply to all subplots
+            ax.set_xticks(xticks)
+            ax.set_xlim(0, 1150)
 
         plt.tight_layout()
         plt.show()
 
 
-    if True: # TAU vs OVERLAP PLOTTING
+    if False: # TAU vs OVERLAP PLOTTING
+        # load organized results
+        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
+            organized_results = pickle.load(f)
         # Organize data by 'overlap'
         organized_data = {}
         for key, value in organized_results.items():
@@ -507,7 +542,7 @@ if False:
 
 
 ################################################## OMICS DATA PART #################################################
-if True:
+if False:
     for o_t in ['p', 't']:
         for cms in ['cmsALL', 'cms123']:
             # for cms_type in ['cmsALL', 'cms123']:
