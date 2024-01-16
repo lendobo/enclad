@@ -25,6 +25,26 @@ import csv
 from scipy.stats import percentileofscore
 from statsmodels.stats.multitest import multipletests
 
+if not"SLURM_JOB_ID" in os.environ:
+    # Figure export settings
+    from mpl_toolkits.axes_grid1 import ImageGrid 
+    plt.rcParams.update(plt.rcParamsDefault) 
+    plt.rcParams.update({"font.size": 15,
+                        "figure.dpi" : 100,
+                        "grid.alpha": 0.3,
+                        "axes.grid": True,
+                        "axes.axisbelow": True, 
+                        "figure.figsize": (8,6), 
+                        "mathtext.fontset":"cm",
+                        "xtick.labelsize": 14, 
+                        "ytick.labelsize": 14, 
+                        "axes.labelsize": 16, 
+                        "legend.fontsize": 13.5})
+    plt.rc("text", usetex=False)
+    plt.rc("font", family="serif")
+
+
+
 if not "SLURM_JOB_ID" in os.environ:
     import pymnet as pn
 
@@ -44,7 +64,7 @@ else:
 # Command Line Arguments
 parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
 parser.add_argument('--koh', type=int, default=40, help='Number of hub nodes to knock out')
-parser.add_argument('--kob', type=int, default=5, help='Number of bottom nodes to knock out')
+parser.add_argument('--kob', type=int, default=0, help='Number of bottom nodes to knock out')
 parser.add_argument('--red_range', type=str, default='0.00,0.00,1', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 # parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
@@ -331,10 +351,10 @@ def weighted_multi_omics_graph(cms, plot=False):
     G_transcriptomic_layer = nx.from_pandas_adjacency(adj_matrix_transcriptomics)
 
     # # get orphans using function
-    # orphans_proteomics = get_orphans(G_proteomics_layer)
+    orphans_proteomics = get_orphans(G_proteomics_layer)
     # orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
 
-    # print(f'orphans in proteomics: {orphans_proteomics}')
+    print(f'orphans in proteomics: {orphans_proteomics}')
     # print(f'orphans in transcriptomics: {orphans_transcriptomics}')
 
     if plot:
@@ -495,7 +515,10 @@ if rank == 0 and not args.permu_runs:
     print(f'hub nodes: {hub_nodes}')
     print(f'anti-hubs nodes: {low_nodes}')
 
-t_values = np.linspace(0.01, 10, 250)
+if args.visualize:
+    t_values = np.linspace(0.00, 10, 500)
+else:
+    t_values = np.linspace(0.01, 10, 250)
 
 red_range = args.red_range.split(',')
 red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
@@ -621,7 +644,7 @@ def run_knockout_analysis(G_aggro,
             }
 
             if args and args.visualize:
-                results[knockout_target][reduction]['vis_kernels'] = [diff_kernel_knock_aggro[i] for i, t in enumerate(t_values) if i % 20 == 0]
+                results[knockout_target][reduction]['vis_kernels'] = [diff_kernel_knock_aggro[i] for i, t in enumerate(t_values)]
 
     elif knockout_type == 'runtype_random':
 
@@ -1138,7 +1161,7 @@ if "SLURM_JOB_ID" not in os.environ:
 
     # %%  NODE KNOCKOUT CODE
     args.net_dens = 'high_dens'
-    with open(f'diff_results/Pathway_False_target_YYETA_GDDs_ks308_permuNone_symmetric{args.symmetric}_{args.net_dens}.pkl', 'rb') as f:
+    with open(f'diff_results/Pathway_False_target_X_GDDs_ks308_permuNone_symmetricTrue_low_dens.pkl', 'rb') as f:
         node_knockouts = pkl.load(f)
 
     print(f'node_knockouts: {node_knockouts.keys()}')
@@ -1167,7 +1190,7 @@ if "SLURM_JOB_ID" not in os.environ:
 
     # Choose a reduction factor from the list of reductions
     selected_reduction = red_range[0]
-    selected_reduction = 0.00
+    selected_reduction = 0.05
 
     max_gdds_trans = {}
     max_gdds_disrupt = {}
@@ -1358,6 +1381,7 @@ if "SLURM_JOB_ID" not in os.environ:
             
         layer_colors = {'PROTEIN': "red", 'RNA': "blue"}
 
+
         fig = pn.draw(net=M,
                 ax=ax,
                 show=False, 
@@ -1369,63 +1393,67 @@ if "SLURM_JOB_ID" not in os.environ:
                 # nodeSizeRule={"rule":"degree", "scalecoeff":0.00001},
                 nodeCoords=node_coords,
                 edgeColorDict=edge_colors,
-                defaultEdgeAlpha=0.1,
+                defaultEdgeAlpha=0.08,
                 layerColorDict=layer_colors,
                 defaultLayerAlpha=0.075,
                 # layerLabelRule={},  # Clear any label rules
                 # defaultLayerLabel=None,  # Set default label to None
                 # azim=45,
-                elev=25)
+                # elev=25
+                )
 
-        print(type(fig))
+        # print(type(fig))
 
         return fig
 
     # %%
 
+    t_values = np.linspace(0, 10, 500)
+    # visualisation_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values_viz]
+
 
     def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None):
         # Load the pickle file
-        with open('diff_results/Pathway_False_target_BB_GDDs_ks272.pkl', 'rb') as f:
+        with open('diff_results/Pathway_False_target_X_GDDs_ks308_permuNone_symmetricTrue_low_dens.pkl', 'rb') as f: # 'diff_results/Pathway_False_target_BB_GDDs_ks272.pkl'
             results = pkl.load(f)
         
-        # with open('diff_results/Pathway_False_target_BCGGS_GDDs_ks308_permuNone.pkl', 'rb') as f:
-        #     results = pkl.load(f)
-        
-        print(results.keys())
-        time_resolved_kernels = results['BIRC2'][0.05]['vis_kernels'][:12] # BAK1
+        time_resolved_kernels = results['XRCC1'][0.05]['vis_kernels'] #  visualisation_kernel[:7] # results['ACACA'][0.00]['vis_kernels'][:12] # BIRC2
+
+
+        max_gdd_trans = results['XRCC1'][0.05]['max_gdd_trans'] # 0 # results['ACACA'][0.00]['max_gdd_index'] # BIRC2
+        gdd_values_trans = results['XRCC1'][0.05]['gdd_values_trans']
+        max_gdd_index = np.argmax(np.sqrt(gdd_values_trans) == max_gdd_trans)
+        max_gdd_time = t_values[max_gdd_index]
+        # Get the corresponding kernel from vis_kernels
+        corresponding_kernel = results['XRCC1'][0.05]['vis_kernels'][max_gdd_index]
+        time_points_to_plot = [0, max_gdd_time]  # Initial and max GDD time
+        # Add a time point after max_gdd_time, for example, one step further in the t_values array
+        # Calculate the next index
+        next_index = min(len(t_values)-1, max_gdd_index + 1)
+        # Add the time point to the list
+        time_points_to_plot.append(t_values[next_index])
+        # Extract the kernels for the selected time points
+        selected_kernels = [results['XRCC1'][0.05]['vis_kernels'][int(np.round(time_point * (len(t_values) - 1) / 10))] for time_point in time_points_to_plot]
 
 
         # Assume 'weighted_G_cms_ALL' is your graph
         node_order = list(weighted_G.nodes())
-        # get indices of nodes that end with '.t'
-        t_indices = [i for i, node in enumerate(node_order) if node.endswith('.t')]
-        #consistent node positions
-
-        nodes_with_degree = [node for node, degree in weighted_G_cms_ALL.degree() if degree > 0 and node.endswith('.p')]
-
+        orphans = ['ACACA.p', 'MRE11A.p', 'NFKB1.p', 'CTNNA1.p']
+        nodes_with_degree = [node for node in node_order if node not in orphans]
         # Create a subgraph with these nodes
         subgraph = weighted_G_cms_ALL.subgraph(nodes_with_degree)
-
         # Now calculate the layout using only the nodes in the subgraph
         pos = nx.spring_layout(subgraph)
-
-        print(pos)
-
-        # If you want to use the same positions for the nodes in the original graph, you can do so. 
-        # The orphan nodes will be assigned a default position as they are not included in the subgraph.
+        # The orphan nodes will be assigned a default position as they are not included in the subgraph
         prot_node_positions = pos.copy()
         for node in weighted_G_cms_ALL.nodes():
             if node not in prot_node_positions and node.endswith('.p'):
-                print(node)
-                prot_node_positions[node] = (0, 0)  # or any other default position
+                prot_node_positions[node] = (0,0)  # or any other default position
 
 
         # Set up a 3x3 subplot grid with 3D projection
-        fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 10), subplot_kw={'projection': '3d'}, dpi = 600)
+        fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 8), subplot_kw={'projection': '3d'})
         axs = axes.flatten()  # Flatten the axes array for easy iteration
-        # fig.suptitle('Network Diffusion over 25 Time Points')
-
         # Define the suffixes for each layer
         suffixes = {'PROTEIN': '.p', 'RNA': '.t'}
 
@@ -1436,32 +1464,32 @@ if "SLURM_JOB_ID" not in os.environ:
         node_coords = {}
 
         for node, pos in prot_node_positions.items():
-            stripped_node = node.rstrip('.t')  # Remove the suffix to match identifiers in M
-            node_coords[stripped_node] = pos
+            stripped_node = node.rstrip('.p')  # Remove the suffix to match identifiers in M
+            node_coords[stripped_node] = tuple(pos)
 
+        max_deg = 28
+        min_deg = 1
+        max_scaled_size = 3.5
         for nl in M.iter_node_layers():  # Iterating over all node-layer combinations
             node, layer = nl  # Split the node-layer tuple
             neighbors = list(M._iter_neighbors_out(nl, dims=None))  # Get all neighbors for the node-layer tuple
             degree = len(neighbors)  # The degree is the number of neighbors
-            
-            # Assign to node sizes
-            node_sizes[nl] = 0.05 # 0.0001 * degree**2  # 0.0015 * degree # Adjust the scaling factor as needed
+            normalized_degree = (degree - min_deg) / (max_deg - min_deg)
+            scaled_degree = 1 + normalized_degree * (max_scaled_size - 1)
 
-        print(node_sizes)
+            # Assign to node sizes with scaling factor
+            node_sizes[nl] = scaled_degree * 0.02
 
-
-        j = 271
+        j = 0
         global_max = max(kernel.max() for kernel in time_resolved_kernels)
         norm = Normalize(vmin=0, vmax=1)
         # print(global_max)
         # Ensure you have a list of the 25 time-resolved kernels named 'time_resolved_kernels'
-        for idx, (ax, kernel) in enumerate(zip(axs, time_resolved_kernels)):
-            # if idx % 5 == 0:
+        for ax, kernel, time_point in zip(axs, selected_kernels, time_points_to_plot):
             # Create the unit vector e_j with 1 at the jth index and 0 elsewhere
             e_j = np.zeros(len(weighted_G.nodes()))
             e_j[j] = 100
 
-            # e_j = np.ones(len(weighted_G_cms_ALL.nodes()))
             
             # Multiply the kernel with e_j to simulate diffusion from node j
             diffusion_state = kernel @ e_j
@@ -1485,31 +1513,19 @@ if "SLURM_JOB_ID" not in os.environ:
             # Now use your updated visualization function with the new colors and sizes
             diff_fig = multiplex_net_viz(M, ax, diff_colors=True, node_colors=node_colors, node_sizes=node_sizes, node_coords=node_coords)
 
-            ax.set_title(f"Time Step {idx*20}")
-
-            # ax.imshow(diff_fig)
-
-            # # Draw the graph with node colors based on the diffusion state
-            # nx.draw(weighted_G_cms_ALL, pos, ax=ax, node_size=50,
-            #         node_color=norm(diffusion_state), cmap=plt.cm.viridis,
-            #         edge_color=(0, 0, 0, 0.5), width=1.0)  # Use a simple color for edges for clarity
-
-            # # # print maximum value of kernel at this time step
-            # # print(f'max kernel value at time step {idx}: {kernel.max()}')
-
-            # # Set a title for each subplot indicating the time step
-            # ax.set_title(f"Time Step {idx*20}")
+            ax.set_title(f"T = {time_point:.2f}")
 
         # Adjust layout to prevent overlap
         # plt.tight_layout()
         # plt.subplots_adjust(top=0.95)  # Adjust the top space to fit the main title
-        # plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), ax=axs.ravel().tolist(), orientation='vertical')
-
+        plt.subplots_adjust(right=0.8)
+        cbar_ax = fig.add_axes([1, 0.15, 0.02, 0.7])
+        plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), cax=cbar_ax, orientation='vertical', label='Concentration')
         # savethefigure
-        plt.savefig('diffusion_figure.png', dpi=600) # make rc.param no font export
+        # plt.savefig('diffusion_figure.png', dpi=600) # make rc.param no font export
 
-        print('wot')
         # Display the figure
+        plt.tight_layout()
         plt.show()
 
     if args.visualize:

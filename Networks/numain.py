@@ -429,7 +429,7 @@ if True:
         plt.tight_layout()
         plt.show()
 
-    if True: # N VALUE PLOTTING
+    if False:  # N VALUE PLOTTING
         def reversed_colormap(cmap_name):
             cmap = plt.cm.get_cmap(cmap_name)
             colors = cmap(np.arange(cmap.N))
@@ -441,63 +441,66 @@ if True:
 
         b_perc = 0.65  # Fixed b_perc
         p = 150  # Fixed number of variables
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
+        fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(6, 15), sharex=True, dpi=150)  # 1x2 subplot
+        # set suptitle
+        # fig.suptitle(f'F-Scores and Recall for Synthetic Data', fontsize=16)
+
+        man = False  # Only considering False for man values
 
         # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
-            for i, man in enumerate(man_values):
-                if fp_fn < 1.0:
-                    exponent = 3
-                    scaled_fp_fn = fp_fn ** exponent
-                    color = reversed_blues(scaled_fp_fn)
-                    alpha = 1
-                else:
-                    color = 'firebrick'
-                    alpha = 1
-                f1_scores = []
-                recall_scores = []
-                f1_errors = []
-                recall_errors = []
+            if fp_fn < 1.0:
+                exponent = 3
+                scaled_fp_fn = fp_fn ** exponent
+                color = reversed_blues(scaled_fp_fn)
+                alpha = 1
+            else:
+                color = 'firebrick'
+                alpha = 1
 
-                for n in n_values:
-                    # Accessing the scores using the correct keys
-                    key = (p, n, b_perc, fp_fn, str(man))
-                    f1_scores.append(average_f1_scores.get(key))
-                    recall_scores.append(average_recall_scores.get(key))
-                    f1_errors.append(SD_f1_scores.get(key, 0))  # Default to 0 if no SD available
-                    recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
+            f1_scores = []
+            recall_scores = []
+            f1_errors = []
+            recall_errors = []
 
-                # Plot F1 scores in the first column with error bars
-                axes[i, 0].errorbar(n_values, f1_scores, yerr=f1_errors, fmt='-o', color=color,alpha=alpha, markersize=4,label=f'overlap={round(average_overlap_scores[key], 1)}')
-                axes[i, 0].set_title(f'F1 Scores, Manual={man}')
-                axes[i, 0].set_xlabel('Sample Size')
-                axes[i, 0].set_ylabel('F1 Score')
-                axes[i, 0].legend(loc='best')
-                axes[i, 0].grid(alpha=0.3)
+            for n in n_values:
+                # Accessing the scores using the correct keys
+                key = (p, n, b_perc, fp_fn, str(man))
+                f1_scores.append(average_f1_scores.get(key))
+                recall_scores.append(average_recall_scores.get(key))
+                f1_errors.append(SD_f1_scores.get(key, 0))  # Default to 0 if no SD available
+                recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
 
-                # Plot Recall scores in the second column with error bars
-                axes[i, 1].errorbar(n_values, recall_scores, yerr=recall_errors, fmt='-o', color=color,alpha=alpha, markersize=4,label=f'overlap={round(average_overlap_scores[key], 1)}')
-                axes[i, 1].set_title(f'Recall Scores, Manual={man}')
-                axes[i, 1].set_xlabel('Sample Size')
-                axes[i, 1].set_ylabel('Recall Score')
-                axes[i, 1].legend(loc='best')
-                axes[i, 1].grid(alpha=0.2)
+            # Plot F1 scores
+            axes[0].errorbar(n_values, f1_scores, yerr=f1_errors, fmt='-o', color=color, alpha=alpha, markersize=3, label=f'overlap={round(average_overlap_scores[key], 1)}')
+            # axes[0].set_title('F1 Scores', fontsize=14)
+            # axes[0].set_xlabel('Sample Size', fontsize=14)
+            axes[0].set_ylabel('F-Score', fontsize=12)
+            axes[0].legend(loc='best')
+            axes[0].grid(alpha=0.15)
+            # remove xticks
+            axes[0].set_xticks([])
 
-                # remove legend of top plots
-                axes[0, 0].legend().set_visible(False)
-                axes[1, 0].legend().set_visible(False)
-                axes[1, 1].legend().set_visible(False)
+            # Plot Recall scores
+            axes[1].errorbar(n_values, recall_scores, yerr=recall_errors, fmt='-o', color=color, alpha=alpha, markersize=3, label=f'overlap={round(average_overlap_scores[key], 1)}')
+            # axes[1].set_title('Recall Scores', fontsize=14)
+            axes[1].set_xlabel('Sample Size', fontsize=12)
+            axes[1].set_ylabel('Recall', fontsize=12)
+            # axes[1].legend(loc='best')
+            axes[1].grid(alpha=0.15)
 
-        xticks = [0, 100, 300, 500, 700, 900, 1100]
-        for ax in axes.flatten():  # Apply to all subplots
-            ax.set_xticks(xticks)
-            ax.set_xlim(0, 1150)
 
-        plt.tight_layout()
+            xticks = [0, 100, 300, 500, 700, 900, 1100]
+            for ax in axes:  # Apply to both subplots
+                ax.set_xticks(xticks)
+                ax.set_xlim(0, 1150)
+
+        # plt.tight_layout()
         plt.show()
 
 
-    if False: # TAU vs OVERLAP PLOTTING
+
+    if True: # TAU vs OVERLAP PLOTTING
         # load organized results
         with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
             organized_results = pickle.load(f)
@@ -522,12 +525,12 @@ if True:
             error_tau_tr_values.append(np.std(tau_tr_list))
 
         # Plotting
-        plt.figure(figsize=(12, 5))
+        plt.figure(figsize=(7, 4), dpi = 300)
         plt.errorbar(overlap_values, mean_tau_tr_values, yerr=error_tau_tr_values, fmt='o', color='purple', alpha=0.5)
         plt.plot(overlap_values, mean_tau_tr_values, color='purple', alpha=0.5)
-        plt.title(f'Average tau_tr vs Overlap for synthetic data with error bars')
-        plt.xlabel('Overlap', fontsize=12)
-        plt.ylabel('Average tau_tr', fontsize=12)
+        # plt.title(r'Average $\tau^{t_r}$ vs Prior Overlap for Synthetic Data')
+        plt.xlabel('Prior Overlap', fontsize=14)
+        plt.ylabel(r'$\tau^{t_r}$', fontsize=18)
         plt.grid()
         ax = plt.gca()
         ax.grid(alpha=0.2)
