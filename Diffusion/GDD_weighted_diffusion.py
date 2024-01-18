@@ -333,7 +333,7 @@ def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
 
 ###############################################################################
 # %% OMICS GRAPH
-def weighted_multi_omics_graph(cms, plot=False):
+def weighted_multi_omics_graph(cms, plot=False, verbose=False):
     p = 154 # 136_kpa_lowenddensity or something
     cms = cms
     man = False
@@ -352,10 +352,11 @@ def weighted_multi_omics_graph(cms, plot=False):
 
     # # get orphans using function
     orphans_proteomics = get_orphans(G_proteomics_layer)
-    # orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
+    orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
 
-    print(f'orphans in proteomics: {orphans_proteomics}')
-    # print(f'orphans in transcriptomics: {orphans_transcriptomics}')
+    if verbose == True:
+        print(f'orphans in proteomics: {orphans_proteomics}')
+        print(f'orphans in transcriptomics: {orphans_transcriptomics}')
 
     if plot:
         # Calculate the degrees of each node
@@ -736,6 +737,8 @@ crit_paths = ['Regulation of angiogenesis', 'Positive regulation of angiogenesis
               'Cellular response to transforming growth factor beta stimulus', 'Regulation of transforming growth factor beta2 production',
               'Regulation of transforming growth factor beta receptor signaling pathway']
 
+# crit_paths = ['Positive regulation of production of molecular mediator of immune response', 'Regulation of leukocyte mediated immunity', 'Positive regulation of leukocyte mediated immunity', 'Positive regulation of immune effector process']
+
 pathways = crit_paths
 
 if "SLURM_JOB_ID" not in os.environ:
@@ -761,18 +764,58 @@ if args.pathway:
     # filtered_pathway_df = pathway_df[pathway_df['description'].isin(joy_path_df['Description'])]
 
     # keep only rows which have a perc overlap above 0.5
-    # filtered_pathway_df = filtered_pathway_df[filtered_pathway_df['perc_overlap'] >= 0.3]
     # Filter the dataframe to include only pathways with '# genes' between min_size and max_size
     min_size, max_size = int(args.path_size_range.split(',')[0]), int(args.path_size_range.split(',')[1])
+    # min_size, max_size = 5, 50
 
     filtered_pathway_df = filtered_pathway_df[(filtered_pathway_df['# genes'] >= min_size) & (filtered_pathway_df['# genes'] <= max_size)]
 
-    # Add unique pathways from the filtered list until you reach args.koh
-    for pathway in filtered_pathway_df['description'].tolist():
+    def calculate_overlap_percentage(geneset1, geneset2):
+        set1 = set(geneset1.split('|'))
+        set2 = set(geneset2.split('|'))
+        
+        # Check if the gene sets are within the size window of +/- 3
+        size_difference = abs(len(set1) - len(set2))
+        if size_difference > 0:
+            return 0
+
+        intersection = set1.intersection(set2)
+        smaller_set_size = min(len(set1), len(set2))
+        if smaller_set_size == 0:
+            return 0
+        overlap_percentage = len(intersection) / smaller_set_size
+        return overlap_percentage
+
+    unique_genesets = []
+
+    for index, row in filtered_pathway_df.iterrows():
+        current_geneset = row['genes']
+        is_unique = True
+
+        for existing_geneset in unique_genesets:
+            if calculate_overlap_percentage(current_geneset, existing_geneset) > 0.4:
+                is_unique = False
+                break
+
+        if is_unique:
+            unique_genesets.append(current_geneset)
+            if len(pathways) < args.koh and row['description'] not in pathways:
+                pathways.append(row['description'])
+
         if len(pathways) >= args.koh:
             break
-        if pathway not in pathways:
-            pathways.append(pathway)
+
+    print(len(pathways))
+
+    # # Add unique pathways from the filtered list until you reach args.koh
+    # for pathway in filtered_pathway_df['description'].tolist():
+    #     if len(pathways) >= args.koh:
+    #         break
+    #     if pathway not in pathways:
+    #         pathways.append(pathway)
+
+
+    # print(len(pathways))
 
 
 
@@ -877,7 +920,7 @@ if args.pathway:
         run_indices = distribute_runs(args.permu_runs, rank, size)
 
         pathway_sizes = args.path_size_range.split(',')
-        pathway_sizes = range(int(pathway_sizes[0]), int(pathway_sizes[1]))
+        pathway_sizes = range(int(pathway_sizes[0]), int(pathway_sizes[1]) + 1)
         
         # print(f'pathway sizes for rank {rank}: {pathway_sizes}')
         print(f'run indices for rank {rank}: {run_indices}')
@@ -931,7 +974,7 @@ for i, all_results in enumerate(all_results_list):
             for key, value in process_results.items():
                 combined_results[key] = value
 
-        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}_permu{args.permu_runs}_symmetric{args.symmetric}_{args.net_dens}.pkl', 'wb') as f:
+        with open(f'diff_results/Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}_permu{args.permu_runs}_symmetric{args.symmetric}_{args.net_dens}_{args.path_size_range}.pkl', 'wb') as f:
             pkl.dump(combined_results, f)
         
         os.system("cp -r diff_results/ $HOME/thesis_code/Diffusion/")
@@ -939,7 +982,7 @@ for i, all_results in enumerate(all_results_list):
 
 
     elif rank == 0 and "SLURM_JOB_ID" not in os.environ:
-        with open(f'diff_results/LOCAL_Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}_permu{args.permu_runs}_symmetric{args.symmetric}_{args.net_dens}.pkl', 'wb') as f:
+        with open(f'diff_results/LOCAL_Pathway_{args.pathway}_{filename_identifiers[i]}_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}_permu{args.permu_runs}_symmetric{args.symmetric}_{args.net_dens}_{args.path_size_range}.pkl', 'wb') as f:
             pkl.dump(local_target_results, f)
 
         # with open(f'diff_results/Pathway_{args.pathway}_random_node_{unique_identifier}_GDDs_ks{str(orig_aggro_kernel[0].shape[0])}.pkl', 'wb') as f:
@@ -979,21 +1022,25 @@ MPI.Finalize()
 # %% SIGNIFICANCE TESTING
 
 if "SLURM_JOB_ID" not in os.environ:
+
+    t_values = np.linspace(0.01, 10, 250)
     args.symmetric=True
 
     # args.pathway = True
     unique_identifier = 'RPRSTCRR'
 
     # Load results and pathway information
-    with open(f'diff_results/Pathway_True_target_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permuNone_symmetric{args.symmetric}.pkl', 'rb') as f:
+    with open(f'diff_results/Pathway_True_target_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permuNone_symmetricTrue.pkl', 'rb') as f:
         target_results = pkl.load(f)
-    with open(f'diff_results/Pathway_True_random_RPRSTCRR_GDDs_ks308_permu10368_symmetric{args.symmetric}.pkl', 'rb') as f:
+    with open(f'diff_results/Pathway_True_random_RPRSTCRR_GDDs_ks308_permu10368_symmetricTrue_low_dens_5,50.pkl', 'rb') as f:
         random_results = pkl.load(f)
 
     # print keys of random results
     print(random_results['random_11_run_1'][0.00]['max_gdd_trans'])
-    print(random_results.keys())
+    # print(random_results.keys())
     # print(len(random_results['random_11_run_1'][0.05]['max_gdd_trans']))
+
+    print(len(target_results.keys()))
 
         
     def get_pathway_length(pathway_name, df):
@@ -1022,6 +1069,11 @@ if "SLURM_JOB_ID" not in os.environ:
     # for key in random_results_by_length.keys():
     #     print(len(random_results_by_length[key]))
 
+    # print target results keys
+
+    # only target_results that are in 'pathways' list
+    target_results = {k: v for k, v in target_results.items() if k in pathways}
+    # print(len(target_results.keys()))
 
 
     # Calculate p-values
@@ -1047,13 +1099,28 @@ if "SLURM_JOB_ID" not in os.environ:
 
     # Filter out None values from p_values
     filtered_p_values = {k: v for k, v in p_values.items() if v is not None}
+    p_values_by_length = {}
+    for pathway, p_value in filtered_p_values.items():
+        length = get_pathway_length(pathway, interest_pathway_df)
+        if length is not None:
+            if length not in p_values_by_length:
+                p_values_by_length[length] = {}
+            p_values_by_length[length][pathway] = p_value
 
-    # Adjust for multiple testing on the filtered p-values
-    adjusted_p_values = multipletests(list(filtered_p_values.values()), method='fdr_bh')[1]
-    adjusted_p_values_dict = dict(zip(filtered_p_values.keys(), adjusted_p_values))
+    # Apply multiple testing correction within each length group
+    adjusted_p_values_by_length = {}
+    for length, p_vals in p_values_by_length.items():
+        if p_vals:
+            # Apply multiple testing correction and get corrected p-values
+            _, corrected_p_vals, _, _ = multipletests(list(p_vals.values()), alpha=0.05, method='fdr_bh')
+            # Map back the corrected p-values to their respective pathways
+            adjusted_p_values_by_length[length] = dict(zip(p_vals.keys(), corrected_p_vals))
 
-    # Merge adjusted p-values back with the original set (assigning None where appropriate)
-    final_adjusted_p_values = {pathway: adjusted_p_values_dict.get(pathway, None) for pathway in p_values.keys()}
+
+    # Combine adjusted p-values into a single dictionary
+    final_adjusted_p_values = {}
+    for length, adj_p_vals in adjusted_p_values_by_length.items():
+        final_adjusted_p_values.update(adj_p_vals)
 
     # Interpret results
     significant_pathways = {pathway: adj_p for pathway, adj_p in final_adjusted_p_values.items() if adj_p is not None and adj_p <= 0.05}
@@ -1075,16 +1142,18 @@ if "SLURM_JOB_ID" not in os.environ:
         max_gdd_delta = max_gdd_trans - max_orig_gdd_values
         p_value = p_values.get(pathway, None)  # Get the p-value, if available
         pathway_length = get_pathway_length(pathway, interest_pathway_df)  # Get pathway length
-        data.append([pathway, max_gdd_trans, max_gdd_delta, p_value, pathway_length])
+        p_value_adjusted = final_adjusted_p_values.get(pathway, None)  # Get the adjusted p-value, if available
+        data.append([pathway, max_gdd_trans, max_gdd_delta, p_value, p_value_adjusted, pathway_length])
+        # data.append([pathway, max_gdd_trans, max_gdd_delta, p_value, pathway_length])
 
     # Creating the DataFrame with an additional column for pathway length
-    target_df = pd.DataFrame(data, columns=['Pathway', 'Max_GDD_Trans', 'Max_GDD_Delta', 'P_Value', 'Pathway_Length'])
+    target_df = pd.DataFrame(data, columns=['Pathway', 'Max_GDD_Trans', 'Max_GDD_Delta', 'P_Value', 'P_Value (Adjusted)', 'Pathway_Length'])
 
 
     # Sorting the DataFrame by Max_GDD_Trans in ascending order
-    target_df_sorted = target_df.sort_values(by='P_Value', ascending=True)
+    target_df_sorted = target_df.sort_values(by='P_Value (Adjusted)', ascending=True)
 
-    # Display the first few rows of the sorted DataFrame
+    # # Display the first few rows of the sorted DataFrame
     print(target_df_sorted.head())
 
     # write to csv
@@ -1094,10 +1163,12 @@ if "SLURM_JOB_ID" not in os.environ:
     
     # Filter for pathways with 0 p-value
     zero_p_value_pathways = [pathway for pathway, p_val in p_values.items() if p_val != 0]
-    curated_paths = ['Negative regulation of the PI3K/AKT network', 'Regulation of receptor signaling pathway via JAK-STAT', 
+    old_curated_paths = ['Negative regulation of the PI3K/AKT network', 'Regulation of receptor signaling pathway via JAK-STAT', 
     'Positive regulation of MAPK cascade']
 
-    if True: 
+    curated_paths = ['Positive regulation of leukocyte mediated immunity', 'Regulation of stress-activated MAPK cascade', 'DAP12 signaling', 'Fc receptor signaling pathway', 'Deubiquitination', 'Interleukin-2 family signaling']
+
+    if False: 
         # Plot distributions
         for pathway in curated_paths:
             # Get target max_gdd_trans value
@@ -1113,12 +1184,21 @@ if "SLURM_JOB_ID" not in os.environ:
             plt.figure(figsize=(10, 6))
             plt.hist(random_distribution, bins=100, alpha=0.7, label='Random Distribution')
             plt.axvline(x=target_max_gdd_trans, color='r', linestyle='dashed', linewidth=2, label='Target Value')
-            plt.title(f"Distribution for Pathway: {pathway} (Length: {pathway_length})")
+            plt.title(f"{pathway} (Length: {pathway_length})")
             plt.xlabel('Max GDD Trans')
             plt.ylabel('Frequency')
             # plt.xlim(0.94, 1.05)
             plt.legend()
             plt.show()
+    
+    if False:
+        # make a 3x2 multiplot fot the curated paths
+        fig, axs = plt.subplots(3, 2, figsize=(10, 10), dpi=300)
+        fig.suptitle('Curated Pathways')
+
+        for i, pathway in enumerate(curated_paths):
+            pass
+            
 
     
 
@@ -1396,6 +1476,7 @@ if "SLURM_JOB_ID" not in os.environ:
                 defaultEdgeAlpha=0.08,
                 layerColorDict=layer_colors,
                 defaultLayerAlpha=0.075,
+                # camera_dist=6,
                 # layerLabelRule={},  # Clear any label rules
                 # defaultLayerLabel=None,  # Set default label to None
                 # azim=45,
@@ -1429,7 +1510,7 @@ if "SLURM_JOB_ID" not in os.environ:
         time_points_to_plot = [0, max_gdd_time]  # Initial and max GDD time
         # Add a time point after max_gdd_time, for example, one step further in the t_values array
         # Calculate the next index
-        next_index = min(len(t_values)-1, max_gdd_index + 1)
+        next_index = min(len(t_values)-1, 75)
         # Add the time point to the list
         time_points_to_plot.append(t_values[next_index])
         # Extract the kernels for the selected time points
@@ -1450,10 +1531,6 @@ if "SLURM_JOB_ID" not in os.environ:
             if node not in prot_node_positions and node.endswith('.p'):
                 prot_node_positions[node] = (0,0)  # or any other default position
 
-
-        # Set up a 3x3 subplot grid with 3D projection
-        fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 8), subplot_kw={'projection': '3d'})
-        axs = axes.flatten()  # Flatten the axes array for easy iteration
         # Define the suffixes for each layer
         suffixes = {'PROTEIN': '.p', 'RNA': '.t'}
 
@@ -1480,12 +1557,19 @@ if "SLURM_JOB_ID" not in os.environ:
             # Assign to node sizes with scaling factor
             node_sizes[nl] = scaled_degree * 0.02
 
+
+        # Set up a 3x3 subplot grid with 3D projection
+        fig = plt.figure(figsize=(15, 8))
+
+        axs_diffusion = [fig.add_subplot(2, 3, i + 1, projection='3d') for i in range(3)]
+        axs_gdd = [fig.add_subplot(2, 3, i + 4) for i in range(3)]
+
         j = 0
         global_max = max(kernel.max() for kernel in time_resolved_kernels)
         norm = Normalize(vmin=0, vmax=1)
         # print(global_max)
         # Ensure you have a list of the 25 time-resolved kernels named 'time_resolved_kernels'
-        for ax, kernel, time_point in zip(axs, selected_kernels, time_points_to_plot):
+        for ax, kernel, time_point in zip(axs_diffusion, selected_kernels, time_points_to_plot):
             # Create the unit vector e_j with 1 at the jth index and 0 elsewhere
             e_j = np.zeros(len(weighted_G.nodes()))
             e_j[j] = 100
@@ -1515,14 +1599,31 @@ if "SLURM_JOB_ID" not in os.environ:
 
             ax.set_title(f"T = {time_point:.2f}")
 
+        for ax, time_point in zip(axs_gdd, time_points_to_plot):
+            # Plot all gdd_values_trans
+            ax.plot(t_values[:150], gdd_values_trans[:150])
+
+            # Add a vertical line at the corresponding time_point
+            ax.axvline(x=time_point, color='red', linestyle='dotted', label=f'Time Point', linewidth=2)
+
+            # ax.set_title(f"GDD values with time point T = {time_point:.2f}")
+            # ax.set_xlabel('Time')
+            # ax.set_ylabel('GDD Value')
+            if time_point == 0:
+                ax.legend()
+                ax.set_ylabel('GDD Value')
+            elif time_point == max_gdd_time:
+                ax.set_xlabel('Time')
+            # ax.legend()
+
         # Adjust layout to prevent overlap
         # plt.tight_layout()
         # plt.subplots_adjust(top=0.95)  # Adjust the top space to fit the main title
-        plt.subplots_adjust(right=0.8)
-        cbar_ax = fig.add_axes([1, 0.15, 0.02, 0.7])
-        plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), cax=cbar_ax, orientation='vertical', label='Concentration')
+        # plt.subplots_adjust(right=0.8)
+        # cbar_ax = fig.add_axes([1, 0.15, 0.02, 0.7])
+        # plt.colorbar(cm.ScalarMappable(norm=norm, cmap=plt.cm.viridis), cax=cbar_ax, orientation='vertical', label='Concentration')
         # savethefigure
-        # plt.savefig('diffusion_figure.png', dpi=600) # make rc.param no font export
+        plt.savefig('diffusion_figure.svg') # make rc.param no font export
 
         # Display the figure
         plt.tight_layout()

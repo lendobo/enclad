@@ -169,7 +169,7 @@ if True:
     fp_fn_values = [0.0, 0.6, 0.8, 1] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1] # Try without 0.1 in plotting
     seed_values = list(range(1, 31))
     dens_values = [0.05]
-    man_values = [False, True]
+    man_values = [False]
 
 
     # Fixed parameters
@@ -214,8 +214,12 @@ if True:
             if not os.path.isfile(filename_edges):
                 return None  # File does not exist
 
-            with open(filename_edges, 'rb') as f:
-                synth_edge_counts_all = pickle.load(f)
+            try:
+                with open(filename_edges, 'rb') as f:
+                    synth_edge_counts_all = pickle.load(f)
+            except EOFError:
+                print(f"Failed to load file: {filename_edges}")
+                return None  # Skip this file and return
 
             # Process the edge counts
             synth_edge_counts_all = synth_edge_counts_all #  / (2 * Q)
@@ -271,30 +275,41 @@ if True:
             results = [res.get() for res in results]
 
             # Organize results
-            organized_results = {result['param_key']: {'f1_score': result['f1_score'], 'recall': result['recall'], 'overlap': result['overlap'], 'tau_tr': result['tau_tr']} 
-                                for result in results if result is not None}
+            organized_results = {
+                result['param_key']: {
+                    'f1_score': result['f1_score'], 
+                    'precision': result['precision'], 
+                    'recall': result['recall'], 
+                    'jaccard_similarity': result['jaccard_similarity'], 
+                    'overlap': result['overlap'], 
+                    'tau_tr': result['tau_tr'], 
+                    'lambda_np': result['lambda_np'], 
+                    'lambda_wp': result['lambda_wp']
+                } for result in results if result is not None
+}
 
             # save to file
-            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}_withjaccetc.pkl', 'wb') as f:
+            with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}_withjaccetc1000.pkl', 'wb') as f:
                 pickle.dump(organized_results, f)
 
             print("Organized results saved.")
 
-    post_process = False
+    post_process = True
     if post_process == True:
         # Load the organized results
-        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
+        with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}_withjaccetc1000.pkl', 'rb') as f:
             organized_results = pickle.load(f)
 
+
         # Initialize dictionaries for average scores and SDs
-        average_f1_scores = {}
-        SD_f1_scores = {}
-        average_recall_scores = {}
-        SD_recall_scores = {}
-
-        average_overlap_scores = {}
-
-        f1_counts = {}
+        average_scores = {
+            'f1_score': {}, 'precision': {}, 'recall': {}, 'jaccard_similarity': {},
+            'overlap': {}, 'tau_tr': {}, 'lambda_np': {}, 'lambda_wp': {}
+        }
+        SD_scores = {
+            'f1_score': {}, 'precision': {}, 'recall': {}, 'jaccard_similarity': {},
+            'overlap': {}, 'tau_tr': {}, 'lambda_np': {}, 'lambda_wp': {}
+        }
 
         # Loop over parameter combinations
         for p in p_values:
@@ -302,13 +317,15 @@ if True:
                 for b_perc in b_perc_values:
                     for fp_fn in fp_fn_values:
                         for man in [str(man) for man in man_values]:
-                            f1_scores_for_average = []
-                            recall_scores_for_average = []
-                            overlap_scores_for_average = []
+                            # Initialize lists for each score
+                            scores_for_average = {
+                                'f1_score': [], 'precision': [], 'recall': [], 
+                                'jaccard_similarity': [], 'overlap': [], 'tau_tr': [], 
+                                'lambda_np': [], 'lambda_wp': []
+                            }
 
                             # New key without seed and dens
                             new_key = (p, n, b_perc, fp_fn, man)
-                            f1_counts[new_key] = 0
 
                             # Loop over seeds and densities
                             for seed in seed_values:
@@ -316,75 +333,56 @@ if True:
                                     key = (p, n, b_perc, fp_fn, seed, dens, man)
                                     result = organized_results.get(key)
                                     if result:  # Check if the result exists
-                                        f1_scores_for_average.append(result['f1_score'])
-                                        recall_scores_for_average.append(result['recall'])
-                                        overlap_scores_for_average.append(result['overlap'])
+                                        for metric in scores_for_average.keys():
+                                            scores_for_average[metric].append(result[metric])
 
-                                        # Increment the f1 count
-                                        f1_counts[new_key] += 1
-
-
-
-                            # Calculating the average and SD
-                            if f1_scores_for_average:
-                                average_f1_scores[new_key] = np.mean(f1_scores_for_average)
-                                SD_f1_scores[new_key] = np.std(f1_scores_for_average)
-                                average_recall_scores[new_key] = np.mean(recall_scores_for_average)
-                                SD_recall_scores[new_key] = np.std(recall_scores_for_average)
-                                average_overlap_scores[new_key] = np.mean(overlap_scores_for_average)
-                            else:
-                                # Handle missing data
-                                average_f1_scores[new_key] = None
-                                SD_f1_scores[new_key] = None
-                                average_recall_scores[new_key] = None
-                                SD_recall_scores[new_key] = None
-                                average_overlap_scores[new_key] = None
+                            # Calculating the average and SD for each metric
+                            for metric in scores_for_average.keys():
+                                if scores_for_average[metric]:
+                                    average_scores[metric][new_key] = np.mean(scores_for_average[metric])
+                                    SD_scores[metric][new_key] = np.std(scores_for_average[metric], ddof=1)  # Use ddof=1 for sample standard deviation
+                                else:
+                                    # Handle missing data
+                                    average_scores[metric][new_key] = None
+                                    SD_scores[metric][new_key] = None
 
 
 
-        # Now, average_f1_scores will have an average if there's at least one score, or None if all are missing
+        # Save average scores to files
+        metrics = ['f1_score', 'precision', 'recall', 'jaccard_similarity', 
+                'tau_tr', 'lambda_np', 'lambda_wp', 'overlap']
 
-        # save to file
-        with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'wb') as f:
-            pickle.dump(average_f1_scores, f)
+        for metric in metrics:
+            with open(f'{dir_prefix}net_results/net_results_sweep/average_{metric}_scores.pkl', 'wb') as f:
+                pickle.dump(average_scores[metric], f)
 
-        with open(f'{dir_prefix}net_results/net_results_sweep/SD_f1_scores.pkl', 'wb') as f:
-            pickle.dump(SD_f1_scores, f)
-        
-        with open(f'{dir_prefix}net_results/net_results_sweep/average_recall_scores.pkl', 'wb') as f:
-            pickle.dump(average_recall_scores, f)
+            with open(f'{dir_prefix}net_results/net_results_sweep/SD_{metric}_scores.pkl', 'wb') as f:
+                pickle.dump(SD_scores[metric], f)
 
-        with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'wb') as f:
-            pickle.dump(SD_recall_scores, f)
+        # # Save f1 counts to a txt file
+        # with open(f'{dir_prefix}net_results/net_results_sweep/f1_counts.txt', 'w') as f:
+        #     for item in f1_counts.items():
+        #         f.write(f'{item}\n')
 
-        with open(f'{dir_prefix}net_results/net_results_sweep/average_overlap_scores.pkl', 'wb') as f:
-            pickle.dump(average_overlap_scores, f)
-
-        # # # # # 
-        # write f1 counts to a txt file
-        with open(f'{dir_prefix}net_results/net_results_sweep/f1_counts.txt', 'w') as f:
-            for item in f1_counts.items():
-                f.write(f'{item}\n')
 
 
     # UNCOMMENT TO LOAD F1 scores averages FROM FILE
-    # Load average f1 and recall scores from file
-    with open(f'{dir_prefix}net_results/net_results_sweep/average_f1_scores.pkl', 'rb') as f:
-        average_f1_scores = pickle.load(f)
+    # Uncomment to load scores from files
+    # Load average and SD scores from files
+    metrics = ['f1_score', 'precision', 'recall', 'jaccard_similarity', 
+            'tau_tr', 'lambda_np', 'lambda_wp', 'overlap']
 
-    with open(f'{dir_prefix}net_results/net_results_sweep/average_recall_scores.pkl', 'rb') as f:
-        average_recall_scores = pickle.load(f)
+    for metric in metrics:
+        with open(f'{dir_prefix}net_results/net_results_sweep/average_{metric}_scores.pkl', 'rb') as f:
+            average_scores[metric] = pickle.load(f)
 
-    # load SDs
-    with open(f'{dir_prefix}net_results/net_results_sweep/SD_f1_scores.pkl', 'rb') as f:
-        SD_f1_scores = pickle.load(f)
+        with open(f'{dir_prefix}net_results/net_results_sweep/SD_{metric}_scores.pkl', 'rb') as f:
+            SD_scores[metric] = pickle.load(f)
 
-    with open(f'{dir_prefix}net_results/net_results_sweep/SD_recall_scores.pkl', 'rb') as f:
-        SD_recall_scores = pickle.load(f)
+    # Load f1 counts from file
+    with open(f'{dir_prefix}net_results/net_results_sweep/f1_counts.txt', 'r') as f:
+        f1_counts = dict(item.rstrip().split('\n') for item in f)
 
-    # load overlap scores 
-    with open (f'{dir_prefix}net_results/net_results_sweep/average_overlap_scores.pkl', 'rb') as f:
-        average_overlap_scores = pickle.load(f)
     
 
 
@@ -394,24 +392,24 @@ if True:
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))  # 2x2 subplot
 
-        # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
             for i, man in enumerate(man_values):
                 f1_scores = []
                 recall_scores = []
                 f1_errors = []
                 recall_errors = []
+                overlap_values = []
 
                 for b_perc in b_perc_values:
-                    # Accessing the scores using the correct keys
                     key = (p, n, b_perc, fp_fn, str(man))
-                    f1_scores.append(average_f1_scores.get(key))
-                    recall_scores.append(average_recall_scores.get(key))
-                    f1_errors.append(SD_f1_scores.get(key, 0))  # Default to 0 if no SD available
-                    recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
+                    f1_scores.append(average_scores['f1_score'].get(key))
+                    recall_scores.append(average_scores['recall'].get(key))
+                    f1_errors.append(SD_scores['f1_score'].get(key, 0))  # Default to 0 if no SD available
+                    recall_errors.append(SD_scores['recall'].get(key, 0))  # Default to 0 if no SD available
+                    overlap_values.append(average_scores['overlap'].get(key, 0))
 
                 # Plot F1 scores in the first column with error bars
-                axes[i, 0].errorbar(b_perc_values, f1_scores, yerr=f1_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 0].errorbar(b_perc_values, f1_scores, yerr=f1_errors, label=f'avg overlap={np.mean(overlap_values):.2f}', fmt='-o')
                 axes[i, 0].set_title(f'F1 Scores, Manual={man}')
                 axes[i, 0].set_xlabel('b_perc')
                 axes[i, 0].set_ylabel('F1 Score')
@@ -419,7 +417,7 @@ if True:
                 axes[i, 0].grid(alpha=0.3)
 
                 # Plot Recall scores in the second column with error bars
-                axes[i, 1].errorbar(b_perc_values, recall_scores, yerr=recall_errors, label=f'overlap={average_overlap_scores[key]}', fmt='-o')
+                axes[i, 1].errorbar(b_perc_values, recall_scores, yerr=recall_errors, label=f'avg overlap={np.mean(overlap_values):.2f}', fmt='-o')
                 axes[i, 1].set_title(f'Recall Scores, Manual={man}')
                 axes[i, 1].set_xlabel('b_perc')
                 axes[i, 1].set_ylabel('Recall Score')
@@ -429,7 +427,7 @@ if True:
         plt.tight_layout()
         plt.show()
 
-    if False:  # N VALUE PLOTTING
+    if True:  # N VALUE PLOTTING
         def reversed_colormap(cmap_name):
             cmap = plt.cm.get_cmap(cmap_name)
             colors = cmap(np.arange(cmap.N))
@@ -500,7 +498,7 @@ if True:
 
 
 
-    if True: # TAU vs OVERLAP PLOTTING
+    if False: # TAU vs OVERLAP PLOTTING
         # load organized results
         with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
             organized_results = pickle.load(f)
@@ -762,7 +760,7 @@ if False:
 
                                                                                                                         # HERE
                 precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=True, verbose=True)
+                            lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=False, verbose=True)
 
             # print tau_tr value
             print(f'tau_tr: {tau_tr}')
