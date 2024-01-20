@@ -20,6 +20,26 @@ import tqdm
 from multiprocessing import Pool
 from itertools import product
 
+from scipy.interpolate import interp1d
+
+
+if not"SLURM_JOB_ID" in os.environ:
+    # Figure export settings
+    from mpl_toolkits.axes_grid1 import ImageGrid 
+    plt.rcParams.update(plt.rcParamsDefault) 
+    plt.rcParams.update({"font.size": 15,
+                        "figure.dpi" : 100,
+                        "grid.alpha": 0.3,
+                        "axes.grid": True,
+                        "axes.axisbelow": True, 
+                        "figure.figsize": (8,6), 
+                        "mathtext.fontset":"cm",
+                        "xtick.labelsize": 14, 
+                        "ytick.labelsize": 14, 
+                        "axes.labelsize": 16, 
+                        "legend.fontsize": 13.5})
+    plt.rc("text", usetex=False)
+    plt.rc("font", family="serif")
 # original_stdout = sys.stdout
 # sys.stdout = open('Networks/net_results/Piglasso_Logs.txt', 'w')
 
@@ -147,7 +167,7 @@ def analysis(data,
 rank=1
 size=1
 # ################################################# SYNTHETIC PART #################################################
-if True:
+if False:
     run = False
     # COMPLETE SWEEP
     # code should compare: increasing B_perc and effect on performance at low sample size vs high sample size
@@ -427,26 +447,35 @@ if True:
         plt.tight_layout()
         plt.show()
 
-    if True:  # N VALUE PLOTTING
+    if False:  # N VALUE PLOTTING
         def reversed_colormap(cmap_name):
             cmap = plt.cm.get_cmap(cmap_name)
             colors = cmap(np.arange(cmap.N))
             colors = np.flipud(colors)
             return mcolors.LinearSegmentedColormap.from_list('reversed_' + cmap_name, colors)
 
-        # Use the custom function to reverse the 'Blues' colormap
         reversed_blues = reversed_colormap('Blues')
 
         b_perc = 0.65  # Fixed b_perc
         p = 150  # Fixed number of variables
         fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(6, 15), sharex=True, dpi=150)  # 1x2 subplot
-        # set suptitle
-        # fig.suptitle(f'F-Scores and Recall for Synthetic Data', fontsize=16)
 
         man = False  # Only considering False for man values
 
-        # Iterate over fp_fn values and plot
         for fp_fn in fp_fn_values:
+            f1_scores = []
+            recall_scores = []
+            f1_errors = []
+            recall_errors = []
+
+            for n in n_values:
+                key = (p, n, b_perc, fp_fn, str(man))
+                f1_scores.append(average_scores['f1_score'].get(key))
+                recall_scores.append(average_scores['recall'].get(key))
+                f1_errors.append(SD_scores['f1_score'].get(key, 0))  # Default to 0 if no SD available
+                recall_errors.append(SD_scores['recall'].get(key, 0))  # Default to 0 if no SD available
+
+            # Determine color and alpha based on fp_fn value
             if fp_fn < 1.0:
                 exponent = 3
                 scaled_fp_fn = fp_fn ** exponent
@@ -456,84 +485,141 @@ if True:
                 color = 'firebrick'
                 alpha = 1
 
-            f1_scores = []
-            recall_scores = []
-            f1_errors = []
-            recall_errors = []
-
-            for n in n_values:
-                # Accessing the scores using the correct keys
-                key = (p, n, b_perc, fp_fn, str(man))
-                f1_scores.append(average_f1_scores.get(key))
-                recall_scores.append(average_recall_scores.get(key))
-                f1_errors.append(SD_f1_scores.get(key, 0))  # Default to 0 if no SD available
-                recall_errors.append(SD_recall_scores.get(key, 0))  # Default to 0 if no SD available
-
             # Plot F1 scores
-            axes[0].errorbar(n_values, f1_scores, yerr=f1_errors, fmt='-o', color=color, alpha=alpha, markersize=3, label=f'overlap={round(average_overlap_scores[key], 1)}')
-            # axes[0].set_title('F1 Scores', fontsize=14)
-            # axes[0].set_xlabel('Sample Size', fontsize=14)
+            axes[0].errorbar(n_values, f1_scores, yerr=f1_errors, fmt='-o', color=color, alpha=alpha, markersize=3)
             axes[0].set_ylabel('F-Score', fontsize=12)
-            axes[0].legend(loc='best')
             axes[0].grid(alpha=0.15)
-            # remove xticks
-            axes[0].set_xticks([])
+            axes[0].set_xticks([])  # Remove xticks
 
             # Plot Recall scores
-            axes[1].errorbar(n_values, recall_scores, yerr=recall_errors, fmt='-o', color=color, alpha=alpha, markersize=3, label=f'overlap={round(average_overlap_scores[key], 1)}')
-            # axes[1].set_title('Recall Scores', fontsize=14)
+            axes[1].errorbar(n_values, recall_scores, yerr=recall_errors, fmt='-o', color=color, alpha=alpha, markersize=3)
             axes[1].set_xlabel('Sample Size', fontsize=12)
             axes[1].set_ylabel('Recall', fontsize=12)
-            # axes[1].legend(loc='best')
             axes[1].grid(alpha=0.15)
-
 
             xticks = [0, 100, 300, 500, 700, 900, 1100]
             for ax in axes:  # Apply to both subplots
                 ax.set_xticks(xticks)
                 ax.set_xlim(0, 1150)
 
+        plt.savefig(f'{dir_prefix}net_results/net_results_sweep/n_value_plot.svg')
+
+        # plt.tight_layout()
+        plt.show()
+
+    ### N VALUE FULL  4 x 4
+    if True:  # N VALUE PLOTTING
+        def reversed_colormap(cmap_name):
+            cmap = plt.cm.get_cmap(cmap_name)
+            colors = cmap(np.arange(cmap.N))
+            colors = np.flipud(colors)
+            return mcolors.LinearSegmentedColormap.from_list('reversed_' + cmap_name, colors)
+
+        reversed_blues = reversed_colormap('Blues')
+
+        b_perc = 0.65  # Fixed b_perc
+        p = 150  # Fixed number of variables
+        fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(6, 20), sharex=True, dpi=150)  # 4x1 subplot
+
+        man = False  # Only considering False for man values
+
+        for fp_fn in fp_fn_values:
+            for n in n_values:
+                key = (p, n, b_perc, fp_fn, str(man))
+                # Get metrics values and errors
+                metrics_values = {
+                    'f1_score': average_scores['f1_score'].get(key),
+                    'recall': average_scores['recall'].get(key),
+                    'jaccard_similarity': average_scores['jaccard_similarity'].get(key),
+                    'precision': average_scores['precision'].get(key)
+                }
+                metrics_errors = {
+                    'f1_score': SD_scores['f1_score'].get(key, 0),
+                    'recall': SD_scores['recall'].get(key, 0),
+                    'jaccard_similarity': SD_scores['jaccard_similarity'].get(key, 0),
+                    'precision': SD_scores['precision'].get(key, 0)
+                }
+
+                # Determine color and alpha based on fp_fn value
+                if fp_fn < 1.0:
+                    exponent = 3
+                    scaled_fp_fn = fp_fn ** exponent
+                    color = reversed_blues(scaled_fp_fn)
+                    alpha = 1
+                else:
+                    color = 'firebrick'
+                    alpha = 1
+
+                # Plot for each metric
+                for ax, metric in zip(axes, metrics_values):
+                    ax.errorbar(n, metrics_values[metric], yerr=metrics_errors[metric], fmt='-o', color=color, alpha=alpha, markersize=3, label=f'{metric} (fp_fn={fp_fn})')
+                    ax.set_ylabel(f'{metric.capitalize()}', fontsize=12)
+                    ax.grid(alpha=0.15)
+                    ax.legend(loc='best')
+
+        # Set x-axis labels and ticks
+        axes[-1].set_xlabel('Sample Size', fontsize=12)
+        xticks = [0, 100, 300, 500, 700, 900, 1100]
+        for ax in axes:
+            ax.set_xticks(xticks)
+            ax.set_xlim(0, 1150)
+
+        plt.savefig(f'{dir_prefix}net_results/net_results_sweep/n_value_plot.svg')
+
         # plt.tight_layout()
         plt.show()
 
 
 
-    if False: # TAU vs OVERLAP PLOTTING
-        # load organized results
+    if True:  # TAU vs OVERLAP PLOTTING
+        # Load organized results
         with open(f'{dir_prefix}net_results/net_results_sweep/organized_SWEEP_results_n{len(n_values)}.pkl', 'rb') as f:
             organized_results = pickle.load(f)
-        # Organize data by 'overlap'
+
+        # Organize data by 'overlap', excluding cases where overlap is 0.0
         organized_data = {}
         for key, value in organized_results.items():
             if value['overlap'] == 0.0:
-                continue
+                continue  # Skip this entry if overlap is 0.0
+
             overlap = value['overlap']
             tau_tr = value['tau_tr']
+
             if overlap not in organized_data:
                 organized_data[overlap] = []
+
             organized_data[overlap].append(tau_tr)
 
         # Calculate mean and standard deviation for each 'overlap'
-        overlap_values = []
-        mean_tau_tr_values = []
-        error_tau_tr_values = []
-        for overlap, tau_tr_list in organized_data.items():
-            overlap_values.append(overlap)
-            mean_tau_tr_values.append(np.mean(tau_tr_list))
-            error_tau_tr_values.append(np.std(tau_tr_list))
+        overlap_values = np.array(list(organized_data.keys()))
+        mean_tau_tr_values = np.array([np.mean(organized_data[ov]) for ov in overlap_values])
+        error_tau_tr_values = np.array([np.std(organized_data[ov], ddof=1) for ov in overlap_values])  # ddof=1 for sample standard deviation
 
-        # Plotting
-        plt.figure(figsize=(7, 4), dpi = 300)
+        # Create a linear interpolation function
+        f = interp1d(overlap_values, mean_tau_tr_values, kind='linear')
+
+        # Specific tau_tr values and their colors
+        tau_tr_points = [739.5, 739.8, 751, 754]
+        colors = ['red', 'red', 'blue', 'blue']
+
+        # Plotting the error bars and line
+        plt.figure()# (figsize=(7, 4), dpi=300)
         plt.errorbar(overlap_values, mean_tau_tr_values, yerr=error_tau_tr_values, fmt='o', color='purple', alpha=0.5)
         plt.plot(overlap_values, mean_tau_tr_values, color='purple', alpha=0.5)
-        # plt.title(r'Average $\tau^{t_r}$ vs Prior Overlap for Synthetic Data')
-        plt.xlabel('Prior Overlap', fontsize=14)
+
+        # Plot specific tau_tr points
+        for tau_tr, color in zip(tau_tr_points, colors):
+            # Assuming a linear relationship, find the corresponding overlap value
+            corresponding_overlap = np.interp(tau_tr, mean_tau_tr_values, overlap_values)
+            plt.scatter(corresponding_overlap, tau_tr, color=color, marker='s', s=50)  # s is the size of the square
+
+        plt.xlabel('Prior Overlap')
         plt.ylabel(r'$\tau^{t_r}$', fontsize=18)
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
+        # plt.grid(alpha=0.2)
         plt.tight_layout()
-        plt.show()
+
+        plt.savefig(f'{dir_prefix}net_results/net_results_sweep/tau_tr_vs_overlap.svg')
+        # plt.show()
 
 
 
@@ -543,7 +629,7 @@ if True:
 
 
 ################################################## OMICS DATA PART #################################################
-if False:
+if True:
     for o_t in ['p', 't']:
         for cms in ['cmsALL', 'cms123']:
             # for cms_type in ['cmsALL', 'cms123']:

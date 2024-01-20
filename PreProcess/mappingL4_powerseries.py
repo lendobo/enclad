@@ -432,8 +432,8 @@ linked_rppa_T_labeled = linked_rppa_T_labeled.loc[:, linked_rppa_T_labeled.colum
 # make subset df with only CMS1, CMS2, CMS3 and then drop the last column
 linked_RNA_T_123 = linked_RNA_T_labeled.loc[linked_RNA_T_labeled.iloc[:, -1].isin(['CMS1', 'CMS2', 'CMS3'])].drop(columns=['SSP.nearestCMS'])
 linked_rppa_T_123 = linked_rppa_T_labeled.loc[linked_rppa_T_labeled.iloc[:, -1].isin(['CMS1', 'CMS2', 'CMS3'])].drop(columns=['SSP.nearestCMS'])
-linked_RNA_T_ALL = linked_RNA_T_labeled.drop(columns=['SSP.nearestCMS'])
-linked_rppa_T_ALL = linked_rppa_T_labeled.drop(columns=['SSP.nearestCMS'])
+linked_RNA_T_ALL = linked_RNA_T_labeled.loc[linked_RNA_T_labeled.iloc[:, -1].isin(['CMS1', 'CMS2', 'CMS3', 'CMS4'])].drop(columns=['SSP.nearestCMS'])
+linked_rppa_T_ALL = linked_rppa_T_labeled.loc[linked_rppa_T_labeled.iloc[:, -1].isin(['CMS1', 'CMS2', 'CMS3', 'CMS4'])].drop(columns=['SSP.nearestCMS'])
 
 # write to csv
 linked_RNA_T_ALL.to_csv('../data/LinkedOmics/linked_rna_ALL.csv')
