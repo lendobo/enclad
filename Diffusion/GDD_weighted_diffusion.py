@@ -519,7 +519,7 @@ if rank == 0 and not args.permu_runs:
 if args.visualize:
     t_values = np.linspace(0.00, 10, 500)
 else:
-    t_values = np.linspace(0.01, 10, 250)
+    t_values = np.linspace(0.01, 10, 500)
 
 red_range = args.red_range.split(',')
 red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
@@ -645,7 +645,8 @@ def run_knockout_analysis(G_aggro,
             }
 
             if args and args.visualize:
-                results[knockout_target][reduction]['vis_kernels'] = [diff_kernel_knock_aggro[i] for i, t in enumerate(t_values)]
+                results[knockout_target][reduction]['vis_kernels_aggro'] = [diff_kernel_knock_aggro[i] for i, t in enumerate(t_values)]
+                results[knockout_target][reduction]['vis_kernels_stable'] = [diff_kernel_knock_stable[i] for i, t in enumerate(t_values)]
 
     elif knockout_type == 'runtype_random':
 
@@ -1393,184 +1394,184 @@ plt.show()
 
 
     # %%  NODE KNOCKOUT CODE
-    args.net_dens = 'high_dens'
-    t_values = np.linspace(0.01, 10, 500)
-    with open(f'diff_results/Pathway_False_target_X_GDDs_ks308_permuNone_symmetricTrue_low_dens.pkl', 'rb') as f:
-        node_knockouts = pkl.load(f)
+args.net_dens = 'high_dens'
+t_values = np.linspace(0.01, 10, 500)
+with open(f'diff_results/Pathway_False_target_X_GDDs_ks308_permuNone_symmetricTrue_low_dens.pkl', 'rb') as f:
+    node_knockouts = pkl.load(f)
 
-    print(f'node_knockouts: {node_knockouts.keys()}')
-    print(f'Reduction factors: {node_knockouts[list(node_knockouts.keys())[0]].keys()}')
-    # print(f'GDD values: {node_knockouts[list(node_knockouts.keys())[0]][0.05]}')
+print(f'node_knockouts: {node_knockouts.keys()}')
+print(f'Reduction factors: {node_knockouts[list(node_knockouts.keys())[0]].keys()}')
+# print(f'GDD values: {node_knockouts[list(node_knockouts.keys())[0]][0.05]}')
 
-    # for key in node_knockouts.keys():
-    #     print(f'node {key}: {node_knockouts[key].keys()}')
-    # Choose the node and t_values for plotting
-    selected_node = np.random.choice(list(node_knockouts.keys()))
+# for key in node_knockouts.keys():
+#     print(f'node {key}: {node_knockouts[key].keys()}')
+# Choose the node and t_values for plotting
+selected_node = np.random.choice(list(node_knockouts.keys()))
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
 
-    # Left plot: GDD values over time for various reductions (single node)
-    for reduction in node_knockouts[selected_node].keys():
-        gdd_values_trans = node_knockouts[selected_node][reduction]['gdd_values_trans']
-        gdd_values_disrupt = node_knockouts[selected_node][reduction]['gdd_values_disrupt']
-        ax1.plot(t_values, gdd_values_trans, label=f'Reduction {reduction}')
-        ax1.plot(t_values, gdd_values_disrupt, label=f'Reduction {reduction} (Disrupt)')
+# Left plot: GDD values over time for various reductions (single node)
+for reduction in node_knockouts[selected_node].keys():
+    gdd_values_trans = node_knockouts[selected_node][reduction]['gdd_values_trans']
+    gdd_values_disrupt = node_knockouts[selected_node][reduction]['gdd_values_disrupt']
+    ax1.plot(t_values, gdd_values_trans, label=f'Reduction {reduction}')
+    ax1.plot(t_values, gdd_values_disrupt, label=f'Reduction {reduction} (Disrupt)')
 
-    ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
-    ax1.set_xlabel('Time')
-    ax1.set_ylabel('GDD Value')
-    ax1.legend()
-    ax1.grid(True)
+ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
+ax1.set_xlabel('Time')
+ax1.set_ylabel('GDD Value')
+ax1.legend()
+ax1.grid(True)
 
-    # Choose a reduction factor from the list of reductions
-    selected_reduction = red_range[0]
-    selected_reduction = 0.05
+# Choose a reduction factor from the list of reductions
+selected_reduction = red_range[0]
+selected_reduction = 0.05
 
-    max_gdds_trans = {}
-    max_gdds_disrupt = {}
-    # Right plot: GDD values over time for a single reduction (all nodes)
-    for node_base in node_knockouts.keys():
-        gdd_values_trans = node_knockouts[node_base][selected_reduction]['gdd_values_trans']
-        gdd_values_disrupt = node_knockouts[node_base][selected_reduction]['gdd_values_disrupt']
-        ax2.plot(t_values, gdd_values_trans, label=f'Node {node_base}', alpha=0.5)
-        # ax2.plot(t_values, gdd_values_disrupt, label=f'Node {node_base} (Disrupt)', alpha=0.5)
-        max_gdds_trans[node_base] = np.max(gdd_values_trans)
-        max_gdds_disrupt[node_base] = np.max(gdd_values_disrupt)
+max_gdds_trans = {}
+max_gdds_disrupt = {}
+# Right plot: GDD values over time for a single reduction (all nodes)
+for node_base in node_knockouts.keys():
+    gdd_values_trans = node_knockouts[node_base][selected_reduction]['gdd_values_trans']
+    gdd_values_disrupt = node_knockouts[node_base][selected_reduction]['gdd_values_disrupt']
+    ax2.plot(t_values, gdd_values_trans, label=f'Node {node_base}', alpha=0.5)
+    # ax2.plot(t_values, gdd_values_disrupt, label=f'Node {node_base} (Disrupt)', alpha=0.5)
+    max_gdds_trans[node_base] = np.max(gdd_values_trans)
+    max_gdds_disrupt[node_base] = np.max(gdd_values_disrupt)
 
-    ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-    ax2.set_xlabel('Time')
-    # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-    # ax2.legend()
-    ax2.set_xlim([0, 2])
-    ax2.grid(True)
+ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+ax2.set_xlabel('Time')
+# ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+# ax2.legend()
+ax2.set_xlim([0, 2])
+ax2.grid(True)
 
-    plt.show()
-    # print(max_gdds)
-    # max_GDD_1 = max_gdds['1']
-    # max_GDD_2 = max_gdds['2']
-    # print(max_GDD_1 - max_GDD_2)
+plt.show()
+# print(max_gdds)
+# max_GDD_1 = max_gdds['1']
+# max_GDD_2 = max_gdds['2']
+# print(max_GDD_1 - max_GDD_2)
 
-    # print max_gdds in ascending order
-    sorted_max_gdds_trans = {k: v for k, v in sorted(max_gdds_trans.items(), key=lambda item: item[1])}
-    sorted_max_gdds_disrupt = {k: v for k, v in sorted(max_gdds_disrupt.items(), key=lambda item: item[1])}
-    # add key for original max_gdd
-    sorted_max_gdds_disrupt['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
-    # print original max_gdd 
-    # print(max_orig_gdd_values)
-    # print(sorted_max_gdds_trans)
-    # print(sorted_max_gdds_disrupt)
+# print max_gdds in ascending order
+sorted_max_gdds_trans = {k: v for k, v in sorted(max_gdds_trans.items(), key=lambda item: item[1])}
+sorted_max_gdds_disrupt = {k: v for k, v in sorted(max_gdds_disrupt.items(), key=lambda item: item[1])}
+# add key for original max_gdd
+sorted_max_gdds_disrupt['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
+# print original max_gdd 
+# print(max_orig_gdd_values)
+# print(sorted_max_gdds_trans)
+# print(sorted_max_gdds_disrupt)
 
-    summed_degrees = {}
-    summed_degrees_aggro = {}
-    summed_betweenness = {}
-    summed_betweenness_aggro = {}
-    for node in sorted_max_gdds_trans.keys():
-        node_p = node + '.p'
-        node_t = node + '.t'
-        
-        # Accessing the degree for each node directly from the DegreeView
-        degree_p_aggro = weighted_G_cms_ALL.degree(node_p, weight='weight') if node_p in weighted_G_cms_ALL else 0
-        degree_t_aggro = weighted_G_cms_ALL.degree(node_t, weight='weight') if node_t in weighted_G_cms_ALL else 0
-        degree_p_stable = weighted_G_cms_123.degree(node_p, weight='weight') if node_p in weighted_G_cms_123 else 0
-        degree_t_stable = weighted_G_cms_123.degree(node_t, weight='weight') if node_t in weighted_G_cms_123 else 0
+summed_degrees = {}
+summed_degrees_aggro = {}
+summed_betweenness = {}
+summed_betweenness_aggro = {}
+for node in sorted_max_gdds_trans.keys():
+    node_p = node + '.p'
+    node_t = node + '.t'
+    
+    # Accessing the degree for each node directly from the DegreeView
+    degree_p_aggro = weighted_G_cms_ALL.degree(node_p, weight='weight') if node_p in weighted_G_cms_ALL else 0
+    degree_t_aggro = weighted_G_cms_ALL.degree(node_t, weight='weight') if node_t in weighted_G_cms_ALL else 0
+    degree_p_stable = weighted_G_cms_123.degree(node_p, weight='weight') if node_p in weighted_G_cms_123 else 0
+    degree_t_stable = weighted_G_cms_123.degree(node_t, weight='weight') if node_t in weighted_G_cms_123 else 0
 
-        summed_betweenness = nx.betweenness_centrality(weighted_G_cms_ALL, weight='weight')
-        summed_betweenness_aggro[node] = summed_betweenness[node_p] + summed_betweenness[node_t]
-        
-        summed_degree_aggro = degree_p_aggro + degree_t_aggro
-        summed_degree_stable = degree_p_stable + degree_t_stable
-        summed_degrees[node] = summed_degree_aggro + summed_degree_stable / 4
-        summed_degrees_aggro[node] = summed_degree_aggro / 4
-
-
-    # Make dataframe with node, max_gdd, and summed_degree
-    df = pd.DataFrame.from_dict(sorted_max_gdds_trans, orient='index', columns=['max_gdd_trans'])
-    # add row with original max_gdd
-    df.loc['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
-
-    df['max_gdd_disrupt'] = sorted_max_gdds_disrupt.values()
-    # make column with max_gdd delta
-    df['max_gdd_delta_trans'] = df['max_gdd_trans'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd_trans']
-    df['max_gdd_delta_disrupt'] = df['max_gdd_disrupt'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd_disrupt']
-    # make column with max_gdd / original_max_gdd
-    # df['max_gdd_ratio_trans'] = df['max_gdd_trans'] / df.loc['ORIGINAL_MAX_GDD', 'max_gdd_trans']
-    # df['max_gdd_ratio_disrupt'] = df['max_gdd_disrupt'] / df.loc['ORIGINAL_MAX_GDD', 'max_gdd_disrupt']
-    df['summed_degree'] = df.index.map(summed_degrees)
-    df['summed_degree_aggro'] = df.index.map(summed_degrees_aggro)
-    df['summed_betweenness_aggro'] = df.index.map(summed_betweenness_aggro)
-    df = df.sort_values(by='max_gdd_trans', ascending=True)
-
-    print(df.head())
-
-    # plot summed_degrees_aggro vs max_gdd_disrupt
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df['summed_degree_aggro'], df['max_gdd_disrupt'])
-    plt.xlabel('Summed Degree (Aggressive)')
-    plt.ylabel('Max GDD (Disrupt)')
-    plt.title('Summed Degree (Aggressive) vs Max GDD (Disrupt)')
-    # plt.ylim([1.95, 2.05])
-    plt.show()
-
-    print(df['summed_degree_aggro'])
-
-    # # plot summed_betweenness_aggro vs max_gdd_disrupt
-    # plt.figure(figsize=(10, 6))
-    # plt.scatter(df['summed_betweenness_aggro'], df['max_gdd_disrupt'])
-    # plt.xlabel('Summed Betweenness (Aggressive)')
-    # plt.ylabel('Max GDD (Disrupt)')
-    # plt.title('Summed Betweenness (Aggressive) vs Max GDD (Disrupt)')
-    # plt.ylim([1.95, 2.05])
-    # plt.show()
-
-    # # plot the distribution of max_gdd_delta_trans
-    # plt.figure(figsize=(10, 6))
-    # plt.hist()
+    summed_betweenness = nx.betweenness_centrality(weighted_G_cms_ALL, weight='weight')
+    summed_betweenness_aggro[node] = summed_betweenness[node_p] + summed_betweenness[node_t]
+    
+    summed_degree_aggro = degree_p_aggro + degree_t_aggro
+    summed_degree_stable = degree_p_stable + degree_t_stable
+    summed_degrees[node] = summed_degree_aggro + summed_degree_stable / 4
+    summed_degrees_aggro[node] = summed_degree_aggro / 4
 
 
+# Make dataframe with node, max_gdd, and summed_degree
+df = pd.DataFrame.from_dict(sorted_max_gdds_trans, orient='index', columns=['max_gdd_trans'])
+# add row with original max_gdd
+df.loc['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
 
-    # write to file
-    df.to_csv(f'diff_results/NODE_KNOCKOUTS_RESULTS_symmetric{args.symmetric}_{args.net_dens}.csv', index=True)
+df['max_gdd_disrupt'] = sorted_max_gdds_disrupt.values()
+# make column with max_gdd delta
+df['max_gdd_delta_trans'] = df['max_gdd_trans'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd_trans']
+df['max_gdd_delta_disrupt'] = df['max_gdd_disrupt'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd_disrupt']
+# make column with max_gdd / original_max_gdd
+# df['max_gdd_ratio_trans'] = df['max_gdd_trans'] / df.loc['ORIGINAL_MAX_GDD', 'max_gdd_trans']
+# df['max_gdd_ratio_disrupt'] = df['max_gdd_disrupt'] / df.loc['ORIGINAL_MAX_GDD', 'max_gdd_disrupt']
+df['summed_degree'] = df.index.map(summed_degrees)
+df['summed_degree_aggro'] = df.index.map(summed_degrees_aggro)
+df['summed_betweenness_aggro'] = df.index.map(summed_betweenness_aggro)
+df = df.sort_values(by='max_gdd_trans', ascending=True)
 
-    # %% SAVE FOR LATER
-    # PLOT 2 (WEAKER KNOCKDOWN)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
+print(df.head())
+
+# plot summed_degrees_aggro vs max_gdd_disrupt
+plt.figure(figsize=(10, 6))
+plt.scatter(df['summed_degree_aggro'], df['max_gdd_disrupt'])
+plt.xlabel('Summed Degree (Aggressive)')
+plt.ylabel('Max GDD (Disrupt)')
+plt.title('Summed Degree (Aggressive) vs Max GDD (Disrupt)')
+# plt.ylim([1.95, 2.05])
+plt.show()
+
+print(df['summed_degree_aggro'])
+
+# # plot summed_betweenness_aggro vs max_gdd_disrupt
+# plt.figure(figsize=(10, 6))
+# plt.scatter(df['summed_betweenness_aggro'], df['max_gdd_disrupt'])
+# plt.xlabel('Summed Betweenness (Aggressive)')
+# plt.ylabel('Max GDD (Disrupt)')
+# plt.title('Summed Betweenness (Aggressive) vs Max GDD (Disrupt)')
+# plt.ylim([1.95, 2.05])
+# plt.show()
+
+# # plot the distribution of max_gdd_delta_trans
+# plt.figure(figsize=(10, 6))
+# plt.hist()
 
 
-    # make another plot as ax2 but for reduction factor = 0.8
-    selected_reduction = red_range[-1]
 
-    max_gdds = {}
-    # Right plot: GDD values over time for a single reduction (all nodes)
-    for node_base in node_knockouts.keys():
-        gdd_values = node_knockouts[node_base][selected_reduction]['gdd_values']
-        ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
-        max_gdds[node_base] = np.max(gdd_values)
+# write to file
+df.to_csv(f'diff_results/NODE_KNOCKOUTS_RESULTS_symmetric{args.symmetric}_{args.net_dens}.csv', index=True)
+
+# %% SAVE FOR LATER
+# PLOT 2 (WEAKER KNOCKDOWN)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
 
 
-    ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
-    ax2.set_xlabel('Time')
-    # ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
-    # ax2.legend()
-    ax2.set_xlim([0, 2])
-    ax2.grid(True)
+# make another plot as ax2 but for reduction factor = 0.8
+selected_reduction = red_range[-1]
 
-    plt.show()
-    # print(max_gdds)
-    # max_GDD_1 = max_gdds['1']
-    # max_GDD_2 = max_gdds['2']
-    # print(max_GDD_1 - max_GDD_2)
+max_gdds = {}
+# Right plot: GDD values over time for a single reduction (all nodes)
+for node_base in node_knockouts.keys():
+    gdd_values = node_knockouts[node_base][selected_reduction]['gdd_values']
+    ax2.plot(t_values, gdd_values, label=f'Node {node_base}', alpha=0.5)
+    max_gdds[node_base] = np.max(gdd_values)
 
-    selected_reduction = red_range[-1]
-    # order nodes by max GDD
-    max_gdds = {}
-    for node_base in node_knockouts.keys():
-        max_gdds[node_base] = np.max(node_knockouts[node_base][selected_reduction]['gdd_values'])
 
-    sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
+ax2.set_xlabel('Time')
+# ax2.set_ylabel('GDD Value')  # Y-label is shared with the left plot
+# ax2.legend()
+ax2.set_xlim([0, 2])
+ax2.grid(True)
 
-    # get the nodes with the highest GDD
-    highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
-    highest_gdd_nodes
+plt.show()
+# print(max_gdds)
+# max_GDD_1 = max_gdds['1']
+# max_GDD_2 = max_gdds['2']
+# print(max_GDD_1 - max_GDD_2)
+
+selected_reduction = red_range[-1]
+# order nodes by max GDD
+max_gdds = {}
+for node_base in node_knockouts.keys():
+    max_gdds[node_base] = np.max(node_knockouts[node_base][selected_reduction]['gdd_values'])
+
+sorted_max_gdds = {k: v for k, v in sorted(max_gdds.items(), key=lambda item: item[1])}
+
+# get the nodes with the highest GDD
+highest_gdd_nodes = list(sorted_max_gdds.keys())[-5:]
+highest_gdd_nodes
 
 
 
@@ -1649,10 +1650,11 @@ if "SLURM_JOB_ID" not in os.environ:
         return fig
 
     # %%
+    orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
+    orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
 
     t_values = np.linspace(0, 10, 500)
     # visualisation_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values_viz]
-
 
     def multiplex_diff_viz(M, weighted_G, ax=None, node_colors=None, node_sizes=None):
         # Load the pickle file
@@ -1660,6 +1662,7 @@ if "SLURM_JOB_ID" not in os.environ:
             results = pkl.load(f)
         
         time_resolved_kernels = results['XRCC1'][0.05]['vis_kernels'] #  visualisation_kernel[:7] # results['ACACA'][0.00]['vis_kernels'][:12] # BIRC2
+
 
 
         max_gdd_trans = results['XRCC1'][0.05]['max_gdd_trans'] # 0 # results['ACACA'][0.00]['max_gdd_index'] # BIRC2
@@ -1793,6 +1796,87 @@ if "SLURM_JOB_ID" not in os.environ:
     if args.visualize:
         multiplex_diff_viz(pymnet_ALL, weighted_G_cms_ALL)
 
+
+# %% 
+orig_aggro_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values]
+orig_non_mesench_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_123), t) for t in t_values]
+orig_gdd_values = np.linalg.norm(np.array(orig_non_mesench_kernel) - np.array(orig_aggro_kernel), axis=(1, 2), ord='fro')**2
+max_orig_gdd_values = np.max(np.sqrt(orig_gdd_values))
+
+
+# %%
+import seaborn as sns
+
+def plot_kernel_heatmaps(kernel_1_list, kernel_2_list, time_points, t_values):
+    for time_point in time_points:
+        # Convert the time point to an index
+        index = int(np.round(time_point * (len(t_values) - 1) / t_values[-1]))
+
+        # Retrieve the kernels at this index
+        kernel_1 = kernel_1_list[index]
+        kernel_2 = kernel_2_list[index]
+
+        # Component-wise subtraction, square and square root
+        diff_kernel = np.sqrt((kernel_1 - kernel_2)**2)
+
+        # Plot the heatmap
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(diff_kernel, square=True, cmap='magma')
+        plt.title(f"Heatmap for Time Point: {time_point}")
+        plt.show()
+    
+    return diff_kernel
+
+t_values = np.linspace(0, 10, 500)
+
+orig_max_gdd_index = np.argmax(np.sqrt(orig_gdd_values) == max_orig_gdd_values)
+orig_max_gdd_time = t_values[orig_max_gdd_index]
+
+time_points_to_plot_orig = [0, orig_max_gdd_time]  # Initial and max GDD time
+# Add a time point after max_gdd_time, for example, one step further in the t_values array
+# Calculate the next index
+next_index = min(len(t_values)-1, 75)
+# Add the time point to the list
+time_points_to_plot_orig.append(t_values[next_index])
+
+# visualisation_kernel = [laplacian_exponential_kernel_eigendecomp(weighted_laplacian_matrix(weighted_G_cms_ALL), t) for t in t_values_viz]
+
+
+
+corresponding_trans_kernel = results['XRCC1'][0.05]['vis_kernels'][max_gdd_index]
+
+
+plot_kernel_heatmaps(orig_aggro_kernel, orig_non_mesench_kernel, time_points_to_plot, t_values)
+
+# %%
+
+
+def heatmap_of_differences(M, weighted_G, ax=None, node_colors=None, node_sizes=None):
+    # Load the pickle file
+    with open('diff_results/Pathway_False_target_X_GDDs_ks308_permuNone_symmetricTrue_low_dens.pkl', 'rb') as f: # 'diff_results/Pathway_False_target_BB_GDDs_ks272.pkl'
+        results = pkl.load(f)
+    
+    time_resolved_kernels = results['XRCC1'][0.05]['vis_kernels'] #  visualisation_kernel[:7] # results['ACACA'][0.00]['vis_kernels'][:12] # BIRC2
+
+
+
+    max_gdd_trans = results['XRCC1'][0.05]['max_gdd_trans'] # 0 # results['ACACA'][0.00]['max_gdd_index'] # BIRC2
+    gdd_values_trans = results['XRCC1'][0.05]['gdd_values_trans']
+    max_gdd_index = np.argmax(np.sqrt(gdd_values_trans) == max_gdd_trans)
+    max_gdd_time = t_values[max_gdd_index]
+    # Get the corresponding kernel from vis_kernels
+    corresponding_kernel = results['XRCC1'][0.05]['vis_kernels'][max_gdd_index]
+    time_points_to_plot = [0, max_gdd_time]  # Initial and max GDD time
+    # Add a time point after max_gdd_time, for example, one step further in the t_values array
+    # Calculate the next index
+    next_index = min(len(t_values)-1, 75)
+    # Add the time point to the list
+    time_points_to_plot.append(t_values[next_index])
+    # Extract the kernels for the selected time points
+    selected_kernels = [results['XRCC1'][0.05]['vis_kernels'][int(np.round(time_point * (len(t_values) - 1) / 10))] for time_point in time_points_to_plot]
+
+    # Call the function
+    plot_kernel_heatmaps(orig_aggro_kernel, orig_non_mesench_kernel, time_points_to_plot)
 
 # %%
 
