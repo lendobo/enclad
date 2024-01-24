@@ -65,7 +65,7 @@ else:
 parser = argparse.ArgumentParser(description='Run QJ Sweeper with command-line arguments.')
 parser.add_argument('--koh', type=int, default=40, help='Number of hub nodes to knock out')
 parser.add_argument('--kob', type=int, default=0, help='Number of bottom nodes to knock out')
-parser.add_argument('--red_range', type=str, default='0.00,0.00,1', help='Range of reduction factors to investigate')
+parser.add_argument('--red_range', type=str, default='0.05,0.05,1', help='Range of reduction factors to investigate')
 parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS to use')
 # parser.add_argument('--mode', type=str, default='disruption', choices=['disruption', 'transition'], help='Type of knockout analysis')
 parser.add_argument('--test_net', type=bool, default=False, help='Boolean for using test nets of various sizes')
@@ -671,7 +671,8 @@ def run_knockout_analysis(G_aggro,
                 diff_kernel_knock_stable = [knock_stable_eigs[1] @ np.diag(np.exp(-t * knock_stable_eigs[0])) @ knock_stable_eigs[1].T for t in t_values]
 
                 gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_stable) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
-                gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                gdd_values_disruptA = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                gdd_values_disruptS = np.linalg.norm(np.array(orig_nonmes_kernel) - np.array(diff_kernel_knock_stable), axis=(1, 2), ord='fro')**2
             else:
                 knockdown_func = knockdown_node_both_layers if knockout_type == 'runtype_node' else knockdown_pathway_nodes
 
@@ -681,13 +682,17 @@ def run_knockout_analysis(G_aggro,
                 diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
 
                 gdd_values_trans = np.linalg.norm(np.array(orig_nonmes_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
-                gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                gdd_values_disruptA = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                gdd_values_disruptS = np.linalg.norm(np.array(orig_nonmes_kernel) - np.array(diff_kernel_knock_stable), axis=(1, 2), ord='fro')**2
+
 
             results[knockout_target][reduction] = {
                 'gdd_values_trans': gdd_values_trans,
-                'gdd_values_disrupt': gdd_values_disrupt,
+                'gdd_values_disruptA': gdd_values_disruptA,
+                'gdd_values_disruptS': gdd_values_disruptS,
                 'max_gdd_trans': np.max(np.sqrt(gdd_values_trans)),
-                'max_gdd_disrupt': np.max(np.sqrt(gdd_values_disrupt))
+                'max_gdd_disruptS': np.max(np.sqrt(gdd_values_disruptA)),
+                'max_gdd_disruptA': np.max(np.sqrt(gdd_values_disruptS))
             }
 
             if args and args.visualize:
@@ -717,7 +722,8 @@ def run_knockout_analysis(G_aggro,
                     diff_kernel_knock_stable = [knock_stable_eigs[1] @ np.diag(np.exp(-t * knock_stable_eigs[0])) @ knock_stable_eigs[1].T for t in t_values]
 
                     gdd_values_trans = np.linalg.norm(np.array(diff_kernel_knock_stable) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
-                    gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                    gdd_values_disruptA = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                    gdd_values_disruptS = np.linalg.norm(np.array(orig_nonmes_kernel) - np.array(diff_kernel_knock_stable), axis=(1, 2), ord='fro')**2
                 else:
                     # Perform the knockout
                     knockdown_graph_aggro, knockdown_laplacian_aggro,_,_,_ = knockdown_random_nodes(G_aggro, node_list, reduced_weight=reduction)
@@ -726,12 +732,14 @@ def run_knockout_analysis(G_aggro,
                     diff_kernel_knock_aggro = [laplacian_exponential_kernel_eigendecomp(knockdown_laplacian_aggro, t) for t in t_values]
 
                     gdd_values_trans = np.linalg.norm(np.array(orig_nonmes_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
-                    gdd_values_disrupt = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                    gdd_values_disruptA = np.linalg.norm(np.array(orig_aggro_kernel) - np.array(diff_kernel_knock_aggro), axis=(1, 2), ord='fro')**2
+                    gdd_values_disruptS = np.linalg.norm(np.array(orig_nonmes_kernel) - np.array(diff_kernel_knock_stable), axis=(1, 2), ord='fro')**2
 
                 try:
                     results[f'random_{num_rand_nodes}_run_{run_index}'][reduction] = {
                         'max_gdd_trans': np.max(np.sqrt(gdd_values_trans)),
-                        'max_gdd_disrupt': np.max(np.sqrt(gdd_values_disrupt))
+                        'max_gdd_disruptA': np.max(np.sqrt(gdd_values_disruptA)),
+                        'max_gdd_disruptS': np.max(np.sqrt(gdd_values_disruptS))
                     }
                 except KeyError as e:
                     print(f"KeyError encountered! Attempted to access results[{f'random_{num_rand_nodes}_run_{run_index}'}][{reduction}]")
@@ -794,6 +802,7 @@ if "SLURM_JOB_ID" not in os.environ:
 
     args.pathway = True
     args.koh = 0
+    print("YOU SHOULD NOT BE ABLE TO SEE THIS")
 
 if args.pathway:
     if args.koh == 0:
@@ -841,7 +850,7 @@ if args.pathway:
         is_unique = True
 
         for existing_geneset in unique_genesets:
-            if calculate_overlap_percentage(current_geneset, existing_geneset) > 0.4:
+            if calculate_overlap_percentage(current_geneset, existing_geneset) > 0.6:
                 is_unique = False
                 break
 
@@ -1077,18 +1086,19 @@ if "SLURM_JOB_ID" not in os.environ:
 
     t_values = np.linspace(0.01, 10, 250)
     args.symmetric=True
+    selected_reduction = 0.05
 
     # args.pathway = True
     unique_identifier = 'RPRSTCRR'
 
     # Load results and pathway information
-    with open(f'diff_results/Pathway_True_target_RPRSTCRRBARCTRmSATDS_GDDs_ks308_permuNone_symmetricTrue.pkl', 'rb') as f:
+    with open(f'diff_results/Pathway_True_target_RPRSTCRRARTATASDTGSN_GDDs_ks308_permuNone_symmetricTrue_low_dens_5,25.pkl', 'rb') as f:
         target_results = pkl.load(f)
     with open(f'diff_results/Pathway_True_random_RPRSTCRR_GDDs_ks308_permu10368_symmetricTrue_low_dens_5,50.pkl', 'rb') as f:
         random_results = pkl.load(f)
 
     # print keys of random results
-    print(random_results['random_11_run_1'][0.00]['max_gdd_trans'])
+    print(random_results['random_11_run_1'][selected_reduction]['max_gdd_trans'])
     # print(random_results.keys())
     # print(len(random_results['random_11_run_1'][0.05]['max_gdd_trans']))
 
@@ -1113,7 +1123,7 @@ if "SLURM_JOB_ID" not in os.environ:
     random_results_by_length = {}  # {pathway_length: [list of max_gdd_trans values]}
     for key, result in random_results.items():
         length, run_number = parse_random_key(key)
-        max_gdd_trans = result[0.00]['max_gdd_trans']
+        max_gdd_trans = result[selected_reduction]['max_gdd_trans']
         if length not in random_results_by_length:
             random_results_by_length[length] = []
         random_results_by_length[length].append(max_gdd_trans)
@@ -1131,8 +1141,8 @@ if "SLURM_JOB_ID" not in os.environ:
     # Calculate p-values
     p_values = {}
     for pathway, result in target_results.items():
-        target_max_gdd_trans = result[0.00]['max_gdd_trans']
-        target_max_gdd_disrupt = result[0.00]['max_gdd_disrupt']
+        target_max_gdd_trans = result[selected_reduction]['max_gdd_trans']
+        target_max_gdd_disrupt = result[selected_reduction]['max_gdd_disrupt']
         pathway_length = get_pathway_length(pathway, interest_pathway_df)
         if pathway_length is not None:
             random_distribution = random_results_by_length.get(pathway_length, [])
@@ -1191,13 +1201,13 @@ if "SLURM_JOB_ID" not in os.environ:
     data.append(['ORIGINAL_MAX_GDD', max_orig_gdd_values, None, None])
 
     for pathway, result in target_results.items():
-        max_gdd_trans = result[0.00]['max_gdd_trans']
-        max_gdd_disrupt = result[0.00]['max_gdd_disrupt']
+        max_gdd_trans = result[selected_reduction]['max_gdd_trans']
+        max_gdd_disrupt = result[selected_reduction]['max_gdd_disrupt']
         max_gdd_delta = max_gdd_trans - max_orig_gdd_values
         p_value = p_values.get(pathway, None)  # Get the p-value, if available
         pathway_length = get_pathway_length(pathway, interest_pathway_df)  # Get pathway length
         p_value_adjusted = final_adjusted_p_values.get(pathway, None)  # Get the adjusted p-value, if available
-        data.append([pathway, max_gdd_trans, max_gdd_disrupt, max_gdd_delta, p_value, p_value_adjusted, pathway_length])
+        data.append([pathway, max_gdd_trans, max_gdd_delta, p_value, p_value_adjusted, max_gdd_disrupt, pathway_length])
         # data.append([pathway, max_gdd_trans, max_gdd_delta, p_value, pathway_length])
 
     # Creating the DataFrame with an additional column for pathway length
@@ -1226,7 +1236,7 @@ if "SLURM_JOB_ID" not in os.environ:
         # Plot distributions
         for pathway in curated_paths:
             # Get target max_gdd_trans value
-            target_max_gdd_trans = target_results[pathway][0.00]['max_gdd_trans']
+            target_max_gdd_trans = target_results[pathway][selected_reduction]['max_gdd_trans']
 
             # Get pathway length
             pathway_length = get_pathway_length(pathway, interest_pathway_df)
@@ -1245,6 +1255,7 @@ if "SLURM_JOB_ID" not in os.environ:
             plt.legend()
             plt.show()
 
+    # %%
     ### FINAL FIG
     random_distribution = np.asarray(random_results_by_length.get(pathway_length, [])) - 1.67837351466087
 
@@ -1286,7 +1297,7 @@ if "SLURM_JOB_ID" not in os.environ:
 
     # GDD PLOTTING
     # Extract all target GDD values and sort them
-    all_gdd_values = [(pathway, result[0.00]['max_gdd_trans']) for pathway, result in target_results.items()]
+    all_gdd_values = [(pathway, result[selected_reduction]['max_gdd_trans']) for pathway, result in target_results.items()]
     sorted_gdd_values = sorted(all_gdd_values, key=lambda x: x[1])
 
     # Select top 3 and bottom 3 targets based on GDD values
@@ -1299,11 +1310,11 @@ if "SLURM_JOB_ID" not in os.environ:
     # Plot for the top 3 GDD values
     for target, gdd_value in top_3_gdd:
         # Assuming the new code stores a list or similar iterable of GDD values
-        plt.plot(t_values, target_results[target][0.00]['gdd_values_trans'], label=f'{target}')
+        plt.plot(t_values, target_results[target][selected_reduction]['gdd_values_trans'], label=f'{target}')
 
     # Plot for the bottom 3 GDD values
     for target, gdd_value in bottom_3_gdd:
-        plt.plot(t_values, target_results[target][0.00]['gdd_values_trans'], label=f'{target}')
+        plt.plot(t_values, target_results[target][selected_reduction]['gdd_values_trans'], label=f'{target}')
 
     # plt.title('GDD Over Time (Trans) for Top 3 and Bottom 3 Targets')
     plt.xlabel('Time', fontsize=18)
@@ -1318,14 +1329,14 @@ if "SLURM_JOB_ID" not in os.environ:
 random_results_by_length_disrupt = {}  # {pathway_length: [list of max_gdd_disrupt values]}
 for key, result in random_results.items():
     length, _ = parse_random_key(key)
-    max_gdd_disrupt = result[0.00]['max_gdd_disrupt']
+    max_gdd_disrupt = result[selected_reduction]['max_gdd_disrupt']
     if length not in random_results_by_length_disrupt:
         random_results_by_length_disrupt[length] = []
     random_results_by_length_disrupt[length].append(max_gdd_disrupt)
 
 p_values_disrupt = {}
 for pathway, result in target_results.items():
-    target_max_gdd_disrupt = result[0.00]['max_gdd_disrupt']
+    target_max_gdd_disrupt = result[selected_reduction]['max_gdd_disrupt']
     pathway_length = get_pathway_length(pathway, interest_pathway_df)
     if pathway_length is not None:
         random_distribution_disrupt = random_results_by_length_disrupt.get(pathway_length, [])
@@ -1367,7 +1378,7 @@ print("Significant Pathways (adjusted p-value ≤ 0.05):")
 
 
 # for pathway in curated_paths:
-#     target_max_gdd_disrupt = target_results[pathway][0.00]['max_gdd_disrupt']
+#     target_max_gdd_disrupt = target_results[pathway][selected_reduction]['max_gdd_disrupt']
 #     pathway_length = get_pathway_length(pathway, interest_pathway_df)
 #     random_distribution_disrupt = np.asarray(random_results_by_length_disrupt.get(pathway_length, [])) - target_max_gdd_disrupt
 
@@ -1397,8 +1408,8 @@ for index, row in target_df_sorted_by_gdd.iterrows():
     plt.scatter(index, row['Max_GDD_Trans'], label=row['Pathway'])
 
 plt.xlabel('Sorted Index', fontsize=18)
-plt.ylabel('Max GDD Trans', fontsize=18)
-plt.title('Max GDD Trans Sorted by Value', fontsize=20)
+plt.ylabel('GDD Trans', fontsize=18)
+plt.title('GDD Values Sorted by Value', fontsize=20)
 
 # Uncomment the following line if you want to show labels for each point
 # plt.legend()
@@ -1426,12 +1437,12 @@ plt.figure(figsize=(10, 6))
 
 # Plot for the top 3 GDD values
 for index, row in top_3_gdd.iterrows():
-    plt.plot(t_values, np.sqrt(target_results[row['Pathway']][0.00]['gdd_values_trans']), label=f'{row["Pathway"]}')
-    print(np.max(target_results[row['Pathway']][0.00]['gdd_values_trans']))
+    plt.plot(t_values, np.sqrt(target_results[row['Pathway']][selected_reduction]['gdd_values_trans']), label=f'{row["Pathway"]}')
+    print(np.max(target_results[row['Pathway']][selected_reduction]['gdd_values_trans']))
 
 # Plot for the bottom 3 GDD values
 for index, row in bottom_3_gdd.iterrows():
-    plt.plot(t_values, np.sqrt(target_results[row['Pathway']][0.00]['gdd_values_trans']), label=f'{row["Pathway"]}')
+    plt.plot(t_values, np.sqrt(target_results[row['Pathway']][selected_reduction]['gdd_values_trans']), label=f'{row["Pathway"]}')
 
 plt.xlabel('Time', fontsize=18)
 plt.ylabel('GDD Value', fontsize=18)
@@ -1476,14 +1487,15 @@ plt.show()
 
 
 # %%  NODE KNOCKOUT CODE
-args.net_dens = 'high_dens'
-t_values = np.linspace(0.01, 10, 500)
-with open(f'diff_results/Pathway_False_target_X_GDDs_ks308_permuNone_symmetricTrue_low_dens.pkl', 'rb') as f:
+args.net_dens = 'low_dens'
+t_values = np.linspace(0.01, 10, 250)
+with open(f'diff_results/LOCAL_Pathway_False_target_XPSPY_GDDs_ks308_permuNone_symmetricTrue_low_dens_5,26.pkl', 'rb') as f:
     node_knockouts = pkl.load(f)
 
 print(f'node_knockouts: {node_knockouts.keys()}')
 print(f'Reduction factors: {node_knockouts[list(node_knockouts.keys())[0]].keys()}')
 # print(f'GDD values: {node_knockouts[list(node_knockouts.keys())[0]][0.05]}')
+
 
 # for key in node_knockouts.keys():
 #     print(f'node {key}: {node_knockouts[key].keys()}')
@@ -1495,9 +1507,10 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), dpi=300)
 # Left plot: GDD values over time for various reductions (single node)
 for reduction in node_knockouts[selected_node].keys():
     gdd_values_trans = node_knockouts[selected_node][reduction]['gdd_values_trans']
-    gdd_values_disrupt = node_knockouts[selected_node][reduction]['gdd_values_disrupt']
+    gdd_values_disruptA = node_knockouts[selected_node][reduction]['gdd_values_disruptA']
+    gdd_values_disruptS = node_knockouts[selected_node][reduction]['gdd_values_disruptS']
     ax1.plot(t_values, gdd_values_trans, label=f'Reduction {reduction}')
-    ax1.plot(t_values, gdd_values_disrupt, label=f'Reduction {reduction} (Disrupt)')
+    ax1.plot(t_values, gdd_values_disruptA, label=f'Reduction {reduction} (Disrupt)')
 
 ax1.set_title(f'GDD Over Time for Various Reductions\nNode: {selected_node}')
 ax1.set_xlabel('Time')
@@ -1510,15 +1523,18 @@ selected_reduction = red_range[0]
 selected_reduction = 0.05
 
 max_gdds_trans = {}
-max_gdds_disrupt = {}
+max_gdds_disruptA = {}
+max_gdds_disruptS = {}
 # Right plot: GDD values over time for a single reduction (all nodes)
 for node_base in node_knockouts.keys():
     gdd_values_trans = node_knockouts[node_base][selected_reduction]['gdd_values_trans']
-    gdd_values_disrupt = node_knockouts[node_base][selected_reduction]['gdd_values_disrupt']
+    gdd_values_disruptA = node_knockouts[node_base][selected_reduction]['gdd_values_disruptA']
+    gdd_values_disruptS = node_knockouts[node_base][selected_reduction]['gdd_values_disruptS']
     ax2.plot(t_values, gdd_values_trans, label=f'Node {node_base}', alpha=0.5)
-    # ax2.plot(t_values, gdd_values_disrupt, label=f'Node {node_base} (Disrupt)', alpha=0.5)
+    # ax2.plot(t_values, gdd_values_disruptA, label=f'Node {node_base} (Disrupt)', alpha=0.5)
     max_gdds_trans[node_base] = np.max(gdd_values_trans)
-    max_gdds_disrupt[node_base] = np.max(gdd_values_disrupt)
+    max_gdds_disruptA[node_base] = np.max(gdd_values_disruptA)
+    max_gdds_disruptS[node_base] = np.max(gdd_values_disruptS)
 
 ax2.set_title(f'GDD Over Time for Single Reduction\nReduction: {selected_reduction}')
 ax2.set_xlabel('Time')
@@ -1528,21 +1544,44 @@ ax2.set_xlim([0, 2])
 ax2.grid(True)
 
 plt.show()
-# print(max_gdds)
-# max_GDD_1 = max_gdds['1']
-# max_GDD_2 = max_gdds['2']
-# print(max_GDD_1 - max_GDD_2)
 
+# %%
 # print max_gdds in ascending order
 sorted_max_gdds_trans = {k: v for k, v in sorted(max_gdds_trans.items(), key=lambda item: item[1])}
-sorted_max_gdds_disrupt = {k: v for k, v in sorted(max_gdds_disrupt.items(), key=lambda item: item[1])}
+sorted_max_gdds_disruptA = {k: v for k, v in sorted(max_gdds_disruptA.items(), key=lambda item: item[1], reverse=True)}
+sorted_max_gdds_disruptS = {k: v for k, v in sorted(max_gdds_disruptS.items(), key=lambda item: item[1], reverse=True)}
+
 # add key for original max_gdd
-sorted_max_gdds_disrupt['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
+# sorted_max_gdds_disruptA['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
+
 # print original max_gdd 
 # print(max_orig_gdd_values)
 # print(sorted_max_gdds_trans)
-# print(sorted_max_gdds_disrupt)
+# print(sorted_max_gdds_disruptA)
 
+num_top_genes = 20
+# # Print first 10 items of sorted_max_gdds_disruptA
+# for key, value in list(sorted_max_gdds_disruptA.items())[:num_top_genes]:
+#     print(f'{key}: {value}')
+
+# print('-------------------')
+
+# for key, value in list(sorted_max_gdds_disruptS.items())[:num_top_genes]:
+#     print(f'{key}: {value}')
+
+# print the length of the overlap of the top 10 nodes
+overlap = set(list(sorted_max_gdds_disruptA.keys())[:num_top_genes]).intersection(set(list(sorted_max_gdds_disruptS.keys())[:num_top_genes]))
+
+print(f'overlap: {len(overlap)}')
+
+# print the ones that are not in the overlap
+for key, value in list(sorted_max_gdds_disruptA.items())[:num_top_genes]:
+    if key not in overlap:
+        print(f'{key}: {value}')
+
+
+
+# %%
 summed_degrees = {}
 summed_degrees_aggro = {}
 summed_betweenness = {}
@@ -1571,7 +1610,7 @@ df = pd.DataFrame.from_dict(sorted_max_gdds_trans, orient='index', columns=['max
 # add row with original max_gdd
 df.loc['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
 
-df['max_gdd_disrupt'] = sorted_max_gdds_disrupt.values()
+df['max_gdd_disrupt'] = sorted_max_gdds_disruptA.values()
 # make column with max_gdd delta
 df['max_gdd_delta_trans'] = df['max_gdd_trans'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd_trans']
 df['max_gdd_delta_disrupt'] = df['max_gdd_disrupt'] - df.loc['ORIGINAL_MAX_GDD', 'max_gdd_disrupt']
@@ -2202,14 +2241,14 @@ for node in G_complete.nodes():
     diff_kernel_knock = [knock_graph_eigs[1] @ np.diag(np.exp(-t * knock_graph_eigs[0])) @ knock_graph_eigs[1].T for t in t_values]
     diff_kernels_allknocks.append(diff_kernel_knock)
 
-    gdd_values_disrupt = np.linalg.norm(np.array(diff_kernel_complete) - np.array(diff_kernel_knock), axis=(1, 2), ord='fro')**2
-    gdd_values_allknocks.append(gdd_values_disrupt)
+    gdd_values_disruptA = np.linalg.norm(np.array(diff_kernel_complete) - np.array(diff_kernel_knock), axis=(1, 2), ord='fro')**2
+    gdd_values_allknocks.append(gdd_values_disruptA)
 
     # if node_base == '8' or node_base == '5':
     #     print(knock_lap)
     #     print('\n')
 
-    all_gdds[node_base] = gdd_values_disrupt
+    all_gdds[node_base] = gdd_values_disruptA
 
 # # check if the diff_kernels in diff_kernels_allknocks are the same as each other
 # for i in range(len(diff_kernels_allknocks)):

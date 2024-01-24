@@ -519,7 +519,7 @@ if rank == 0 and not args.permu_runs:
 if args.visualize:
     t_values = np.linspace(0.00, 10, 500)
 else:
-    t_values = np.linspace(0.01, 10, 500)
+    t_values = np.linspace(0.01, 10, 250)
 
 red_range = args.red_range.split(',')
 red_range = np.linspace(float(red_range[0]), float(red_range[1]), int(float(red_range[2])))
