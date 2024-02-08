@@ -65,12 +65,9 @@ read 'The big return' in obsidian vault
   multiplex_net_viz creates a multiplex visualization using pymnet
 
  
-  
-  
 
-  
 
-Future Directions
-
+### Future Directions
+  read 'the big return' in vault
   Try using the TRRUST structure defined in SCAFFOLD_TF_TFTBS_net.py, make a pairwise model (See meething notes ## 21.12.23, and Defence Notes)
   
