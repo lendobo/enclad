@@ -186,6 +186,7 @@ def knockdown_node_both_layers(G, node_to_isolate_base, reduced_weight=0.3):
 def knockdown_node_single_layer(G, node_to_isolate_base, layer_suffix, reduced_weight=0.3):
     """
     Reduces the weights of all edges connected to a node in one specified layer of the graph.
+    Initially sets all edge weights to 1 if not already set.
 
     :param G: NetworkX graph
     :param node_to_isolate_base: Base node name whose edges will be reduced
@@ -197,6 +198,10 @@ def knockdown_node_single_layer(G, node_to_isolate_base, layer_suffix, reduced_w
         raise ValueError("Invalid layer suffix. Choose '.p' for proteomics or '.t' for transcriptomics.")
 
     modified_graph = G.copy()
+
+    # Initially set all edge weights to 1
+    for u, v in modified_graph.edges():
+        modified_graph[u][v]['weight'] = 1
 
     # Add layer suffix to the base node name
     node_to_isolate = f"{node_to_isolate_base}{layer_suffix}"
@@ -214,6 +219,7 @@ def knockdown_node_single_layer(G, node_to_isolate_base, layer_suffix, reduced_w
     new_laplacian = weighted_laplacian_matrix(modified_graph)
 
     return modified_graph, new_laplacian
+
 
 
 
@@ -2312,6 +2318,269 @@ def compare_nodes(m1, node_to_compare):
 for m1 in range(5, 35, 5):
     node_to_compare = str(m1 * 2)
     compare_nodes(m1, node_to_compare)
+
+
+
+
+
+
+
+
+
+###
+# %%
+# %% ############################ BARBELL GRAPHS ############################
+# The first graph will be a complete barbell graph, the second will have its bridge removed,
+# and the third will have its central connection removed.
+
+
+t_values = np.linspace(0, 10, 500)
+
+
+# Define the number of nodes in the barbell graph's complete subgraphs and the bridge length
+m1 = 5  # Number of nodes in the complete subgraphs
+m2 = 0  # Number of nodes in the bridge
+
+
+# Generate the complete barbell graph
+G_single_edge = nx.barbell_graph(m1, m2)
+
+
+# Identify the nodes to move and disconnect
+node_to_move_from_first_bell = m1 - 2  # Second to last node in the first bell
+node_to_move_from_second_bell = m1 + 1  # Second node in the second bell
+
+
+G_complete = G_single_edge.copy()
+# Add the new edge directly connecting the two identified nodes
+# G_complete.add_edge(node_to_move_from_first_bell, node_to_move_from_second_bell)
+
+
+# Verify the graphs by plotting them
+fig, axes = plt.subplots(1, 2, figsize=(18, 6))
+# Plot the complete barbell graph
+nx.draw(G_complete, ax=axes[0], with_labels=True, node_size=500)
+axes[0].set_title('Complete Barbell Graph')
+# Plot the barbell graph with the bridge removed
+# nx.draw(G_single_edge, ax=axes[1], with_labels=True, node_size=500)
+# axes[1].set_title('Barbell Graph with Bridge Removed')
+# Plot the barbell graph with the bell connection removed
+
+
+plt.tight_layout()
+plt.show()
+
+
+# add suffixes to nodes
+G_complete = nx.relabel_nodes(G_complete, lambda x: str(x) + '.p')
+G_complete_eigs = laplacian_eigendecomp(weighted_laplacian_matrix(G_complete))
+diff_kernel_complete = [G_complete_eigs[1] @ np.diag(np.exp(-t * G_complete_eigs[0])) @ G_complete_eigs[1].T for t in t_values]
+
+
+all_gdds = {}
+diff_kernels_allknocks = []
+gdd_values_allknocks = []
+
+
+# knock down each node, calculate GDDs and plot
+for node in G_complete.nodes():
+    node_base = node.rstrip('.p')
+    knock_graph, knock_lap = knockdown_node_single_layer(G_complete, node_base, '.p', reduced_weight=0.05)
+
+
+    knock_graph_eigs = laplacian_eigendecomp(knock_lap)
+    diff_kernel_knock = [knock_graph_eigs[1] @ np.diag(np.exp(-t * knock_graph_eigs[0])) @ knock_graph_eigs[1].T for t in t_values]
+    diff_kernels_allknocks.append(diff_kernel_knock)
+
+
+    gdd_values_disruptA = np.linalg.norm(np.array(diff_kernel_complete) - np.array(diff_kernel_knock), axis=(1, 2), ord='fro')**2
+    gdd_values_allknocks.append(gdd_values_disruptA)
+
+
+    # if node_base == '8' or node_base == '5':
+    #     print(knock_lap)
+    #     print('\n')
+
+
+    all_gdds[node_base] = gdd_values_disruptA
+
+
+# # check if the diff_kernels in diff_kernels_allknocks are the same as each other
+# for i in range(len(diff_kernels_allknocks)):
+#     for j in range(len(diff_kernels_allknocks)):
+#         if i != j:
+#             print(f'Are the diff_kernels for node {i} and node {j} the same? {np.allclose(diff_kernels_allknocks[i], diff_kernels_allknocks[j])}')
+
+
+# # check if the gdd_values in gdd_values_allknocks are the same as each other
+# for i in range(len(gdd_values_allknocks)):
+#     for j in range(len(gdd_values_allknocks)):
+#         if i != j:
+#             print(f'Are the gdd_values for node {i} and node {j} the same? {np.allclose(gdd_values_allknocks[i], gdd_values_allknocks[j])}')
+
+
+# # get the max GDD for each node
+# max_gdds = {}
+# for node_base in all_gdds.keys():
+#     max_gdds[node_base] = np.max(np.sqrt((all_gdds[node_base])))
+#     print(f'Max GDD for node {node_base}: {max_gdds[node_base]}')
+
+
+plt.figure(figsize=(10, 6))
+
+
+for node_base in all_gdds.keys():
+
+
+    if node_base != '2' and node_base != '5':
+        continue
+    # plot the GDDs
+
+
+    plt.plot(t_values, all_gdds[node_base], label=f'Node {node_base}', alpha=0.5)
+    plt.xlabel('Time')
+    plt.ylabel('GDD Value')
+    plt.title(f'GDD Values for {node_base} Knockdown')
+    plt.legend()
+    plt.grid(True)
+
+
+    max_gdd = np.max(np.sqrt(all_gdds[node_base]))
+    print(f'Max GDD for node {node_base}: {max_gdd}')
+
+
+
+
+plt.show()
+
+
+# %%
+def compare_nodes(m1, node_to_compare):
+    G_complete = nx.barbell_graph(m1, 0)
+    # ... rest of the graph generation and modification logic
+
+
+    # Your existing logic for generating diff_kernel_complete and all_gdds
+    # ...
+
+
+    # Plot GDD values for node '2' and node_to_compare
+    plt.figure(figsize=(10, 6))
+    plt.plot(t_values, all_gdds['2'], label='Node 2', alpha=0.5)
+    plt.plot(t_values, all_gdds[node_to_compare], label=f'Node {node_to_compare}', alpha=0.5)
+    plt.xlabel('Time')
+    plt.ylabel('GDD Value')
+    plt.title(f'GDD Values for Node 2 vs Node {node_to_compare} Knockdown')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+# Main loop for varying m1
+for m1 in range(5, 35, 5):
+    node_to_compare = str(m1 * 2)
+    compare_nodes(m1, node_to_compare)
+
+
+
+
+
+
+
+
+# %%
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_graph_with_weighted_edges(G):
+    pos = nx.spring_layout(G)  # or any other layout algorithm you prefer
+
+    # Compute the maximum weight in the graph for normalization
+    max_weight = max([G[u][v]['weight'] for u, v in G.edges()])
+
+    # Draw nodes
+    nx.draw_networkx_nodes(G, pos)
+
+    # Draw edges with alpha representing the weight
+    for u, v in G.edges():
+        weight = G[u][v]['weight']
+        alpha = weight / max_weight  # Normalizing alpha values
+        nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], alpha=alpha)
+
+    # Draw labels
+    nx.draw_networkx_labels(G, pos)
+
+    plt.show()
+
+max_gdd_differences = []
+m1_values = []
+
+m2 = 0
+
+# Main loop for varying m1
+for m1 in range(5, 30, 5):
+    node_to_compare = str(m1)
+    # G_complete = nx.barbell_graph(m1, 0)
+    # Generate the complete barbell graph
+    G_single_edge = nx.barbell_graph(m1, m2)
+
+    # Identify the nodes to move and disconnect
+    node_to_move_from_first_bell = m1 - 2  # Second to last node in the first bell
+    node_to_move_from_second_bell = m1 + 1  # Second node in the second bell
+
+    G_complete = G_single_edge.copy()
+    # Add the new edge directly connecting the two identified nodes
+    G_complete.add_edge(node_to_move_from_first_bell, node_to_move_from_second_bell)
+
+
+    G_complete = nx.relabel_nodes(G_complete, lambda x: str(x) + '.p')
+    G_complete_eigs = laplacian_eigendecomp(weighted_laplacian_matrix(G_complete))
+    diff_kernel_complete = [G_complete_eigs[1] @ np.diag(np.exp(-t * G_complete_eigs[0])) @ G_complete_eigs[1].T for t in t_values]
+
+
+    max_gdds = {}
+
+
+    for node in ['2.p', f'{node_to_compare}.p']:
+        node_base = node.rstrip('.p')
+        knock_graph, knock_lap = knockdown_node_single_layer(G_complete, node_base, '.p', reduced_weight=0.00)
+
+        # plot_graph_with_weighted_edges(knock_graph)
+
+        knock_graph_eigs = laplacian_eigendecomp(knock_lap)
+        diff_kernel_knock = [knock_graph_eigs[1] @ np.diag(np.exp(-t * knock_graph_eigs[0])) @ knock_graph_eigs[1].T for t in t_values]
+
+
+        gdd_values_disrupt = np.linalg.norm(np.array(diff_kernel_complete) - np.array(diff_kernel_knock), axis=(1, 2), ord='fro')**2
+        max_gdd = np.max(np.sqrt(gdd_values_disrupt)) / m1
+        # print node and max_gdd
+        print(f'Max GDD for node {node_base}: {max_gdd}')
+        max_gdds[node_base] = max_gdd
+
+
+    # Calculate and store the absolute difference of max GDD values
+    max_gdd_diff = max_gdds[node_to_compare.rstrip('.p')] / max_gdds['2']  
+    # print degree of node_to_compare
+    # print(f'Degree of node {node_to_compare}: {G_complete.degree(node_to_compare)}')
+    # print deger of node 2
+    # print(f'Degree of node 2: {G_complete.degree("2.p")}')
+    max_gdd_differences.append(max_gdd_diff)
+    m1_values.append(m1)
+
+
+# Plotting the differences against m1 values
+plt.figure(figsize=(10, 6))
+plt.plot(m1_values, max_gdd_differences, marker='o')
+plt.xlabel('m1 value')
+plt.ylabel('Absolute Difference in Max GDD')
+plt.title('Absolute Difference in Max GDD for Node 2 vs Node m1')
+plt.grid(True)
+plt.show()
+
+
+print(max_gdd_differences)
+
 
 
 # %% PLOTTING THE MAX GDD

@@ -1,3 +1,18 @@
+import os
+import sys
+
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Get the parent directory (MONIKA)
+project_dir = os.path.dirname(script_dir)
+
+# Add the project directory to the Python path
+sys.path.append(project_dir)
+
+# Change the working directory to the project directory
+os.chdir(project_dir)
+
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -15,13 +30,13 @@ from rpy2.robjects import numpy2ri
 from rpy2.robjects.packages import importr
 from mpi4py import MPI
 from tqdm import tqdm
-import sys
 import pickle
 import warnings
-import os
 import argparse
 from scipy.stats import skewnorm
 
+# from rpy2.robjects.packages import importr
+# utils = importr('utils')
 
 # Activate the automatic conversion of numpy objects to R objects
 numpy2ri.activate()
@@ -29,12 +44,19 @@ numpy2ri.activate()
 # Define the R function for weighted graphical lasso
 ro.r('''
 weighted_glasso <- function(data, penalty_matrix, nobs) {
+  if (!requireNamespace("glasso", quietly = TRUE)) {
+    message("Package 'glasso' not found. Attempting to install...")
+    install.packages("glasso", repos = "https://cran.rstudio.com/")
+    if (!requireNamespace("glasso", quietly = TRUE)) {
+      stop("Failed to install 'glasso' package. Please install it manually.")
+    }
+  }
   library(glasso)
   tryCatch({
-    result <- glasso(s=as.matrix(data), rho=penalty_matrix, nobs=nobs)
-    return(list(precision_matrix=result$wi, edge_counts=result$wi != 0))
-  }, error=function(e) {
-    return(list(error_message=toString(e$message)))
+    result <- glasso(s = as.matrix(data), rho = penalty_matrix, nobs = nobs)
+    return(list(precision_matrix = result$wi, edge_counts = result$wi != 0))
+  }, error = function(e) {
+    return(list(error_message = toString(e$message)))
   })
 }
 ''')
@@ -73,6 +95,9 @@ class QJSweeper:
 
     @staticmethod
     def generate_synth_data(p, n, fp_fn_chance, skew, density=0.03, seed=42):
+        """
+        Generates a scale-free synthetic nework with desired density, and then generates synthetic data based on the network.
+        """
         random.seed(seed)
         np.random.seed(seed)
 
@@ -197,14 +222,6 @@ class QJSweeper:
         # Ensure diagonal remains 0
         np.fill_diagonal(prior_matrix, 0)
         # np.fill_diagonal(adj_matrix, 0)
-
-
-        # # get density of adj matrix
-        # density_pri = np.sum(prior_matrix) / (p * p)
-        # print('Density of prior: ', density_pri)
-        # density_adj = np.sum(adj_matrix) / (p * p)
-        # print('Density of adj: ', density_adj)
-
 
 
         # DATA MATRIX
@@ -359,13 +376,14 @@ def main(rank, size, machine='local'):
     #######################
 
     if args.run_type == 'synthetic':
-        # Synthetic run
+        # Synthetic run, using generated scale-free networks and data
         data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.fp_fn, args.skew, args.dens, seed=args.seed)
         synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
 
         edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
 
     elif args.run_type == 'proteomics' or args.run_type == 'transcriptomics':
+        # Omics run
         # Loading data
         cms_data = pd.read_csv(args.data_file, index_col=0)
         p = cms_data.shape[1]
@@ -453,12 +471,12 @@ if __name__ == "__main__":
 
     else:
         # If no SLURM environment, run for entire lambda range
-        edge_counts, p, n, Q = main(rank=1, size=1, machine='local')
+        edge_counts, p, n, Q, prior_matrix = main(rank=1, size=1, machine='local')
         print(edge_counts.dtype)
 
         # Save results to a pickle file
         with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
-            pickle.dump(edge_counts)
+            pickle.dump(edge_counts, f)
 
 
 # scp mbarylli@snellius.surf.nl:"phase_1_code/Networks/net_results/omics_edge_counts_all_pnQ\(100\,\ 106\,\ 300\).pkl" net_results/

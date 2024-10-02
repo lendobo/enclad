@@ -118,7 +118,7 @@ TRRUST_sample = TRRUST_df.sample(n=10, random_state=1)
 TRRUST_sample = TRRUST_df[TRRUST_df['TF_PROT'] == 'ABL1']
 
 
-# # write TRRUST_df to csv
+# # write LINKEDOMICS LINKEDOMICS LINKEDOMICS LINKEDOMICS LINKEDOMICS_df to csv
 # TRRUST_df.to_csv('/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Diffusion/TRRUST_adjacency_mat.csv', index=False)
 # TRRUST_sample.head()
 

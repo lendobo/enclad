@@ -874,6 +874,10 @@ if True:
             # print names of orphan nodes
             print(f'Names of orphan nodes: {orphan_nodes}\n\n')
 
+            # # print similarity of G and of prior matrix
+            # evaluation_metrics = evaluate_reconstruction(cms_omics_prior_matrix, adj_matrix.values)
+            # print(f'Similarity of inferred net to prior: {evaluation_metrics}\n\n')
+
             # nx.draw(G, with_labels=True)
             # # plt.title(f'Network for {omics_type} data')
             # # plt.show()
@@ -933,6 +937,15 @@ if True:
     print(f'Similarity of proteomics_123_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_123_net, transcriptomics_123_net)}')
 
 
+    # Read the prior file
+    prior = pd.read_csv('Diffusion/data/RPPA_prior_adj90perc.csv', index_col=0)
+
+    print('\n --------------------------------')
+    # get similarity of prior to each network
+    print(f'Similarity of proteomics_ALL_net to prior: {evaluate_reconstruction(proteomics_ALL_net, prior.values)}')
+    print(f'Similarity of transcriptomics_ALL_net to prior: {evaluate_reconstruction(transcriptomics_ALL_net, prior.values)}')
+    print(f'Similarity of proteomics_123_net to prior: {evaluate_reconstruction(proteomics_123_net, prior.values)}')
+    print(f'Similarity of transcriptomics_123_net to prior: {evaluate_reconstruction(transcriptomics_123_net, prior.values)}')
 
 
 # sys.stdout.close()
