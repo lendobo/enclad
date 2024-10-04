@@ -92,6 +92,10 @@ if "SLURM_JOB_ID" not in os.environ:
 def weighted_laplacian_matrix(G):
     """
     Calculate the Laplacian matrix for a weighted graph.
+    params:
+        G: graph in nx format
+    returns:
+        L: Laplacian matrix
     """
     node_order = list(G.nodes())
     # Weighted adjacency matrix
@@ -104,6 +108,14 @@ def weighted_laplacian_matrix(G):
     return L
 
 def force_dense_eig_solver(L):
+    """
+    Forcing the use of a dense eigensolver for the Laplacian matrix, rather than sparse methods.
+    params: 
+        L: Laplacian matrix
+    returns:
+        eigenvalues: Eigenvalues of the Laplacian matrix
+        eigenvectors: Eigenvectors of the Laplacian matrix
+    """
     if issparse(L):
         L = L.toarray()  # Convert sparse matrix to dense
     eigenvalues, eigenvectors = np.linalg.eigh(L)  # Use dense method
@@ -114,6 +126,11 @@ def laplacian_exponential_kernel_eigendecomp(L, t):
     """
     Function to compute the Laplacian exponential diffusion kernel using eigen-decomposition
     The function takes the Laplacian matrix L and a time parameter t as inputs.
+    params:
+        L: Laplacian
+        t: timestep
+    returns:
+        kernel: Laplacian exponential diffusion kernel
     """
     # Calculate the eigenvalues and eigenvectors of the Laplacian matrix
     eigenvalues, eigenvectors = force_dense_eig_solver(L)
@@ -126,7 +143,12 @@ def laplacian_exponential_kernel_eigendecomp(L, t):
 
 def laplacian_eigendecomp(L):
     """
-    Function to eigen-decomposition of the Laplacian matrix, returns matrices of eigenvalues and eigenvectors
+    Function to eigen-decomposition of the Laplacian matrix, 
+    params:
+        L: Laplacian
+    returns: 
+        eigenvalues: Eigenvalues of the Laplacian matrix
+        eigenvectors: Eigenvectors of the Laplacian matrix
     """
     # Calculate the eigenvalues and eigenvectors of the Laplacian matrix
     eigenvalues, eigenvectors = force_dense_eig_solver(L)
@@ -143,9 +165,12 @@ def knockout_node(G, node_to_isolate):
     """
     Isolates a node in the graph by removing all edges connected to it.
     
-    :param G: NetworkX graph
-    :param node_to_isolate: Node to isolate
-    :return: None
+    params
+        G: NetworkX graph
+        node_to_isolate: Node to isolate
+    return: 
+        modified_graph: Graph with the node isolated
+        new_laplacian: Laplacian matrix of the modified graph
     """
     modified_graph = G.copy()
     # Remove all edges to and from this node
@@ -158,12 +183,12 @@ def knockout_node(G, node_to_isolate):
 def knockdown_node_both_layers(G, node_to_isolate_base, reduced_weight=0.3):
     """
     Reduces the weights of all edges connected to a node in both layers of the graph.
-
-    :param G: NetworkX graph
-    :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
-    :param node_to_isolate_base: Base node name whose edges will be reduced in both layers
-    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.5
-    :return: Tuple containing the modified graph and its weighted Laplacian matrix
+    params:
+        G: NetworkX graph
+        node_to_isolate_base: Base node name whose edges will be reduced in both layers
+        reduced_weight: Factor to reduce edge weights by, defaults to 0.5
+    returns: 
+        Tuple containing the modified graph and its weighted Laplacian matrix
     """
 
     modified_graph = G.copy()
@@ -188,11 +213,13 @@ def knockdown_node_single_layer(G, node_to_isolate_base, layer_suffix, reduced_w
     Reduces the weights of all edges connected to a node in one specified layer of the graph.
     Initially sets all edge weights to 1 if not already set.
 
-    :param G: NetworkX graph
-    :param node_to_isolate_base: Base node name whose edges will be reduced
-    :param layer_suffix: Suffix indicating the layer ('.p' for proteomics, '.t' for transcriptomics)
-    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.3
-    :return: Tuple containing the modified graph and its weighted Laplacian matrix
+    params:
+        G: NetworkX graph
+        node_to_isolate_base: Base node name whose edges will be reduced
+        layer_suffix: Suffix indicating the layer ('.p' for proteomics, '.t' for transcriptomics)
+        reduced_weight: Factor to reduce edge weights by, defaults to 0.3
+    :returns
+        Tuple containing the modified graph and its weighted Laplacian matrix
     """
     if layer_suffix not in ['.p', '.t']:
         raise ValueError("Invalid layer suffix. Choose '.p' for proteomics or '.t' for transcriptomics.")
@@ -227,11 +254,15 @@ def knockdown_node_single_layer(G, node_to_isolate_base, layer_suffix, reduced_w
 def knockdown_pathway_nodes(G, pathway_description, reduced_weight=0.3):
     """
     Reduces the weights of all edges connected to the nodes in a pathway in both layers of the graph.
-
-    :param G: NetworkX graph
-    :param pathway_description: Description of the pathway whose nodes will be reduced in both layers
-    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.3
-    :return: Tuple containing the modified graph and its weighted Laplacian matrix
+    params:
+        G: NetworkX graph
+        pathway_description: Description of the pathway whose nodes will be reduced in both layers
+        reduced_weight: Factor to reduce edge weights by, defaults to 0.3
+    returns:
+        Tuple containing the modified graph and its weighted Laplacian matrix
+        num_disconnected_components: Number of disconnected components in the subgraph
+        connected_components_lengths: Lengths of connected components in the subgraph
+        len(pathway_nodes_with_suffixes): Number of nodes in the pathway
     """
 
     # Find rows where 'Pathway' column contains the given string
@@ -279,11 +310,15 @@ def knockdown_pathway_nodes(G, pathway_description, reduced_weight=0.3):
 def knockdown_random_nodes(G, node_list, reduced_weight=0.05):
     """
     Reduces the weights of all edges connected to the nodes in a pathway or a list of nodes in both layers of the graph.
-
-    :param G: NetworkX graph
-    :param num_nodes: Number of nodes to randomly select for knockdown
-    :param reduced_weight: Factor to reduce edge weights by, defaults to 0.3
-    :return: Tuple containing the modified graph and its weighted Laplacian matrix
+    params:
+        G: NetworkX graph
+        num_nodes: Number of nodes to randomly select for knockdown
+        reduced_weight: Factor to reduce edge weights by, defaults to 0.3
+    returns:
+        Tuple containing the modified graph and its weighted Laplacian matrix
+        num_disconnected_components: Number of disconnected components in the subgraph
+        connected_components_lengths: Lengths of connected components in the subgraph
+        len(pathway_nodes_with_suffixes): Number of nodes in the pathway
     """
 
 
@@ -313,78 +348,21 @@ def knockdown_random_nodes(G, node_list, reduced_weight=0.05):
     # Return the modified graph, new laplacian, and number of disconnected components
     return modified_graph, new_laplacian, num_disconnected_components, connected_components_lengths, len(node_list)
 
-# %%                  ############################################# double5 DEMO NET#########################
-
-def double5_demonet(inter_layer_weight=1.0):
-    # Create a new graph
-    G = nx.Graph()
-    # Define nodes
-    nodes_A = [f"{i}.p" for i in range(1, 6)]
-    nodes_B = [f"{i}.t" for i in range(1, 6)]
-    # Add nodes
-    G.add_nodes_from(nodes_A)
-    G.add_nodes_from(nodes_B)
-    # Add edges to form a complete circle in each layer
-    for i in range(5):
-        G.add_edge(nodes_A[i], nodes_A[(i-1)%5])  # A layer
-        G.add_edge(nodes_B[i], nodes_B[(i-1)%5])  # B layer
-    # Add edges between corresponding nodes of different layers
-    for i in range(5):
-        G.add_edge(nodes_A[i], nodes_B[i], layer='interlayer')
-    # Add manual edges
-    G.add_edge("1.t", "3.t")
-    G.add_edge("1.p", "4.p")
-
-    weighted_G = G.copy()
-    for u, v, data in weighted_G.edges(data=True):
-        if data.get('layer') == 'interlayer':
-            weighted_G[u][v]['weight'] = inter_layer_weight
-        else:
-            weighted_G[u][v]['weight'] = 1.0
-
-
-    # get pandas adjacency
-    adj = nx.to_pandas_adjacency(weighted_G)
-
-    lap = weighted_laplacian_matrix(weighted_G)
-    # roudn values of lap to 3 decimal places
-    lap = np.round(lap, 1)
-
-    return weighted_G, adj, lap
-
-def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
-    """
-    Creates a multiplex graph with two layers, each having the specified number of nodes.
-    """
-    G = nx.Graph()
-
-    # Define nodes for each layer
-    nodes_layer_p = [f"{i}.p" for i in range(num_nodes)]
-    nodes_layer_t = [f"{i}.t" for i in range(num_nodes)]
-
-    # Add nodes
-    G.add_nodes_from(nodes_layer_p)
-    G.add_nodes_from(nodes_layer_t)
-
-    # Add random edges within each layer
-    for _ in range(num_nodes * 2):  # Randomly adding double the number of nodes as edges in each layer
-        u, v = np.random.choice(nodes_layer_p, 2, replace=False)
-        G.add_edge(u, v, weight=1.0)
-
-        u, v = np.random.choice(nodes_layer_t, 2, replace=False)
-        G.add_edge(u, v, weight=1.0)
-
-    # Add edges between corresponding nodes of different layers
-    for i in range(num_nodes):
-        G.add_edge(nodes_layer_p[i], nodes_layer_t[i], weight=inter_layer_weight)
-
-    return G
-
 
 ###############################################################################
 # %% OMICS GRAPH
-def weighted_multi_omics_graph(cms, plot=False, verbose=False):
-    p = 154 # 136_kpa_lowenddensity or something
+def weighted_multi_omics_graph(cms, verbose=False):
+    """
+    Creates a 2-layer multiplex network, using the adjacency matrices of the proteomics and transcriptomics data obtained during the network inference stage.
+    params:
+        cms: 'cms123' or 'cmsALL', to specify the aggressive (cmsALL) or non-aggressive (cms123) CMS subtypes
+        plot: Boolean to plot the degree distribution
+        verbose: Boolean to print the orphans
+    returns:
+        weighted_G_multiplex: Multiplex graph with weighted edges
+        M: Pymnet multiplex network
+    """
+    p = 154 
     cms = cms
     man = False
 
@@ -408,32 +386,6 @@ def weighted_multi_omics_graph(cms, plot=False, verbose=False):
         print(f'orphans in proteomics: {orphans_proteomics}')
         print(f'orphans in transcriptomics: {orphans_transcriptomics}')
 
-    if plot:
-        # Calculate the degrees of each node
-        degrees = [degree for node, degree in G_proteomics_layer.degree()]
-        # Sort the degrees
-        degrees_sorted = sorted(degrees, reverse=True)
-        # Create an array representing the index of each degree for x-axis
-        x = range(len(degrees_sorted))
-        # Plotting the line chart
-        plt.plot(x, degrees_sorted, label='Transcriptomics Degrees')
-        # Adding labels and legend
-        plt.legend()
-        plt.xlabel('Index')
-        plt.ylabel('Degree')
-        plt.title('Ordered Degrees of Each Node')
-        plt.show()
-
-        # make a histogram of the degrees
-        plt.hist(degrees, bins=20)
-        plt.xlabel('Degree')
-        plt.ylabel('Frequency')
-        plt.title('Degree Distribution')
-        plt.show()
-
-
-    # # OR TRY ON A RANDOM ER GRAPH
-    # G_proteomics_layer = nx.erdos_renyi_graph(100, 0.1)
 
     # Function to add a suffix to node names based on layer
     def add_layer_suffix(graph, suffix):
@@ -481,7 +433,7 @@ def weighted_multi_omics_graph(cms, plot=False, verbose=False):
             weighted_G_multiplex[u][v]['weight'] = 1.0
 
 
-    # PYMNET BS
+    # PYMNET (For fancy multiplex visualisation)
     if not "SLURM_JOB_ID" in os.environ:
         # Initialize a pymnet multilayer network
         M = pn.MultiplexNetwork(couplings=('categorical', 1), fullyInterconnected=False)
@@ -533,24 +485,54 @@ def get_orphans(G):
 #     num_edges = G_multiplex.number_of_edges()
 #     num_nodes, num_edges
 
-weighted_G_cms_123, pymnet_123 = weighted_multi_omics_graph('cms123', plot=False)
-weighted_G_cms_ALL, pymnet_ALL = weighted_multi_omics_graph('cmsALL', plot=False)
+weighted_G_cms_123, pymnet_123 = weighted_multi_omics_graph('cms123')
+weighted_G_cms_ALL, pymnet_ALL = weighted_multi_omics_graph('cmsALL')
 
 
 orphans_123 = get_orphans(weighted_G_cms_123)
 orphans_ALL = get_orphans(weighted_G_cms_ALL)
 
+# Since the RNA and prot layers have different orphans, the multiplex should have no orphans
 if orphans_123 or orphans_ALL:
     print(f'Multiplex orphans in cms123: {orphans_123}')  
     print(f'Multiplex orphans in cmsALL: {orphans_ALL}')
 
 
-
-# CHOOSING GRAPH #############################################################
-##############################################################################
 # %%
-################################################# ACTIVATE DOUBLE5 DEMO NET #########################################
-# weighted_graph_use = double5_net
+
+# ALTERNATIVE to multi-omics graph, small synthetic graph can be generated. Good for quick testing. 
+def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
+    """
+    Creates a multiplex graph with two layers, each having the specified number of nodes.
+    params:
+        num_nodes: Number of nodes in each layer
+        inter_layer_weight: Weight of the inter-layer edges
+    returns:
+        G: Multiplex NetworkX graph
+    """
+    G = nx.Graph()
+
+    # Define nodes for each layer
+    nodes_layer_p = [f"{i}.p" for i in range(num_nodes)]
+    nodes_layer_t = [f"{i}.t" for i in range(num_nodes)]
+
+    # Add nodes
+    G.add_nodes_from(nodes_layer_p)
+    G.add_nodes_from(nodes_layer_t)
+
+    # Add random edges within each layer
+    for _ in range(num_nodes * 2):  # Randomly adding double the number of nodes as edges in each layer
+        u, v = np.random.choice(nodes_layer_p, 2, replace=False)
+        G.add_edge(u, v, weight=1.0)
+
+        u, v = np.random.choice(nodes_layer_t, 2, replace=False)
+        G.add_edge(u, v, weight=1.0)
+
+    # Add edges between corresponding nodes of different layers
+    for i in range(num_nodes):
+        G.add_edge(nodes_layer_p[i], nodes_layer_t[i], weight=inter_layer_weight)
+
+    return G
 
 
 

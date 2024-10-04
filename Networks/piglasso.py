@@ -351,17 +351,6 @@ class QJSweeper:
 
         return edge_counts_all, success_counts
 
-
-def load_data(run_type, data_file, prior_file):
-    data = pd.read_csv(data_file, index_col=0)
-    # remove first column (CMS label)
-    if prior_file:
-        prior = pd.read_csv(prior_file, index_col=0)
-    else:
-        prior = pd.DataFrame(np.zeros((data.shape[1], data.shape[1])))
-
-    return data, prior
-
 def main(rank, size, machine='local'):
     #######################
     p = args.p           # number of variables (nodes)

@@ -29,10 +29,12 @@ def parse_arguments():
     parser.add_argument("--synthetic", action="store_false", help="Set program type to synthetic")
     parser.add_argument("--run_synth", action="store_true", help="Run the main analysis for synthetic data")
     parser.add_argument("--post_process", action="store_true", help="Run post-processing on synthetic run")
-    parser.add_argument("--plot_synth", action="store_false", help="Generate plots for analysing the synthetic runs.")
+    parser.add_argument("--plot_synth", action="store_true", help="Generate plots for analysing the synthetic runs.")
     # omics args
-    parser.add_argument("--omics", action="store_true", help="Set program type to omics ")
+    parser.add_argument("--omics", action="store_false", help="Set program type to omics ")
     parser.add_argument("--end_slice_analysis", action="store_true", help="Determine optimal lambda range for achieving biologically accurate density.")
+    parser.add_argument("--net_dens", type=str, default="low_dens", help="Set high or low network density for the omics data.")
+    parser.add_argument("--plot_omics", action="store_true", help="Generate plots for analysing the omics runs.")
 
     return parser.parse_args()
 
@@ -73,6 +75,7 @@ def analysis(data,
         man_param=False,
         adj_matrix=None, 
         run_type='SYNTHETIC',
+        omics_type='',
         plot=False,
         verbose=False):
 
@@ -110,7 +113,7 @@ def analysis(data,
     left_knee_point, main_knee_point, right_knee_point, left_knee_point_index, knee_point_index, right_knee_point_index = find_all_knee_points(lambda_range, edge_counts_all)
 
     l_lo = left_knee_point_index     # Set it at knee-point index -1 
-    l_hi = right_knee_point_index # set at knee-point index    
+    l_hi = right_knee_point_index    # set at knee-point index    
 
     select_lambda_range = lambda_range[l_lo:l_hi]
     select_edge_counts_all = edge_counts_all[:, :, l_lo:l_hi]
@@ -144,41 +147,17 @@ def analysis(data,
 
     if verbose:
         print('Number of edges of inferred network (lower triangular): ', edge_counts)
-        print('Density: ', density)
+        print('Density of inferred network: ', density)
 
     if plot == True:
         scalar_edges = np.sum(edge_counts_all, axis=(0, 1)) / (2 * Q)
         scalar_select_edges = np.sum(select_edge_counts_all, axis=(0, 1)) / (2 * Q)
 
-        # create a 1 x 2 multiplot. on the left, plot both scalar aedes and scalar_select edges. On the right, just scalar_select_edges
-        plt.figure(figsize=(12, 5))
-        plt.subplot(1, 2, 1)
-        plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
-        plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
-        plt.title(f'#edges vs lambda for {run_type} data,p={p},n={n}')
-        plt.xlabel('Lambda')
-        plt.ylabel('Number of edges')
-        # plt.ylim(0, 8000)
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-
-        plt.subplot(1, 2, 2)
-        plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
-        plt.title(f'Number of edges vs lambda for {run_type} data')
-        plt.xlabel('Lambda')
-        plt.ylabel('Number of edges')
-        plt.grid()
-        ax = plt.gca()
-        ax.grid(alpha=0.2)
-        plt.tight_layout()
-        plt.show()
-
         # PLOTTING JUST THE TOTAL (WITHOUT RED)
         plt.figure(figsize=(8, 6), dpi=300)
         plt.scatter(lambda_range, scalar_edges, color='grey', alpha = 0.5)
         plt.scatter(select_lambda_range, scalar_select_edges, color='red', alpha=0.8)
-        plt.title(rf'Edge Counts vs $\lambda$')
+        plt.title(rf'Edge Counts vs $\lambda$, {run_type}, {omics_type}')
         plt.xlabel(r'$ \lambda$', fontsize=15)
         plt.ylabel('Edge Counts', fontsize=12)
         # plt.ylim(0, 8000)
@@ -212,27 +191,13 @@ if __name__ == "__main__":
         # argparse arg for run
         run = False
         # COMPLETE SWEEP
-        # code should compare: increasing B_perc and effect on performance at low sample size vs high sample size
-        # for 250 samples, which combination of b_perc and manual lambda (T, F) and fp_fn is best?
-        # Then we have to assess our fp_fn from the tau parameter
-            # How does overlap (x axis) correlate with tau (y axis)? NEXT ONE 
-        # Finally, make a call on instability G
-        # Parameter arrays
-
-        # INCREASE P as well
-
-        # CONCLUSIONS
-        # for low sample size (250), b_perc between 0.7 and 0.8 is best. Since we also have sampl size of 350, let's assume 0.7 is optimal
-        # manual lambda vs inferred?
-
         p_values = [150]
-        n_values = [50, 100, 300, 500, 700, 900, 1100] # [75, 250, 500, 750, 1000] 
+        n_values = [50, 100, 300, 500, 700, 900, 1100]
         b_perc_values = [0.6, 0.65, 0.7]
-        fp_fn_values = [0.0, 0.6, 0.8, 1] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1] # Try without 0.1 in plotting
+        fp_fn_values = [0.0, 0.6, 0.8, 1]
         seed_values = list(range(1, 31))
         dens_values = [0.05]
         man_values = [False]
-
 
         # Fixed parameters
         Q = 1000
@@ -307,13 +272,10 @@ if __name__ == "__main__":
                     prior_bool = False
 
                 # Run analysis
+                # Currently, analysis including lambda range plotting only if full sweep is done. 
                 _, _, _, lambda_np, lambda_wp, temp_evalu, tau_tr = analysis(synth_data, synth_prior_matrix, p, n, Q, lambda_range, llo, lhi, lamlen, 
                                                     synth_edge_counts_all, prior_bool=prior_bool, man_param=man, adj_matrix=synth_adj_matrix, run_type='SYNTHETIC', plot=args.plot_synth, verbose=False)
 
-                # print('F1 SCORE', temp_evalu['f1_score'])
-                # print(f'NP: {lambda_np}, WP: {lambda_wp}')
-                # print('tau_tr', tau_tr)
-                # print(f'overlap: {overlap}')
 
 
                 return {
@@ -450,10 +412,7 @@ if __name__ == "__main__":
                     SD_scores[metric] = pickle.load(f)
             else:
                 print(f"Warning: {sd_file} does not exist. Please re-run script with args --synthetic and --run_synth set to True..")
-
-
         
-
 
         # argparse for plotting 
         if args.plot_synth: 
@@ -632,11 +591,9 @@ if __name__ == "__main__":
     if args.omics == True:
         for o_t in ['p', 't']:
             for cms in ['cmsALL', 'cms123']:
-                # for cms_type in ['cmsALL', 'cms123']:
-                #     for omics_type in ['t', 'p']:
-                # Parameters
-                p = 154
-                b_perc = 0.65
+                # Parameters, remain fixed for omics data
+                p = 154              # number of nodes (genes) in the processed dataset
+                b_perc = 0.65        # fixed b_perc, optimal value determined from synthetic experiments
                 n = 1337             # not actual samples, just filename requirements
                 Q = 1000             # number of sub-samples
 
@@ -650,12 +607,9 @@ if __name__ == "__main__":
                 density = 0.03
                 seed = 42
 
-                man = False
+                man = False         # ALWAYS FALSE
                 smooth_bool = False # ALWAYS FALSE
-                net_dens = 'low_dens'
-
-                # o_t =  't' # omics_type # commented out for loop
-                # cms = 'cmsALL' # cms_type # commented out for loop
+                args.net_dens = 'low_dens' #Low density network is more biologically accurate
 
                 if o_t == 'p':
                     prior_bool = True
@@ -672,38 +626,34 @@ if __name__ == "__main__":
 
 
                 # Load Omics Data
-                # cms_filename = f'Diffusion/data/{omics_type}_for_pig_{cms}.csv'
                 cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
 
                 cms_array = cms_data.values
 
-                # LOad Omics Prior Matrix
+                # Load Omics Prior Matrix
+                cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj90perc.csv', index_col=0)
+
                 if prior_bool == True:
-                    cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj90perc.csv', index_col=0)
                     # print density of prior
                     complete_g = (p * (p - 1))
                     prior_density = np.sum(cms_omics_prior.values) / complete_g
-                    print(f'prior density: {prior_density}')
                 else:
-                    cms_omics_prior = pd.read_csv('Diffusion/data/RPPA_prior_adj90perc.csv', index_col=0)
                     #only keep columns / rows that are in the omics data
                     cms_omics_prior = cms_omics_prior[cms_data.columns]
                     cms_omics_prior = cms_omics_prior.reindex(index=cms_data.columns)
                     cms_omics_prior = cms_omics_prior * 0
 
-                cms_omics_prior_matrix = cms_omics_prior.values * 0.9
-                # Check if there are any non-zero values in the prior matrix
-                print(f'edges in prior: {np.sum(cms_omics_prior_matrix != 0) / 2}')
+                cms_omics_prior_matrix = cms_omics_prior.values * 0.9 # Adjust prior confidence to that of STRING
 
-                p = cms_array.shape[1]
-                n = cms_array.shape[0]
-                b = int(0.65 * n)
+                p = cms_array.shape[1] # number of nodes (genes) in the processed dataset
+                n = cms_array.shape[0] # number of samples in the processed dataset
+                b = int(0.65 * n)      # percentage of total samples in sub-sample
 
                 # scale and center 
                 cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
 
 
-                print(f'{str.upper(omics_type)}, {cms} RESULTS\n-------------------\n')
+                print(f'--------------------------------------\n{str.upper(omics_type)}, {cms} RESULTS\n--------------------------------------\n')
 
 
                 print(f'Number of samples: {n}')
@@ -712,8 +662,8 @@ if __name__ == "__main__":
 
                 # print(f'Granularity of sliced lambda range: {new_granularity}')
 
-                # # RUN ANALYSIS for multiple END SLICES
                 # # The density of the final network is affected by the range of lambda values we consider. 
+                # # RUN ANALYSIS for multiple END SLICES. end slice value determines the range of lambda values we consider (higher = fewer lambda values)
                 if args.end_slice_analysis == True:
                     densities = []
                     np_lams = []
@@ -735,7 +685,7 @@ if __name__ == "__main__":
 
                         lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
                         precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                    lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=False, verbose=False)
+                                    lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=args.plot_omics, verbose=False)
 
                         print(i, new_upperbound, o_t, cms)
                         print(f'lambda_np: {lambda_np}, lambda_wp: {lambda_wp}, density: {density}')
@@ -808,15 +758,12 @@ if __name__ == "__main__":
                     plt.tight_layout()
 
                     # Show the figure
-
                     plt.show()
-                    # Save the figure to file
 
-                    plt.savefig(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/Pictures/Pics_11_12_23/multiplot_3col_{omics_type}_{cms}_Q{Q}_prior{prior_bool}_slices{len(slicer_range)}_smoothing{smooth_bool}.png')
 
                 
-                else:
-                    if net_dens == 'high_dens':
+                else: # Default program run, since end_slice analysis is already done
+                    if args.net_dens == 'high_dens':
                         end_slice = 325
                     else:
                         end_slice = 250
@@ -828,9 +775,9 @@ if __name__ == "__main__":
                     new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
                     lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
 
-                                                                                                                            # HERE
+                    
                     precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=False, verbose=True)
+                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', omics_type=f'{str.upper(omics_type)}, {cms}', plot=args.plot_omics, verbose=True)
 
                 # print tau_tr value
                 print(f'tau_tr: {tau_tr}')
@@ -840,67 +787,10 @@ if __name__ == "__main__":
                 # assign columns and indices of prior matrix to adj_matrix
                 adj_matrix = pd.DataFrame(adj_matrix, index=cms_data.columns, columns=cms_data.columns)
 
-                # # WRITE ADJACAENCY MATRIX TO FILE
-                # save adjacency matrix
-                # adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{net_dens}.csv')
-
-                # # compare similarity of adj_matrix and prior matrix using evaluate_reconstruction
-                # evaluation_metrics = evaluate_reconstruction(cms_omics_prior_matrix, adj_matrix.values)
-                # print(f'Similarity of inferred net to prior: {evaluation_metrics}\n\n')
+                # save inferred network as adjacency matrix
+                adj_matrix.to_csv(f'Networks/net_results/inferred_adjacencies/{omics_type}_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv')
 
 
-
-                # # # draw the network
-                G = nx.from_pandas_adjacency(adj_matrix)
-                # get number of orphan nodes
-                orphan_nodes = [node for node, degree in dict(G.degree()).items() if degree == 0]
-                print(f'Number of orphan nodes: {len(orphan_nodes)}')
-                # print names of orphan nodes
-                print(f'Names of orphan nodes: {orphan_nodes}\n\n')
-
-                # # print similarity of G and of prior matrix
-                # evaluation_metrics = evaluate_reconstruction(cms_omics_prior_matrix, adj_matrix.values)
-                # print(f'Similarity of inferred net to prior: {evaluation_metrics}\n\n')
-
-                # nx.draw(G, with_labels=True)
-                # # plt.title(f'Network for {omics_type} data')
-                # # plt.show()
-
-                # # #plot the degree distribution
-                # G = nx.from_pandas_adjacency(adj_matrix)
-                # degrees = [G.degree(n) for n in G.nodes()]
-                # plt.hist(degrees, bins=20)
-                # plt.title(f'Degree distribution for {omics_type} data')
-                # plt.xlabel('Degree')
-                # plt.ylabel('Frequency')
-                # plt.show()
-
-                # highest_degrees_indices = list(np.argsort(degrees)[-20:])
-                # nodes_with_highest_degrees = [list(G.nodes())[i] for i in highest_degrees_indices]
-
-                # print(f'Highest degrees: {np.sort(degrees)[-20:]}')
-                # print(f'Nodes with highest degrees: {nodes_with_highest_degrees}')
-
-                # # Print the degree of 'TP53'
-                # print(f'Degree of TP53: {G.degree("TP53")}')
-
-
-
-                # # # LOG - LOG SCALE   
-                # # # Count the frequency of each degree
-                # # degree_counts = Counter(degrees)
-                # # degrees, counts = zip(*degree_counts.items())
-                # # # Scatter plot
-                # # plt.scatter(degrees, counts)
-                # # # Set both axes to logarithmic scale
-                # # plt.xscale('log')
-                # # plt.yscale('log')
-                # # # Set the labels and title
-                # # plt.xlabel('Degree')
-                # # plt.ylabel('Frequency')
-                # # plt.title(f'Log-Log Scatter Plot of Degree Distribution for {omics_type} data')
-                # # # Show the plot
-                # # plt.show()
 
         proteomics_ALL_net = pd.read_csv(f'Networks/net_results/inferred_adjacencies/proteomics_cmsALL_adj_matrix_p154_Lambda_np{not man}.csv', index_col=0)
         transcriptomics_ALL_net = pd.read_csv(f'Networks/net_results/inferred_adjacencies/transcriptomics_cmsALL_adj_matrix_p154_Lambda_np{not man}.csv', index_col=0)
@@ -913,6 +803,8 @@ if __name__ == "__main__":
         proteomics_123_net = proteomics_123_net.values
         transcriptomics_123_net = transcriptomics_123_net.values
 
+
+        print(f'--------------------------------------\nCOMPARING ALL NETWORKS TO EACH OTHER\n--------------------------------------\n')
         print(f'Similarity of proteomics_ALL_net to transcriptomics_ALL_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_ALL_net)}')
         print(f'Similarity of proteomics_ALL_net to proteomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, proteomics_123_net)}')
         print(f'Similarity of proteomics_ALL_net to transcriptomics_123_net: {evaluate_reconstruction(proteomics_ALL_net, transcriptomics_123_net)}')
@@ -934,35 +826,4 @@ if __name__ == "__main__":
 
     # sys.stdout.close()
     # sys.stdout = original_stdout
-
-
-
-    # # TESTING FOR NORMALITY
-    # # perform shapiro-wilk test on each column
-    # for i in range(cms_array.shape[1]):
-    #     result = stats.shapiro(cms_array[:, i])
-    #     print(result)
-
-    # # get first 20 columns
-    # cms_array = cms_array[:, 36]
-    # # make QQ plot for this column
-    # plt.figure(figsize=(12, 5))
-    # stats.probplot(cms_array, dist="norm", plot=plt)
-    # plt.title(f'Column {i+1}')
-    # plt.tight_layout()
-    # plt.show()
-
-    # # print lowest value in this column
-    # print(np.min(cms_array))
-    # # print highest value in this column
-    # print(np.max(cms_array)) 
-
-    # # make QQ plots in a multiplot for the first 20 columns
-    # plt.figure(figsize=(12, 5))
-    # for i in range(cms_array.shape[1]):
-    #     plt.subplot(2, 5, i+1)
-    #     stats.probplot(cms_array[:, i], dist="norm", plot=plt)
-    #     plt.title(f'Column {i+1}')
-    # plt.tight_layout()
-    # plt.show()
 
