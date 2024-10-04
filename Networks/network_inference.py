@@ -1,5 +1,5 @@
 from estimate_lambdas import estimate_lambda_np, estimate_lambda_wp, find_all_knee_points
-from piglasso import QJSweeper
+from piglasso import QJSweeper, mainpig
 from evaluation_of_graph import optimize_graph, evaluate_reconstruction
 
 import argparse
@@ -26,15 +26,27 @@ from scipy.interpolate import interp1d
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Analysis script with various options.")
     # synthetic args
-    parser.add_argument("--synthetic", action="store_false", help="Set program type to synthetic")
+    parser.add_argument("--synthetic", action="store_true", help="Set program type to synthetic")
     parser.add_argument("--run_synth", action="store_true", help="Run the main analysis for synthetic data")
     parser.add_argument("--post_process", action="store_true", help="Run post-processing on synthetic run")
     parser.add_argument("--plot_synth", action="store_true", help="Generate plots for analysing the synthetic runs.")
+    parser.add_argument('--synth_density', type=float, default=0.03, help='Density of the synthetic network')
     # omics args
     parser.add_argument("--omics", action="store_false", help="Set program type to omics ")
+    parser.add_argument('--p', type=int, default=154, help='Number of variables (nodes)')
+    parser.add_argument('--n', type=int, default=1337, help='Number of samples')
+    parser.add_argument('--Q', type=int, default=1000, help='Number of sub-samples')
+    parser.add_argument('--b_perc', type=float, default=0.65, help='Size of sub-samples (as a percentage of n)')
+    parser.add_argument('--llo', type=float, default=0.01, help='Lower bound for lambda range')
+    parser.add_argument('--lhi', type=float, default=1.5, help='Upper bound for lambda range')
+    parser.add_argument('--lamlen', type=int, default=500, help='Number of points in lambda range')
+    parser.add_argument('--prior_conf', type=str, default=90, help='Confidence level of STRING prior')
+    parser.add_argument('--fp_fn', type=float, default=0, help='Chance of getting a false negative or a false positive')
+    parser.add_argument('--skew', type=float, default=0, help='Skewness of the data')
     parser.add_argument("--end_slice_analysis", action="store_true", help="Determine optimal lambda range for achieving biologically accurate density.")
     parser.add_argument("--net_dens", type=str, default="low_dens", help="Set high or low network density for the omics data.")
     parser.add_argument("--plot_omics", action="store_true", help="Generate plots for analysing the omics runs.")
+    parser.add_argument('--seed', type=int, default=42, help='Seed for generating synthetic data')
 
     return parser.parse_args()
 
@@ -69,7 +81,7 @@ def analysis(data,
         lambda_range, 
         lowerbound, 
         upperbound, 
-        granularity, 
+        lamlen, 
         edge_counts_all, 
         prior_bool=False,
         man_param=False,
@@ -91,7 +103,7 @@ def analysis(data,
         lambda_range: range of lambda values to be tested
         lowerbound: lowest lambda value
         upperbound: highest lambda value
-        granularity: number of lambda values to be tested
+        lamlen: number of lambda values to be tested
         edge_counts_all: edge counts for all lambda values
         prior_bool: boolean value to determine if prior matrix
         man_param: boolean value to determine if manual lambda is used (ALWAYS FALSE)
@@ -192,24 +204,23 @@ if __name__ == "__main__":
         for o_t in ['p', 't']:
             for cms in ['cmsALL', 'cms123']:
                 # Parameters, remain fixed for omics data
-                p = 154              # number of nodes (genes) in the processed dataset
-                b_perc = 0.65        # fixed b_perc, optimal value determined from synthetic experiments
+                p = args.p              # number of nodes (genes) in the processed dataset
+                b_perc = args.b_perc       # fixed b_perc, optimal value determined from synthetic experiments
                 n = 1337             # not actual samples, just filename requirements
-                Q = 1000             # number of sub-samples
+                Q = args.Q             # number of sub-samples
 
-                lowerbound = 0.01
-                upperbound = 1.5
-                granularity = 500
-                lambda_range = np.linspace(lowerbound, upperbound, granularity)
+                lowerbound = args.llo
+                upperbound = args.lhi
+                lamlen = args.lamlen
+                lambda_range = np.linspace(lowerbound, upperbound, lamlen)
 
-                fp_fn = 0
-                skew = 0
-                density = 0.03
-                seed = 42
+                fp_fn = args.fp_fn
+                skew = args.skew
+                synth_density = args.synth_density
+                prior_conf =args.prior_conf
+                seed = args.seed
 
                 man = False         # ALWAYS FALSE
-                smooth_bool = False # ALWAYS FALSE
-                args.net_dens = 'low_dens' #Low density network is more biologically accurate
 
                 if o_t == 'p':
                     prior_bool = True
@@ -218,13 +229,39 @@ if __name__ == "__main__":
                     prior_bool = True
                     omics_type = 'transcriptomics'
 
+
                 # Load omics edge counts
-                file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{granularity}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{density}_s{seed}.pkl'
+                file_ = f'Networks/net_results/{omics_type}_{cms}_edge_counts_all_pnQ{p}_{n}_{Q}_{lowerbound}_{upperbound}_ll{lamlen}_b{b_perc}_fpfn{fp_fn}_skew{skew}_dens{synth_density}_s{seed}.pkl'
 
-                with open(file_, 'rb') as f:
-                    omics_edge_counts_all = pickle.load(f)
+                # Check if the file already exists
+                if os.path.exists(file_):
+                    print(f"Loading existing edge counts from {file_}")
+                    with open(file_, 'rb') as f:
+                        omics_edge_counts_all = pickle.load(f)
+                else:
+                    print(f"File containing edge counts not found. Running PIGLASSO to generate edge counts.")
+                    # Get edge counts for network inference from PIGLASSO
+                    omics_edge_counts_all, _ = mainpig(
+                        p=p,
+                        n=n,
+                        Q=Q,
+                        llo=lowerbound,
+                        lhi=upperbound,
+                        lamlen=lamlen,
+                        b_perc=b_perc,
+                        fp_fn=fp_fn,
+                        skew=skew,
+                        synth_density=synth_density,
+                        prior_conf=prior_conf,
+                        seed=seed,
+                        run_type=omics_type,
+                        cms=cms,
+                        rank=1, 
+                        size=1, 
+                        machine='local'
+                    )
 
-
+                
                 # Load Omics Data
                 cms_data = pd.read_csv(f'Diffusion/data/{omics_type}_for_pig_{cms}.csv', index_col=0)
 
@@ -270,13 +307,13 @@ if __name__ == "__main__":
                     sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
                     # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
-                    new_granularity = sliced_omics_edge_counts_all.shape[2]
-                    new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
-                    lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
+                    new_lamlen = sliced_omics_edge_counts_all.shape[2]
+                    new_upperbound = lowerbound + (upperbound - lowerbound) * (new_lamlen - 1) / (lamlen - 1)
+                    lambda_range = np.linspace(lowerbound, new_upperbound, new_lamlen)
 
                     
                     precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', omics_type=f'{str.upper(omics_type)}, {cms}', plot=args.plot_omics, verbose=True)
+                                lowerbound, new_upperbound, new_lamlen, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', omics_type=f'{str.upper(omics_type)}, {cms}', plot=args.plot_omics, verbose=True)
 
 
 
@@ -296,14 +333,14 @@ if __name__ == "__main__":
                         sliced_omics_edge_counts_all = omics_edge_counts_all[:,:,:-end_slice]
 
                         # SETTING LAMBDA DIMENSIONS TO FIT THE DATA
-                        new_granularity = sliced_omics_edge_counts_all.shape[2]
-                        new_upperbound = lowerbound + (upperbound - lowerbound) * (new_granularity - 1) / (granularity - 1)
+                        new_lamlen = sliced_omics_edge_counts_all.shape[2]
+                        new_upperbound = lowerbound + (upperbound - lowerbound) * (new_lamlen - 1) / (lamlen - 1)
                         # x_axis.append(new_upperbound)
                         x_axis.append(end_slice)
 
-                        lambda_range = np.linspace(lowerbound, new_upperbound, new_granularity)
+                        lambda_range = np.linspace(lowerbound, new_upperbound, new_lamlen)
                         precision_mat, edge_counts, density, lambda_np, lambda_wp, tau_tr = analysis(cms_array, cms_omics_prior_matrix, p, n, Q, lambda_range, 
-                                    lowerbound, new_upperbound, new_granularity, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=args.plot_omics, verbose=False)
+                                    lowerbound, new_upperbound, new_lamlen, sliced_omics_edge_counts_all, prior_bool, man_param=man, run_type='OMICS', plot=args.plot_omics, verbose=False)
 
                         print(i, new_upperbound, o_t, cms)
                         print(f'lambda_np: {lambda_np}, lambda_wp: {lambda_wp}, density: {density}')
@@ -501,7 +538,7 @@ if __name__ == "__main__":
                 # Process the edge counts
                 synth_edge_counts_all = synth_edge_counts_all #  / (2 * Q)
 
-                synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, density=dens, seed=seed)
+                synth_data, synth_prior_matrix, synth_adj_matrix = QJSweeper.generate_synth_data(p, n, skew=skew, fp_fn_chance=fp_fn, synth_density=dens, seed=seed)
 
                 overlap = np.sum((synth_prior_matrix == 1) & (synth_adj_matrix == 1)) / (np.sum(synth_prior_matrix == 1))
 

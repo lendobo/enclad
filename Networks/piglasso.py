@@ -85,18 +85,18 @@ class QJSweeper:
     subsample_optimiser(b, Q, lambda_range)
         Optimizes the objective function for all sub-samples and lambda values, using optimize_for_q_and_j.
     """
-    def __init__(self, data, prior_matrix, b, Q, rank=1, size=1):
+    def __init__(self, data, prior_matrix, b, Q, rank=1, size=1, seed=42):
         self.data = data
         self.prior_matrix = prior_matrix
         self.p = data.shape[1]
         self.n = data.shape[0]
         self.Q = Q
-        self.subsample_indices = self.get_subsamples_indices(self.n, b, Q, rank, size, seed=args.seed)
+        self.subsample_indices = self.get_subsamples_indices(self.n, b, Q, rank, size, seed=42)
 
     @staticmethod
-    def generate_synth_data(p, n, fp_fn_chance, skew, density=0.03, seed=42):
+    def generate_synth_data(p, n, fp_fn_chance, skew, synth_density=0.03, seed=42):
         """
-        Generates a scale-free synthetic nework with desired density, and then generates synthetic data based on the network.
+        Generates a scale-free synthetic nework with desired synth_density, and then generates synthetic data based on the network.
         """
         random.seed(seed)
         np.random.seed(seed)
@@ -112,10 +112,10 @@ class QJSweeper:
         }
 
 
-        # Determine m based on p and the desired density
+        # Determine m based on p and the desired synth_density
         m = 20  # Default value if p > 1000
         closest_distance = float('inf')
-        for size_limit, m_value in density_params[density]:
+        for size_limit, m_value in density_params[synth_density]:
             distance = abs(p - size_limit)
             if distance < closest_distance:
                 closest_distance = distance
@@ -380,37 +380,30 @@ def STRING_adjacency_matrix(nodes_df, edges_df):
 
     return adjacency_matrix
 
-def main(rank, size, machine='local'):
+def mainpig(p, n, Q, llo, lhi, lamlen, b_perc, fp_fn, skew, synth_density, prior_conf, seed, run_type, cms, rank, size, machine='local'):
     #######################
-    p = args.p           # number of variables (nodes)
-    n = args.n             # number of samples
-    b = int(args.b_perc * n)   # size of sub-samples
-    Q = args.Q             # number of sub-samples
-    
-    llo = args.llo
-    lhi = args.lhi
-    lamlen = args.lamlen
+    b = int(b_perc * n)   # size of sub-samples
     lambda_range = np.linspace(llo, lhi, lamlen)
     #######################
 
-    if args.run_type == 'synthetic':
+    if run_type == 'synthetic':
         # Synthetic run, using generated scale-free networks and data
-        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, args.fp_fn, args.skew, args.dens, seed=args.seed)
+        data, prior_matrix, adj_matrix = QJSweeper.generate_synth_data(p, n, fp_fn, skew, synth_density, seed=seed)
         synthetic_QJ = QJSweeper(data, prior_matrix, b, Q, rank, size)
 
         edge_counts_all, success_counts = synthetic_QJ.run_subsample_optimization(lambda_range)
 
-    elif args.run_type == 'proteomics' or args.run_type == 'transcriptomics':
+    elif run_type == 'proteomics' or run_type == 'transcriptomics':
         # Omics run
         # Loading data
-        cms_data = pd.read_csv(args.data_file, index_col=0)
+        cms_data = pd.read_csv(f'Diffusion/data/{run_type}_for_pig_{cms}.csv', index_col=0)
         p = cms_data.shape[1]
         cms_array = cms_data.values
 
         # LOADING PRIOR
         # Loading Edges and Nodes with 90% or above confidence according to STRING
-        STRING_edges_df = pd.read_csv(f'data/prior_data/RPPA_prior_EDGES{prior_dens}perc.csv')
-        STRING_nodes_df = pd.read_csv(f'data/prior_data/RPPA_prior_NODES{prior_dens}perc.csv')
+        STRING_edges_df = pd.read_csv(f'data/prior_data/RPPA_prior_EDGES{prior_conf}perc.csv')
+        STRING_nodes_df = pd.read_csv(f'data/prior_data/RPPA_prior_NODES{prior_conf}perc.csv')
 
 
         # # Construct the adjacency matrix from STRING
@@ -419,18 +412,18 @@ def main(rank, size, machine='local'):
         prior_matrix = cms_omics_prior.values
 
         n = cms_array.shape[0]
-        b = int(args.b_perc * n)
+        b = int(b_perc * n)
 
         print(f'Variables, Samples: {p, n}')
 
         # scale and center 
         cms_array = (cms_array - cms_array.mean(axis=0)) / cms_array.std(axis=0)
         # run QJ Sweeper
-        omics_QJ = QJSweeper(cms_array, prior_matrix, b, Q, rank, size)
+        omics_QJ = QJSweeper(cms_array, prior_matrix, b, Q, rank, size, seed=seed)
 
         edge_counts_all, success_counts = omics_QJ.run_subsample_optimization(lambda_range)
 
-    return edge_counts_all, p, n, Q, prior_matrix
+    return edge_counts_all, prior_matrix
 
 if __name__ == "__main__":
     # Initialize MPI communicator, rank, and size
@@ -448,19 +441,36 @@ if __name__ == "__main__":
     parser.add_argument('--lhi', type=float, default=0.4, help='Upper bound for lambda range')
     parser.add_argument('--lamlen', type=int, default=40, help='Number of points in lambda range')
     parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'proteomics', 'transcriptomics'], help='Type of run to execute')
-    parser.add_argument('--data_file', type=str, default=None, help='omics data file (Protein / RNA))')
-    parser.add_argument('--prior_dens', type=str, default=90, help='adjacency matrix for prior')
+    parser.add_argument('--prior_conf', type=str, default=90, help='Confidence level of STRING prior')
     parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS type to run for omics run')
     parser.add_argument('--fp_fn', type=float, default=0, help='Chance of getting a false negative or a false positive')
     parser.add_argument('--skew', type=float, default=0, help='Skewness of the data')
-    parser.add_argument('--dens', type=float, default=0.03, help='Density of the synthetic network')
+    parser.add_argument('--synth_density', type=float, default=0.03, help='Density of the synthetic network')
     parser.add_argument('--seed', type=int, default=42, help='Seed for generating synthetic data')
 
     args = parser.parse_args()
 
+    p,n,Q = args.p, args.n, args.Q
+
     # Check if running in SLURM environment
     if "SLURM_JOB_ID" in os.environ:
-        edge_counts, p, n, Q, prior_matrix = main(rank=rank, size=size, machine='hpc')
+        edge_counts, prior_matrix = mainpig(p=args.p,
+                                                  n=args.n,
+                                                  Q=args.Q,
+                                                  llo=args.llo,
+                                                  lhi=args.lhi,
+                                                  lamlen=args.lamlen,
+                                                  b_perc=args.b_perc,
+                                                  fp_fn=args.fp_fn,
+                                                  skew=args.skew,
+                                                  synth_density=args.synth_density,
+                                                  prior_conf=args.prior_conf,
+                                                  seed=args.seed,
+                                                  run_type=args.run_type,
+                                                  cms=args.cms, 
+                                                  rank=rank, 
+                                                  size=size, 
+                                                  machine='hpc')
 
         num_elements = p * p * args.lamlen
         sendcounts = np.array([num_elements] * size)
@@ -482,7 +492,7 @@ if __name__ == "__main__":
 
 
             # Save combined results
-            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
+            with open(f'net_results/{args.run_type}_{args.cms}_edge_counts_all_pnQ{args.p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_skew{args.skew}_dens{args.synth_density}_s{args.seed}.pkl', 'wb') as f:
                 pickle.dump(combined_edge_counts, f)
 
 
@@ -491,11 +501,26 @@ if __name__ == "__main__":
 
     else:
         # If no SLURM environment, run for entire lambda range
-        edge_counts, p, n, Q, prior_matrix = main(rank=1, size=1, machine='local')
-        print(edge_counts.dtype)
+        edge_counts, prior_matrix = mainpig(p=args.p,
+                                                  n=args.n,
+                                                  Q=args.Q,
+                                                  llo=args.llo,
+                                                  lhi=args.lhi,
+                                                  lamlen=args.lamlen,
+                                                  b_perc=args.b_perc,
+                                                  fp_fn=args.fp_fn,
+                                                  skew=args.skew,
+                                                  synth_density=args.synth_density,
+                                                  prior_conf=args.prior_conf,
+                                                  seed=args.seed,
+                                                  run_type=args.run_type,
+                                                  cms=args.cms, 
+                                                  rank=1, 
+                                                  size=1, 
+                                                  machine='local')
 
         # Save results to a pickle file
-        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_dens{args.dens}_s{args.seed}.pkl', 'wb') as f:
+        with open(f'Networks/net_results/local_{args.run_type}_{args.cms}_edge_counts_all_pnQ{p}_{args.n}_{args.Q}_{args.llo}_{args.lhi}_ll{args.lamlen}_b{args.b_perc}_fpfn{args.fp_fn}_dens{args.synth_density}_s{args.seed}.pkl', 'wb') as f:
             pickle.dump(edge_counts, f)
 
 
