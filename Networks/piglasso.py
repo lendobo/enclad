@@ -351,6 +351,35 @@ class QJSweeper:
 
         return edge_counts_all, success_counts
 
+def STRING_adjacency_matrix(nodes_df, edges_df):
+    """
+    Generate an adjacency matrix from the edgelist and nodelist obtained from STRING database. 
+    """
+    # Mapping Ensembl IDs to 'query term' names
+    id_to_query_term = pd.Series(nodes_df['query term'].values, index=nodes_df['name']).to_dict()
+
+    # Create a unique list of 'query terms'
+    unique_query_terms = nodes_df['query term'].unique()
+
+    # Initialize an empty adjacency matrix with unique query term labels
+    adjacency_matrix = pd.DataFrame(0, index=unique_query_terms, columns=unique_query_terms)
+
+    # Process each edge in the edges file
+    for _, row in edges_df.iterrows():
+        # Extract Ensembl IDs from the edge and map them to 'query term' names
+        gene1_id, gene2_id = row['name'].split(' (pp) ')
+        gene1_query_term = id_to_query_term.get(gene1_id)
+        gene2_query_term = id_to_query_term.get(gene2_id)
+
+        # Check if both gene names (query terms) are in the list of unique query terms
+        if gene1_query_term in unique_query_terms and gene2_query_term in unique_query_terms:
+            # Set the undirected edge in the adjacency matrix
+            adjacency_matrix.loc[gene1_query_term, gene2_query_term] = 1
+            adjacency_matrix.loc[gene2_query_term, gene1_query_term] = 1
+
+
+    return adjacency_matrix
+
 def main(rank, size, machine='local'):
     #######################
     p = args.p           # number of variables (nodes)
@@ -378,12 +407,14 @@ def main(rank, size, machine='local'):
         p = cms_data.shape[1]
         cms_array = cms_data.values
 
-        # Checking for prior
-        if args.prior_file:
-            cms_omics_prior = pd.read_csv(args.prior_file, index_col=0)
-        else:
-            print('----------------\nNo prior supplied, defaulting to data-only run\n----------------')
-            cms_omics_prior = pd.DataFrame(np.zeros((p,p)))
+        # LOADING PRIOR
+        # Loading Edges and Nodes with 90% or above confidence according to STRING
+        STRING_edges_df = pd.read_csv(f'data/prior_data/RPPA_prior_EDGES{prior_dens}perc.csv')
+        STRING_nodes_df = pd.read_csv(f'data/prior_data/RPPA_prior_NODES{prior_dens}perc.csv')
+
+
+        # # Construct the adjacency matrix from STRING
+        cms_omics_prior = STRING_adjacency_matrix(STRING_nodes_df, STRING_edges_df)
 
         prior_matrix = cms_omics_prior.values
 
@@ -412,13 +443,13 @@ if __name__ == "__main__":
     parser.add_argument('--p', type=int, default=50, help='Number of variables (nodes)')
     parser.add_argument('--n', type=int, default=500, help='Number of samples')
     parser.add_argument('--Q', type=int, default=800, help='Number of sub-samples')
-    parser.add_argument('--b_perc', type=float, default=0.8, help='Size of sub-samples (as a percentage of n)')
+    parser.add_argument('--b_perc', type=float, default=0.7, help='Size of sub-samples (as a percentage of n)')
     parser.add_argument('--llo', type=float, default=0.01, help='Lower bound for lambda range')
     parser.add_argument('--lhi', type=float, default=0.4, help='Upper bound for lambda range')
     parser.add_argument('--lamlen', type=int, default=40, help='Number of points in lambda range')
     parser.add_argument('--run_type', type=str, default='synthetic', choices=['synthetic', 'proteomics', 'transcriptomics'], help='Type of run to execute')
     parser.add_argument('--data_file', type=str, default=None, help='omics data file (Protein / RNA))')
-    parser.add_argument('--prior_file', type=str, default=None, help='adjacency matrix for prior')
+    parser.add_argument('--prior_dens', type=str, default=90, help='adjacency matrix for prior')
     parser.add_argument('--cms', type=str, default='cmsALL', choices=['cmsALL', 'cms123'], help='CMS type to run for omics run')
     parser.add_argument('--fp_fn', type=float, default=0, help='Chance of getting a false negative or a false positive')
     parser.add_argument('--skew', type=float, default=0, help='Skewness of the data')

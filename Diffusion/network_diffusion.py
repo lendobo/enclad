@@ -8,7 +8,6 @@ from scipy.sparse import issparse
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import matplotlib.cm as cm
-# import matplotlib.colors as mcolors
 import math
 import random
 import copy
@@ -16,14 +15,10 @@ import time
 from mpi4py import MPI
 import pickle as pkl
 import os
-# import json
-# import h5py
 from tqdm import tqdm
 import argparse
 import sys
 import csv
-from scipy.stats import percentileofscore
-from statsmodels.stats.multitest import multipletests
 
 if not"SLURM_JOB_ID" in os.environ:
     # Figure export settings
@@ -91,7 +86,185 @@ if "SLURM_JOB_ID" not in os.environ:
     rank = 0
     size = 1
 
+
+# %% FUNCTION TO CREATE MULTI-OMICS GRAPH
+def weighted_multi_omics_graph(cms, verbose=False):
+    """
+    Creates a 2-layer multiplex network, using the adjacency matrices of the proteomics and transcriptomics data obtained during the network inference stage.
+    params:
+        cms: 'cms123' or 'cmsALL', to specify the aggressive (cmsALL) or non-aggressive (cms123) CMS subtypes
+        plot: Boolean to plot the degree distribution
+        verbose: Boolean to print the orphans
+    returns:
+        weighted_G_multiplex: Multiplex graph with weighted edges
+        M: Pymnet multiplex network
+    """
+    p = 154 
+    cms = cms
+    man = False
+
+    if "SLURM_JOB_ID" in os.environ:
+        adj_matrix_proteomics = pd.read_csv(f'/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/inferred_adjacencies/proteomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
+        adj_matrix_transcriptomics = pd.read_csv(f'/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/inferred_adjacencies/transcriptomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
+    else: 
+        adj_matrix_proteomics = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Networks/net_results/inferred_adjacencies/proteomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
+        adj_matrix_transcriptomics = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Networks/net_results/inferred_adjacencies/transcriptomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
+
+
+    # Create separate graphs for each adjacency matrix
+    G_proteomics_layer = nx.from_pandas_adjacency(adj_matrix_proteomics)
+    G_transcriptomic_layer = nx.from_pandas_adjacency(adj_matrix_transcriptomics)
+
+    # # get orphans using function
+    orphans_proteomics = get_orphans(G_proteomics_layer)
+    orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
+
+    if verbose == True:
+        print(f'orphans in proteomics: {orphans_proteomics}')
+        print(f'orphans in transcriptomics: {orphans_transcriptomics}')
+
+    # Function to add a suffix to node names based on layer
+    def add_layer_suffix(graph, suffix):
+        return nx.relabel_nodes(graph, {node: f"{node}{suffix}" for node in graph.nodes})
+
+    # Create separate graphs for each adjacency matrix and add layer suffix
+    G_proteomics_layer = add_layer_suffix(nx.from_pandas_adjacency(adj_matrix_proteomics), '.p')
+    G_transcriptomic_layer = add_layer_suffix(nx.from_pandas_adjacency(adj_matrix_transcriptomics), '.t')
+
+    # Create a multiplex graph
+    G_multiplex = nx.Graph()
+
+    # Add nodes and edges from both layers
+    G_multiplex.add_nodes_from(G_proteomics_layer.nodes(data=True), layer='PROTEIN')
+    G_multiplex.add_edges_from(G_proteomics_layer.edges(data=True), layer='PROTEIN')
+    G_multiplex.add_nodes_from(G_transcriptomic_layer.nodes(data=True), layer='RNA')
+    G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
+
+    common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
+
+    inter_layer_weight = 1
+    # Add nodes and edges from both layers
+    G_multiplex.add_nodes_from(G_proteomics_layer.nodes(data=True), layer='PROTEIN')
+    G_multiplex.add_edges_from(G_proteomics_layer.edges(data=True), layer='PROTEIN')
+    G_multiplex.add_nodes_from(G_transcriptomic_layer.nodes(data=True), layer='RNA')
+    G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
+
+    common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
+
+    inter_layer_weight = 1
+    # Add inter-layer edges for common nodes
+    for node in common_nodes:
+        G_multiplex.add_edge(f"{node}.p", f"{node}.t",layer='interlayer')
+
+    weighted_G_multiplex = G_multiplex.copy()
+    for u, v, data in weighted_G_multiplex.edges(data=True):
+        if data.get('layer') == 'interlayer':
+            weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
+        else:
+            weighted_G_multiplex[u][v]['weight'] = 1.0
+    for u, v, data in weighted_G_multiplex.edges(data=True):
+        if data.get('layer') == 'interlayer':
+            weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
+        else:
+            weighted_G_multiplex[u][v]['weight'] = 1.0
+
+
+    # PYMNET (For fancy multiplex visualisation)
+    if not "SLURM_JOB_ID" in os.environ:
+        # Initialize a pymnet multilayer network
+        M = pn.MultiplexNetwork(couplings=('categorical', 1), fullyInterconnected=False)
+
+        def preprocess_node_name(node_name):
+            # If node ends with '.p' or '.t', remove the suffix
+            if node_name.endswith('.p') or node_name.endswith('.t'):
+                return node_name[:-2]  # Assuming suffixes are always two characters
+            return node_name
+
+        # Add nodes and edges for proteomics layer
+        for node in G_proteomics_layer.nodes:
+            # Preprocess node names to remove suffixes
+            processed_node = preprocess_node_name(node)
+            M.add_node(processed_node, layer='PROTEIN')
+        for u, v in G_proteomics_layer.edges:
+            # Preprocess node names for each edge
+            processed_u = preprocess_node_name(u)
+            processed_v = preprocess_node_name(v)
+            M[processed_u, processed_v, 'PROTEIN', 'PROTEIN'] = 1
+
+        # Add nodes and edges for transcriptomic layer
+        for node in G_transcriptomic_layer.nodes:
+            # Preprocess node names to remove suffixes
+            processed_node = preprocess_node_name(node)
+            M.add_node(processed_node, layer='RNA')
+        for u, v in G_transcriptomic_layer.edges:
+            # Preprocess node names for each edge
+            processed_u = preprocess_node_name(u)
+            processed_v = preprocess_node_name(v)
+            M[processed_u, processed_v, 'RNA', 'RNA'] = 1
+
+        return weighted_G_multiplex, M  #, rna_node_positions
+    else:
+        return weighted_G_multiplex, None       
+
+# get number of orphans
+def get_orphans(G):
+    orphans = []
+    for node in G.nodes():
+        if G.degree(node) == 0:
+            orphans.append(node)
+    return orphans
+
+
+weighted_G_cms_123, pymnet_123 = weighted_multi_omics_graph('cms123')
+weighted_G_cms_ALL, pymnet_ALL = weighted_multi_omics_graph('cmsALL')
+
+
+orphans_123 = get_orphans(weighted_G_cms_123)
+orphans_ALL = get_orphans(weighted_G_cms_ALL)
+
+# Since the RNA and prot layers have different orphans, the multiplex should have no orphans
+if orphans_123 or orphans_ALL:
+    print(f'Multiplex orphans in cms123: {orphans_123}')  
+    print(f'Multiplex orphans in cmsALL: {orphans_ALL}')
+
+
 # %%
+
+# ALTERNATIVE to multi-omics graph, small synthetic graph can be generated. Good for quick testing. 
+def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
+    """
+    Creates a multiplex graph with two layers, each having the specified number of nodes.
+    params:
+        num_nodes: Number of nodes in each layer
+        inter_layer_weight: Weight of the inter-layer edges
+    returns:
+        G: Multiplex NetworkX graph
+    """
+    G = nx.Graph()
+
+    # Define nodes for each layer
+    nodes_layer_p = [f"{i}.p" for i in range(num_nodes)]
+    nodes_layer_t = [f"{i}.t" for i in range(num_nodes)]
+
+    # Add nodes
+    G.add_nodes_from(nodes_layer_p)
+    G.add_nodes_from(nodes_layer_t)
+
+    # Add random edges within each layer
+    for _ in range(num_nodes * 2):  # Randomly adding double the number of nodes as edges in each layer
+        u, v = np.random.choice(nodes_layer_p, 2, replace=False)
+        G.add_edge(u, v, weight=1.0)
+
+        u, v = np.random.choice(nodes_layer_t, 2, replace=False)
+        G.add_edge(u, v, weight=1.0)
+
+    # Add edges between corresponding nodes of different layers
+    for i in range(num_nodes):
+        G.add_edge(nodes_layer_p[i], nodes_layer_t[i], weight=inter_layer_weight)
+
+    return G
+
+# %% ##### FUNCTION DEFINITIONS FOR GRAPH LAPLACIANS AND KNOCKOUTS ##########
 # Adjust Laplacian Matrix Calculation for Weighted Graph
 def weighted_laplacian_matrix(G):
     """
@@ -252,9 +425,6 @@ def knockdown_node_single_layer(G, node_to_isolate_base, layer_suffix, reduced_w
     return modified_graph, new_laplacian
 
 
-
-
-
 def knockdown_pathway_nodes(G, pathway_description, reduced_weight=0.3):
     """
     Reduces the weights of all edges connected to the nodes in a pathway in both layers of the graph.
@@ -352,212 +522,8 @@ def knockdown_random_nodes(G, node_list, reduced_weight=0.05):
     # Return the modified graph, new laplacian, and number of disconnected components
     return modified_graph, new_laplacian, num_disconnected_components, connected_components_lengths, len(node_list)
 
+# %% #################### MPI PARALLELIZATION & RUN FUNCTION DEFINITIONS ####################
 
-###############################################################################
-# %% OMICS GRAPH
-def weighted_multi_omics_graph(cms, verbose=False):
-    """
-    Creates a 2-layer multiplex network, using the adjacency matrices of the proteomics and transcriptomics data obtained during the network inference stage.
-    params:
-        cms: 'cms123' or 'cmsALL', to specify the aggressive (cmsALL) or non-aggressive (cms123) CMS subtypes
-        plot: Boolean to plot the degree distribution
-        verbose: Boolean to print the orphans
-    returns:
-        weighted_G_multiplex: Multiplex graph with weighted edges
-        M: Pymnet multiplex network
-    """
-    p = 154 
-    cms = cms
-    man = False
-
-    if "SLURM_JOB_ID" in os.environ:
-        adj_matrix_proteomics = pd.read_csv(f'/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/inferred_adjacencies/proteomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
-        adj_matrix_transcriptomics = pd.read_csv(f'/home/mbarylli/thesis_code/Diffusion/data_for_diffusion/inferred_adjacencies/transcriptomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
-    else: 
-        adj_matrix_proteomics = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Networks/net_results/inferred_adjacencies/proteomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
-        adj_matrix_transcriptomics = pd.read_csv(f'/home/celeroid/Documents/CLS_MSc/Thesis/EcoCancer/MONIKA/Networks/net_results/inferred_adjacencies/transcriptomics_{cms}_adj_matrix_p{p}_Lambda_np{not man}_{args.net_dens}.csv', index_col=0)
-
-
-    # Create separate graphs for each adjacency matrix
-    G_proteomics_layer = nx.from_pandas_adjacency(adj_matrix_proteomics)
-    G_transcriptomic_layer = nx.from_pandas_adjacency(adj_matrix_transcriptomics)
-
-    # # get orphans using function
-    orphans_proteomics = get_orphans(G_proteomics_layer)
-    orphans_transcriptomics = get_orphans(G_transcriptomic_layer)
-
-    if verbose == True:
-        print(f'orphans in proteomics: {orphans_proteomics}')
-        print(f'orphans in transcriptomics: {orphans_transcriptomics}')
-
-
-    # Function to add a suffix to node names based on layer
-    def add_layer_suffix(graph, suffix):
-        return nx.relabel_nodes(graph, {node: f"{node}{suffix}" for node in graph.nodes})
-
-    # Create separate graphs for each adjacency matrix and add layer suffix
-    G_proteomics_layer = add_layer_suffix(nx.from_pandas_adjacency(adj_matrix_proteomics), '.p')
-    G_transcriptomic_layer = add_layer_suffix(nx.from_pandas_adjacency(adj_matrix_transcriptomics), '.t')
-
-    # Create a multiplex graph
-    G_multiplex = nx.Graph()
-
-    # Add nodes and edges from both layers
-    G_multiplex.add_nodes_from(G_proteomics_layer.nodes(data=True), layer='PROTEIN')
-    G_multiplex.add_edges_from(G_proteomics_layer.edges(data=True), layer='PROTEIN')
-    G_multiplex.add_nodes_from(G_transcriptomic_layer.nodes(data=True), layer='RNA')
-    G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
-
-    common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
-
-    inter_layer_weight = 1
-    # Add nodes and edges from both layers
-    G_multiplex.add_nodes_from(G_proteomics_layer.nodes(data=True), layer='PROTEIN')
-    G_multiplex.add_edges_from(G_proteomics_layer.edges(data=True), layer='PROTEIN')
-    G_multiplex.add_nodes_from(G_transcriptomic_layer.nodes(data=True), layer='RNA')
-    G_multiplex.add_edges_from(G_transcriptomic_layer.edges(data=True), layer='RNA')
-
-    common_nodes = set(adj_matrix_proteomics.index).intersection(adj_matrix_transcriptomics.index)
-
-    inter_layer_weight = 1
-    # Add inter-layer edges for common nodes
-    for node in common_nodes:
-        G_multiplex.add_edge(f"{node}.p", f"{node}.t",layer='interlayer')
-
-    weighted_G_multiplex = G_multiplex.copy()
-    for u, v, data in weighted_G_multiplex.edges(data=True):
-        if data.get('layer') == 'interlayer':
-            weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
-        else:
-            weighted_G_multiplex[u][v]['weight'] = 1.0
-    for u, v, data in weighted_G_multiplex.edges(data=True):
-        if data.get('layer') == 'interlayer':
-            weighted_G_multiplex[u][v]['weight'] = inter_layer_weight
-        else:
-            weighted_G_multiplex[u][v]['weight'] = 1.0
-
-
-    # PYMNET (For fancy multiplex visualisation)
-    if not "SLURM_JOB_ID" in os.environ:
-        # Initialize a pymnet multilayer network
-        M = pn.MultiplexNetwork(couplings=('categorical', 1), fullyInterconnected=False)
-
-        def preprocess_node_name(node_name):
-            # If node ends with '.p' or '.t', remove the suffix
-            if node_name.endswith('.p') or node_name.endswith('.t'):
-                return node_name[:-2]  # Assuming suffixes are always two characters
-            return node_name
-
-        # Add nodes and edges for proteomics layer
-        for node in G_proteomics_layer.nodes:
-            # Preprocess node names to remove suffixes
-            processed_node = preprocess_node_name(node)
-            M.add_node(processed_node, layer='PROTEIN')
-        for u, v in G_proteomics_layer.edges:
-            # Preprocess node names for each edge
-            processed_u = preprocess_node_name(u)
-            processed_v = preprocess_node_name(v)
-            M[processed_u, processed_v, 'PROTEIN', 'PROTEIN'] = 1
-
-        # Add nodes and edges for transcriptomic layer
-        for node in G_transcriptomic_layer.nodes:
-            # Preprocess node names to remove suffixes
-            processed_node = preprocess_node_name(node)
-            M.add_node(processed_node, layer='RNA')
-        for u, v in G_transcriptomic_layer.edges:
-            # Preprocess node names for each edge
-            processed_u = preprocess_node_name(u)
-            processed_v = preprocess_node_name(v)
-            M[processed_u, processed_v, 'RNA', 'RNA'] = 1
-
-        return weighted_G_multiplex, M  #, rna_node_positions
-    else:
-        return weighted_G_multiplex, None       
-
-# get number of orphans
-def get_orphans(G):
-    orphans = []
-    for node in G.nodes():
-        if G.degree(node) == 0:
-            orphans.append(node)
-    return orphans
-
-
-weighted_G_cms_123, pymnet_123 = weighted_multi_omics_graph('cms123')
-weighted_G_cms_ALL, pymnet_ALL = weighted_multi_omics_graph('cmsALL')
-
-
-orphans_123 = get_orphans(weighted_G_cms_123)
-orphans_ALL = get_orphans(weighted_G_cms_ALL)
-
-# Since the RNA and prot layers have different orphans, the multiplex should have no orphans
-if orphans_123 or orphans_ALL:
-    print(f'Multiplex orphans in cms123: {orphans_123}')  
-    print(f'Multiplex orphans in cmsALL: {orphans_ALL}')
-
-
-# %%
-
-# ALTERNATIVE to multi-omics graph, small synthetic graph can be generated. Good for quick testing. 
-def create_multiplex_test(num_nodes, inter_layer_weight=1.0):
-    """
-    Creates a multiplex graph with two layers, each having the specified number of nodes.
-    params:
-        num_nodes: Number of nodes in each layer
-        inter_layer_weight: Weight of the inter-layer edges
-    returns:
-        G: Multiplex NetworkX graph
-    """
-    G = nx.Graph()
-
-    # Define nodes for each layer
-    nodes_layer_p = [f"{i}.p" for i in range(num_nodes)]
-    nodes_layer_t = [f"{i}.t" for i in range(num_nodes)]
-
-    # Add nodes
-    G.add_nodes_from(nodes_layer_p)
-    G.add_nodes_from(nodes_layer_t)
-
-    # Add random edges within each layer
-    for _ in range(num_nodes * 2):  # Randomly adding double the number of nodes as edges in each layer
-        u, v = np.random.choice(nodes_layer_p, 2, replace=False)
-        G.add_edge(u, v, weight=1.0)
-
-        u, v = np.random.choice(nodes_layer_t, 2, replace=False)
-        G.add_edge(u, v, weight=1.0)
-
-    # Add edges between corresponding nodes of different layers
-    for i in range(num_nodes):
-        G.add_edge(nodes_layer_p[i], nodes_layer_t[i], weight=inter_layer_weight)
-
-    return G
-
-
-
-
-################################################# NODE AND DIFFUSION PARAMETERS  #########################################
-# get hubs and low nodes
-degree_dict = dict(weighted_G_cms_ALL.degree(weighted_G_cms_ALL.nodes()))
-# get nodes with largest degree and smallest degree
-hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:args.koh]
-low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:args.kob]
-
-if rank == 0 and not args.permu_runs:
-    print(f'hub nodes: {hub_nodes}')
-    print(f'low rank nodes: {low_nodes}')
-
-if args.visualize:
-    t_values = np.linspace(0.00, 10, 500)
-else:
-    t_values = np.linspace(0.01, 10, 250)
-
-
-if args.koh == 0:
-    nodes_to_investigate_bases = [node.split('.')[0] for node in weighted_G_cms_ALL.nodes()] # KNOCK OUT ALL NODES FOR FIXED REDUCTION, NODE COMPARISON
-else:
-    nodes_to_investigate_bases = [node.split('.')[0] for node in hub_nodes + low_nodes] # FOR FIXED REDUCTION, NODE COMPARISON
-
-# %%                                                ### RUN FUNCTION DEFINITIONS & MPI PARALLELIZATION ###
 # PARALLEL PROCESSING: Function to distribute nodes across ranks
 def distribute_nodes(nodes, rank, size):
     """
@@ -607,6 +573,9 @@ def distribute_pathways(pathways, rank, size):
     return pathways[start_index:end_index]
 
 def distribute_runs(total_runs, rank, size):
+    """
+    Distribute runs across ranks.
+    """
     runs_per_rank = total_runs // size
     start_run = rank * runs_per_rank
     end_run = start_run + runs_per_rank if rank != size - 1 else total_runs  # Ensure the last rank takes any remaining runs
@@ -682,7 +651,7 @@ def run_knockout_analysis(G_aggro,
 
         results[knockout_target] = {}
         for reduction in red_range:
-            print(f"Processing {knockout_target} Knockdown with reduction factor: {reduction}")
+            # print(f"Processing {knockout_target} Knockdown with reduction factor: {reduction}")
             # Perform the knockout
             if args.symmetric:
                 # Symmetric knockdown means that cms123 and cmsALL are knocked down equally
@@ -785,6 +754,24 @@ def run_knockout_analysis(G_aggro,
 
 
 # %%
+################################################# NODE AND DIFFUSION PARAMETERS  #########################################
+# get hubs and low nodes
+degree_dict = dict(weighted_G_cms_ALL.degree(weighted_G_cms_ALL.nodes()))
+# get nodes with largest degree and smallest degree
+hub_nodes = sorted(degree_dict, key=lambda x: degree_dict[x], reverse=True)[:args.koh]
+low_nodes = sorted(degree_dict, key=lambda x: degree_dict[x])[:args.kob]
+
+if args.visualize:
+    t_values = np.linspace(0.00, 10, 500)
+else:
+    t_values = np.linspace(0.01, 10, 250)
+
+if args.koh == 0:
+    nodes_to_investigate_bases = list(set([node.split('.')[0] for node in weighted_G_cms_ALL.nodes()])) # KNOCK OUT ALL NODES FOR FIXED REDUCTION, NODE COMPARISON
+else:
+    nodes_to_investigate_bases = list(set([node.split('.')[0] for node in hub_nodes + low_nodes])) # FOR FIXED REDUCTION, NODE COMPARISON
+
+
 # DISTRIBUTE NODES ACROSS RANKS
 if "SLURM_JOB_ID" in os.environ:
     # Distribute nodes across ranks
@@ -799,7 +786,7 @@ else:
 # if "SLURM_JOB_ID" not in os.environ:
     # args.test_net = True
 
-# RUN on test net
+# TEST NET
 if args.test_net:
     # Create two multiplex graphs FOR TESTING
     weighted_G_cms_123 = create_multiplex_test(12)
@@ -835,7 +822,7 @@ max_orig_gdd_values = np.max(np.sqrt(orig_gdd_values))
 
 
 # %% 
-####################################### RUN # # # # # # # 
+####################################### RUN # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 start_time = time.time()
 
 local_target_results = {}
@@ -871,15 +858,21 @@ if args.pathway == True:
             
         print(f'Rank {rank} has finished the target and random pathway runs.')
 
+
 else:
-    for node in nodes_subset:
-        # TESTING the knockout analysis function
-        node_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_node', node, red_range, t_values, orig_aggro_kernel, orig_non_mesench_kernel, orig_gdd_values)
-        local_target_results.update(node_results)
+    # NODE knockouts
+    with tqdm(total=len(nodes_subset), desc=f"Calculating {len(nodes_subset)} gene knockouts, progress") as pbar:
+        for node in nodes_subset:
+            # RUN the knockout analysis function
+            node_results = run_knockout_analysis(weighted_G_cms_ALL, weighted_G_cms_123, 'runtype_node', node, red_range, t_values, orig_aggro_kernel, orig_non_mesench_kernel, orig_gdd_values)
+            local_target_results.update(node_results)
+            pbar.update(1)
 
 
 # GATHERING RESULTS
 all_target_results = comm.gather(local_target_results, root=0)
+
+# FOR PATHWAY KNOCKOUTS
 if args.pathway:
     if args.permu_runs:
         all_rand_results = comm.gather(local_rand_results, root=0)
@@ -893,7 +886,7 @@ if args.pathway:
     unique_identifier = ''.join([pathway[0] for pathway in pathways])
     unique_identifier = unique_identifier[:20]
 
-
+# FOR NODE KNOCKOUTS
 else:
     all_results_list = [all_target_results]
     filename_identifiers = ['target']
@@ -929,7 +922,7 @@ for i, all_results in enumerate(all_results_list):
 
 # get the end time
 end_time = time.time()
-print(f'elapsed time (node knockdown calc) (rank {rank}): {end_time - start_time}')
+print(f'elapsed time (node knockdown calc) (rank {rank}): {int(end_time - start_time)}s')
 
 
 
@@ -941,23 +934,7 @@ MPI.Finalize()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# %% Analysis and Visualisation
+# %% ########################################### Analysis and Visualisation ##########################################
 
 if "SLURM_JOB_ID" not in os.environ:
 
@@ -1005,7 +982,7 @@ if "SLURM_JOB_ID" not in os.environ:
             gdd_values_trans = node_knockouts[node_base][selected_reduction]['gdd_values_trans']
             gdd_values_disruptA = node_knockouts[node_base][selected_reduction]['gdd_values_disruptA']
             gdd_values_disruptS = node_knockouts[node_base][selected_reduction]['gdd_values_disruptS']
-            ax2.plot(t_values, gdd_values_trans, label=f'Node {node_base}', alpha=0.5)
+            ax2.plot(t_values, gdd_values_disruptA, label=f'Node {node_base}', alpha=0.5)
             # ax2.plot(t_values, gdd_values_disruptA, label=f'Node {node_base} (Disrupt)', alpha=0.5)
             max_gdds_trans[node_base] = np.max(gdd_values_trans)
             max_gdds_disruptA[node_base] = np.max(gdd_values_disruptA)
@@ -1026,20 +1003,20 @@ if "SLURM_JOB_ID" not in os.environ:
         sorted_max_gdds_disruptA = {k: v for k, v in sorted(max_gdds_disruptA.items(), key=lambda item: item[1], reverse=True)}
         sorted_max_gdds_disruptS = {k: v for k, v in sorted(max_gdds_disruptS.items(), key=lambda item: item[1], reverse=True)}
 
-        # add key for original max_gdd
-        # sorted_max_gdds_disruptA['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
+        # add key for original max_gdd (Which is the original distance between the aggresive subtype and stable subtype)
+        sorted_max_gdds_disruptA['ORIGINAL_MAX_GDD'] = max_orig_gdd_values
 
         # print original max_gdd 
-        # print(max_orig_gdd_values)
-        # print(sorted_max_gdds_trans)
-        # print(sorted_max_gdds_disruptA)
+        # print(f'Original GDD between aggressive and nonmesenchymal: {max_orig_gdd_values}')
+        # print(f'GDD values of top transition node knockouts (maximum distance decrease): {sorted_max_gdds_trans}')
 
-        num_top_genes = 20
-        # # Print first 10 items of sorted_max_gdds_disruptA
-        # for key, value in list(sorted_max_gdds_disruptA.items())[:num_top_genes]:
-        #     print(f'{key}: {value}')
+        num_top_genes = 10
+        # # Print first N items of sorted_max_gdds_disruptA
+        print(f'GDD values of top disruptor node knockouts (maximum self-distance increase):')
+        for key, value in list(sorted_max_gdds_disruptA.items())[:num_top_genes]:
+            print(f'{key}: {value}')
 
-        # print('-------------------')
+        print('-------------------')
 
         # for key, value in list(sorted_max_gdds_disruptS.items())[:num_top_genes]:
         #     print(f'{key}: {value}')
@@ -1047,9 +1024,10 @@ if "SLURM_JOB_ID" not in os.environ:
         # print the length of the overlap of the top 10 nodes
         overlap = set(list(sorted_max_gdds_disruptA.keys())[:num_top_genes]).intersection(set(list(sorted_max_gdds_disruptS.keys())[:num_top_genes]))
 
-        print(f'overlap: {len(overlap)}')
+        # print(f'overlap: {len(overlap)}')
 
         # print the ones that are not in the overlap
+        print('The following knockouts significantly disrupt the aggressive subtype, but not the stable subtype: ')
         for key, value in list(sorted_max_gdds_disruptA.items())[:num_top_genes]:
             if key not in overlap:
                 print(f'{key}: {value}')
